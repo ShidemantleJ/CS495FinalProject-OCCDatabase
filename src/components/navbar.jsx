@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useUser } from "../contexts/UserContext";
 import logo from "../assets/OCClogo.png";
@@ -9,7 +9,7 @@ const handleLogout = async () => {
 };
 
 export default function Navbar() {
-  const {user, loading} = useUser();
+  const {user} = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
