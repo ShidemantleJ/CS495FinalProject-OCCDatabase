@@ -51,6 +51,7 @@ export default function Navbar() {
                   <Link to="/individuals" className="hover:text-gray-300">Individuals</Link>
                   <Link to="/about" className="hover:text-gray-300">About</Link>
                   <Link to="/profile" className="hover:text-gray-300">Profile</Link>
+                  <Link to="/mobile" className="hover:text-gray-300">Mobile</Link>
                 </>
               )}
             </div>
@@ -86,6 +87,7 @@ export default function Navbar() {
                 <Link to="/individuals" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Individuals</Link>
                 <Link to="/about" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>About</Link>
                 <Link to="/profile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Profile</Link>
+                <Link to="/mobile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Mobile</Link>
               </>
             )}
           </div>
