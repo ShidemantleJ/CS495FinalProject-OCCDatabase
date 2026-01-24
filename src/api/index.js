@@ -16,5 +16,5 @@ if (!providers[providerName]) {
   console.warn(`Unknown REACT_APP_DATA_PROVIDER "${providerName}", falling back to "supabase".`);
 }
 
-export const { churches, teamMembers, individuals, auth } = selectedProvider;
+export const { churches, teamMembers, individuals, auth, storage, notes, positions, memberPositions } = selectedProvider;
 export const dataProvider = selectedProviderName;

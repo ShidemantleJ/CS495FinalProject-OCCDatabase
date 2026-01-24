@@ -4,7 +4,7 @@ import { applyFilters, applyOrderAndRange } from "./queryHelpers";
 const TABLE = "team_members";
 
 export const teamMembers = {
-  async list({ select = "*", filters = [], orderBy, limit, range } = {}) {
+  list({ select = "*", filters = [], orderBy, limit, range } = {}) {
     let query = supabase.from(TABLE).select(select);
     query = applyFilters(query, filters);
     query = applyOrderAndRange(query, { orderBy, limit, range });

@@ -10,8 +10,8 @@ export const auth = {
   onAuthStateChange(handler) {
     return supabase.auth.onAuthStateChange(handler);
   },
-  signInWithPassword({ email, password }) {
-    return supabase.auth.signInWithPassword({ email, password });
+  signInWithPassword({ email, password }, options) {
+    return supabase.auth.signInWithPassword({ email, password }, options);
   },
   setSession({ access_token, refresh_token }) {
     return supabase.auth.setSession({ access_token, refresh_token });
