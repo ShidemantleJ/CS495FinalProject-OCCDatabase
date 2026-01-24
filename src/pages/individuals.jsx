@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, individuals, teamMembers } from "../api";
+import { auth, individuals as individualsApi, teamMembers } from "../api";
 
 export default function Individuals() {
     const [individuals, setIndividuals] = useState([]);
@@ -31,7 +31,7 @@ export default function Individuals() {
 
     useEffect(() => {
         async function getIndividuals() {
-            const { data, error } = await individuals.list({
+            const { data, error } = await individualsApi.list({
                 orderBy: { column: "first_name", ascending: true },
             });
             
@@ -168,7 +168,7 @@ export default function Individuals() {
 
         const newStatus = !individual.active_to_emails;
         
-        const { error } = await individuals.update(individual.id, { active_to_emails: newStatus });
+        const { error } = await individualsApi.update(individual.id, { active_to_emails: newStatus });
 
         if (error) {
             alert("Failed to update status. Please try again.");
@@ -223,7 +223,7 @@ export default function Individuals() {
             notes: editingIndividual.notes,
         };
 
-        const { error } = await individuals.update(individualId, updateData);
+        const { error } = await individualsApi.update(individualId, updateData);
 
         if (error) {
             alert("Failed to update individual. Please try again.");

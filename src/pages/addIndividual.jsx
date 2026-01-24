@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { churches, individuals } from "../api";
+import { churches as churchesApi, individuals } from "../api";
 
 export default function AddIndividual() {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ export default function AddIndividual() {
   // Fetch churches for dropdown
   useEffect(() => {
     async function getChurches() {
-      const { data, error } = await churches.list({
+      const { data, error } = await churchesApi.list({
         select: "church_name",
         orderBy: { column: "church_name", ascending: true },
       });

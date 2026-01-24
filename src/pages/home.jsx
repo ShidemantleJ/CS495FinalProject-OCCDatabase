@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, churches, storage, teamMembers } from "../api";
+import { auth, churches as churchesApi, storage, teamMembers } from "../api";
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
 
@@ -80,7 +80,7 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
             if (newValue !== oldValue) {
                 const updatePayload = { [shoeboxFieldName]: newValue };
                 updatesToRun.push(
-                    churches.updateByField("church_name", church.church_name, updatePayload)
+                    churchesApi.updateByField("church_name", church.church_name, updatePayload)
                 );
             }
         });
@@ -169,7 +169,7 @@ export default function Home() {
     async function getChurches(filterValues = filters) {
         setLoading(true);
         // Explicitly select all fields including relations member fields
-        let query = churches.list();
+        let query = churchesApi.list();
 
         if (filterValues.churchName) {
             // Search for both spaces and underscores

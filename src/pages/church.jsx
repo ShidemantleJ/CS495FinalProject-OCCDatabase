@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { auth, churches, individuals, notes, teamMembers } from "../api";
+import { auth, churches as churchesApi, individuals as individualsApi, notes as notesApi, teamMembers as teamMembersApi } from "../api";
 
 export default function ChurchPage() {
   const { churchName } = useParams();
@@ -50,7 +50,7 @@ export default function ChurchPage() {
       
       // Try each variant
       for (const nameVariant of churchNameVariants) {
-        let query = churches.list({
+        let query = churchesApi.list({
           filters: [{ column: "church_name", op: "eq", value: nameVariant }],
         });
         
@@ -70,7 +70,7 @@ export default function ChurchPage() {
       // If still not found and we have city, try without city filter
       if (!churchData && city) {
         for (const nameVariant of churchNameVariants) {
-          const { data, error } = await churches
+          const { data, error } = await churchesApi
             .list({ filters: [{ column: "church_name", op: "eq", value: nameVariant }] })
             .maybeSingle();
           
@@ -94,7 +94,7 @@ export default function ChurchPage() {
     async function getCurrentTeamMember() {
       const { data: { user } } = await auth.getUser();
       if (user) {
-        const { data: memberData, error } = await teamMembers
+        const { data: memberData, error } = await teamMembersApi
           .list({ filters: [{ column: "email", op: "eq", value: user.email }] })
           .single();
         if (error) {
@@ -114,7 +114,7 @@ export default function ChurchPage() {
     async function getAllTeamMembers() {
       if (!isAdmin) return;
       
-      const { data, error } = await teamMembers.list({
+      const { data, error } = await teamMembersApi.list({
         select: "id, first_name, last_name, active",
         filters: [{ column: "active", op: "eq", value: true }],
         orderBy: { column: "last_name", ascending: true },
@@ -134,7 +134,7 @@ export default function ChurchPage() {
     async function getNotes() {
       if (!church) return;
       
-      const { data: notesData, error } = await notes.listByChurchId(church.id);
+      const { data: notesData, error } = await notesApi.listByChurchId(church.id);
       
       if (error) {
         // Error fetching notes
@@ -162,7 +162,7 @@ export default function ChurchPage() {
       
       // Try each variant and collect all individuals
       for (const nameVariant of churchNameVariants) {
-        const { data, error } = await individuals.list({
+        const { data, error } = await individualsApi.list({
           filters: [{ column: "church_name", op: "eq", value: nameVariant }],
         });
         
@@ -229,7 +229,7 @@ export default function ChurchPage() {
     }
 
     // Use the actual church name from the database (already loaded correctly)
-    const { error } = await churches.updateByField(
+    const { error } = await churchesApi.updateByField(
       "church_name",
       church.church_name,
       updateData
@@ -249,7 +249,7 @@ export default function ChurchPage() {
   const handleAddNote = async () => {
     if (!newNote.trim() || !church || !currentTeamMember) return;
 
-    const { error } = await notes.create({
+    const { error } = await notesApi.create({
       church_id: church.id,
       team_member_id: currentTeamMember.id,
       content: newNote.trim(),
@@ -261,7 +261,7 @@ export default function ChurchPage() {
     } else {
       setNewNote("");
       // Refresh notes
-      const { data: notesData, error: fetchError } = await notes.listByChurchId(church.id);
+      const { data: notesData, error: fetchError } = await notesApi.listByChurchId(church.id);
       
       if (!fetchError && notesData) {
         setNotes(notesData);
@@ -292,14 +292,14 @@ export default function ChurchPage() {
 
     setSavingNote(true);
 
-    const { data, error } = await notes.update(noteId, { content: editingNoteContent.trim() });
+    const { data, error } = await notesApi.update(noteId, { content: editingNoteContent.trim() });
 
     if (error) {
       alert(`Failed to update note: ${error.message}`);
     } else {
       if (data && data.length > 0) {
         // Refresh notes
-        const { data: notesData, error: fetchError } = await notes.listByChurchId(church.id);
+        const { data: notesData, error: fetchError } = await notesApi.listByChurchId(church.id);
         
         if (!fetchError && notesData) {
           setNotes(notesData);
@@ -318,13 +318,13 @@ export default function ChurchPage() {
       return;
     }
 
-    const { error } = await notes.remove(noteId);
+    const { error } = await notesApi.remove(noteId);
 
     if (error) {
       alert(`Failed to delete note: ${error.message}`);
     } else {
       // Refresh notes
-      const { data: notesData, error: fetchError } = await notes.listByChurchId(church.id);
+      const { data: notesData, error: fetchError } = await notesApi.listByChurchId(church.id);
       
       if (!fetchError && notesData) {
         setNotes(notesData);
@@ -350,7 +350,7 @@ export default function ChurchPage() {
     setSavingProjectLeader(true);
     
     // Use the actual church name from the database (already loaded correctly)
-    const { error } = await churches.updateByField(
+    const { error } = await churchesApi.updateByField(
       "church_name",
       church.church_name,
       { project_leader: selectedProjectLeader }
@@ -391,7 +391,7 @@ export default function ChurchPage() {
     // Use the actual church name from the database (already loaded correctly)
     const updateData = { [relationsFieldName]: selectedRelationsMember || null };
     
-    const { error } = await churches.updateByField(
+    const { error } = await churchesApi.updateByField(
       "church_name",
       church.church_name,
       updateData
