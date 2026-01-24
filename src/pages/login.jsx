@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { auth } from "../api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,13 +16,13 @@ export default function Login() {
     setErrorMessage("");
 
     // Clear old session first
-    supabase.auth.setSession({
+    auth.setSession({
       access_token: null,
       refresh_token: null,
     });
 
     // Sign in and control persistence based on rememberMe
-    supabase.auth
+    auth
       .signInWithPassword(
         { email, password },
         { persistSession: rememberMe }
@@ -33,7 +33,7 @@ export default function Login() {
         } else {
           const {
             data: { user },
-          } = await supabase.auth.getUser();
+          } = await auth.getUser();
           if (user) {
             const role = user.user_metadata.role || "user";
             if (role === "admin" || role === "master") {

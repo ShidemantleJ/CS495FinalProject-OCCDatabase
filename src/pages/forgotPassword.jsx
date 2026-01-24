@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { supabase } from "../supabaseClient";
+import { auth } from "../api";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -11,7 +11,7 @@ export default function ForgotPassword() {
     setError("");
     setStatus("");
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await auth.resetPasswordForEmail(email, {
       redirectTo: "https://westalabama-occ.onrender.com/reset-password",
     });
 

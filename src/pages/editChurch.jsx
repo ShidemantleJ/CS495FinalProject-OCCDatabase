@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { auth, churches, teamMembers, storage } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 
 // Helper component for private bucket images - CHURCH VERSION
@@ -18,9 +18,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // Generate signed URL for church bucket
-            const { data } = await supabase.storage
-                .from('Church Images')
-                .createSignedUrl(filePath, 3600); // 1 hour expiry
+            const { data } = await storage.createSignedUrl('Church Images', filePath, 3600); // 1 hour expiry
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -51,16 +49,17 @@ export default function EditChurch() {
     // Check admin status
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await auth.getUser();
             if (!user) {
                 navigate("/");
                 return;
             }
 
-            const { data: memberData } = await supabase
-                .from("team_members")
-                .select("admin_flag")
-                .eq("email", user.email)
+            const { data: memberData } = await teamMembers
+                .list({
+                    select: "admin_flag",
+                    filters: [{ column: "email", op: "eq", value: user.email }],
+                })
                 .single();
 
             const adminStatus = memberData?.admin_flag === true || memberData?.admin_flag === "true";
@@ -85,10 +84,8 @@ export default function EditChurch() {
             let churchData = null;
             
             for (const nameVariant of nameVariants) {
-                const { data, error } = await supabase
-                    .from("church2")
-                    .select("*")
-                    .eq("church_name", nameVariant)
+                const { data, error } = await churches
+                    .list({ filters: [{ column: "church_name", op: "eq", value: nameVariant }] })
                     .maybeSingle();
 
                 if (!error && data) {
@@ -172,9 +169,7 @@ export default function EditChurch() {
             const fileName = `${sanitizedChurchName}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
             // Upload to supabase - using Church Images bucket
-            const { error: uploadError } = await supabase.storage
-                .from('Church Images')
-                .upload(fileName, file);
+            const { error: uploadError } = await storage.upload('Church Images', fileName, file);
 
             if (uploadError) {
                 throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -225,10 +220,11 @@ export default function EditChurch() {
       // Remove fields that shouldn't be updated via this form
       const { id, created_at, "church_relations_member_2023": rel2023, "church_relations_member_2024": rel2024, "church_relations_member_2025": rel2025, "church_relations_member_2026": rel2026, shoebox_2022, shoebox_2021, shoebox_2020, shoebox_2019, shoebox_2023, shoebox_2024, shoebox_2025, shoebox_2026, ...fieldsToUpdate } = updateData;
       
-      const { error } = await supabase
-        .from("church2")
-        .update(fieldsToUpdate)
-        .eq("church_name", originalChurchName); // Use original church name for WHERE clause
+      const { error } = await churches.updateByField(
+        "church_name",
+        originalChurchName,
+        fieldsToUpdate
+      ); // Use original church name for WHERE clause
 
       if (error) {
         console.error("Update error:", error);

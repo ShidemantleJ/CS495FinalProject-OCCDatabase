@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { auth, churches, teamMembers, storage } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 
 export default function AddChurch() {
@@ -35,16 +35,17 @@ export default function AddChurch() {
   // Check admin status
   useEffect(() => {
     const checkAdminStatus = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await auth.getUser();
       if (!user) {
         navigate("/");
         return;
       }
 
-      const { data: memberData } = await supabase
-        .from("team_members")
-        .select("admin_flag")
-        .eq("email", user.email)
+      const { data: memberData } = await teamMembers
+        .list({
+          select: "admin_flag",
+          filters: [{ column: "email", op: "eq", value: user.email }],
+        })
         .single();
 
       const adminStatus = memberData?.admin_flag === true || memberData?.admin_flag === "true";
@@ -121,9 +122,7 @@ export default function AddChurch() {
       const fileName = `${sanitizedChurchName}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       // Upload to the correct bucket: 'Church Images' (same as editChurch)
-      const { error: uploadError } = await supabase.storage
-        .from('Church Images')
-        .upload(fileName, file);
+      const { error: uploadError } = await storage.upload('Church Images', fileName, file);
 
       if (uploadError) {
         throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -179,37 +178,35 @@ export default function AddChurch() {
       ? formData["church_POC_phone"].replace(/\D/g, '') 
       : null;
 
-    const { error } = await supabase.from("church2").insert([
-      {
-        church_name: formData.church_name,
-        "church_POC_first_name": formData["church_POC_first_name"] || null,
-        "church_POC_last_name": formData["church_POC_last_name"] || null,
-        project_leader: formData.project_leader,
-        "church_physical_address": formData["church_physical_address"] || null,
-        "church_physical_city": formData["church_physical_city"],
-        "church_physical_state": formData["church_physical_state"],
-        "church_physical_zip": formData["church_physical_zip"] || null,
-        "church_physical_county": formData["church_physical_county"] || null,
-        "church_phone_number": phoneNumberBigint ? parseInt(phoneNumberBigint, 10) : null,
-        church_contact: formData.church_contact || null,
-        "church_POC_phone": churchPOCPhoneBigint ? parseInt(churchPOCPhoneBigint, 10) : null,
-        "church_POC_email": formData["church_POC_email"] || null,
-        "church_mailing_address": formData["church_mailing_address"] || null,
-        "church_mailing_city": formData["church_mailing_city"] || null,
-        "church_mailing_state": formData["church_mailing_state"] || null,
-        "church_mailing_zip": formData["church_mailing_zip"] || null,
-        notes: formData.notes || null,
-        photo_url: formData.photo_url || null,
-        created_at: new Date().toISOString(),
-        // Hidden defaults for optional fields:
-        shoebox_2023: null,
-        shoebox_2024: null,
-        shoebox_2025: null,
-        "church_relations_member_2023": null,
-        "church_relations_member_2024": null,
-        "church_relations_member_2025": null,
-      },
-    ]);
+    const { error } = await churches.create({
+      church_name: formData.church_name,
+      "church_POC_first_name": formData["church_POC_first_name"] || null,
+      "church_POC_last_name": formData["church_POC_last_name"] || null,
+      project_leader: formData.project_leader,
+      "church_physical_address": formData["church_physical_address"] || null,
+      "church_physical_city": formData["church_physical_city"],
+      "church_physical_state": formData["church_physical_state"],
+      "church_physical_zip": formData["church_physical_zip"] || null,
+      "church_physical_county": formData["church_physical_county"] || null,
+      "church_phone_number": phoneNumberBigint ? parseInt(phoneNumberBigint, 10) : null,
+      church_contact: formData.church_contact || null,
+      "church_POC_phone": churchPOCPhoneBigint ? parseInt(churchPOCPhoneBigint, 10) : null,
+      "church_POC_email": formData["church_POC_email"] || null,
+      "church_mailing_address": formData["church_mailing_address"] || null,
+      "church_mailing_city": formData["church_mailing_city"] || null,
+      "church_mailing_state": formData["church_mailing_state"] || null,
+      "church_mailing_zip": formData["church_mailing_zip"] || null,
+      notes: formData.notes || null,
+      photo_url: formData.photo_url || null,
+      created_at: new Date().toISOString(),
+      // Hidden defaults for optional fields:
+      shoebox_2023: null,
+      shoebox_2024: null,
+      shoebox_2025: null,
+      "church_relations_member_2023": null,
+      "church_relations_member_2024": null,
+      "church_relations_member_2025": null,
+    });
 
     setLoading(false);
 

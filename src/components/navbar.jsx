@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { auth } from "../api";
 import logo from "../assets/OCClogo.png";
 
 export default function Navbar() {
@@ -10,12 +10,12 @@ export default function Navbar() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await auth.getUser();
       setUser(user);
     };
     getUser();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user || null;
       setUser(currentUser);
     });

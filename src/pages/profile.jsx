@@ -1,7 +1,7 @@
 // src/pages/profile.jsx
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
+import { auth, churches, memberPositions, notes, storage, teamMembers } from "../api";
 
 // Add the PrivateBucketImage component for profile photos
 function PrivateBucketImage({ filePath, className }) {
@@ -18,9 +18,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // signed URL for Team Images bucket
-            const { data } = await supabase.storage
-                .from('Team Images')
-                .createSignedUrl(filePath, 3600);
+            const { data } = await storage.createSignedUrl('Team Images', filePath, 3600);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -68,17 +66,15 @@ export default function Profile() {
 
     useEffect(() => {
         const getUserAndData = async () => {
-            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const { data: { user: authUser } } = await auth.getUser();
             if (!authUser) {
                 navigate("/login");
                 return;
             }
             setUser(authUser);
 
-            const { data: member, error: memberError } = await supabase
-                .from("team_members")
-                .select("*")
-                .eq("email", authUser.email)
+            const { data: member, error: memberError } = await teamMembers
+                .list({ filters: [{ column: "email", op: "eq", value: authUser.email }] })
                 .maybeSingle();
 
             if (memberError) {
@@ -88,11 +84,7 @@ export default function Profile() {
             setMemberData(member || null);
 
             if (member?.id) {
-                const { data: posRows, error: posError } = await supabase
-                    .from("member_positions")
-                    .select("position")
-                    .eq("member_id", member.id)
-                    .is("end_date", null); // Only get active positions
+                const { data: posRows, error: posError } = await memberPositions.listActiveByMemberId(member.id);
 
                 if (!posError && posRows) {
                     // Remove duplicates and get unique positions
@@ -113,10 +105,10 @@ export default function Profile() {
                     
                     // Try each variant
                     for (const nameVariant of churchNameVariants) {
-                        let churchQuery = supabase
-                            .from("church2")
-                            .select("id, church_name, church_physical_city, church_physical_state")
-                            .eq("church_name", nameVariant);
+                        let churchQuery = churches.list({
+                            select: "id, church_name, church_physical_city, church_physical_state",
+                            filters: [{ column: "church_name", op: "eq", value: nameVariant }],
+                        });
                         
                         // If we have city info, filter by city to get the exact match
                         if (member.church_affiliation_city) {
@@ -151,51 +143,7 @@ export default function Profile() {
 
             setNotesLoading(true);
             // Try with foreign key join first
-            let { data: notesData, error } = await supabase
-                .from("notes")
-                .select(`
-          *,
-          church2!notes_church_fkey(church_name)
-        `)
-                .eq("added_by_team_member_id", memberData.id)
-                .order("created_at", { ascending: false });
-
-            // If that fails, try without join
-            if (error) {
-                const { data: simpleData, error: simpleError } = await supabase
-                    .from("notes")
-                    .select("*")
-                    .eq("added_by_team_member_id", memberData.id)
-                    .order("created_at", { ascending: false });
-                
-                if (simpleError) {
-                    setMyNotes([]);
-                } else {
-                    // Fetch church names separately
-                    if (simpleData && simpleData.length > 0) {
-                        const churchIds = [...new Set(simpleData.map(n => n.church_id).filter(Boolean))];
-                        const { data: churchesData } = await supabase
-                            .from("church2")
-                            .select("id, church_name")
-                            .in("id", churchIds);
-                        
-                        const churchesMap = {};
-                        if (churchesData) {
-                            churchesData.forEach(c => {
-                                churchesMap[c.id] = c;
-                            });
-                        }
-                        
-                        notesData = simpleData.map(note => ({
-                            ...note,
-                            church: churchesMap[note.church_id] || null
-                        }));
-                    } else {
-                        notesData = [];
-                    }
-                }
-            }
-
+            const { data: notesData } = await notes.listByAddedByMemberId(memberData.id, { includeChurch: true });
             setMyNotes(notesData || []);
             setNotesLoading(false);
         }
@@ -212,10 +160,10 @@ export default function Profile() {
             const relationsField = `church_relations_member_${currentYear}`;
 
             // Fetch churches where user is the lead (church_relations_member_YEAR)
-            const { data: leadChurches, error: leadError } = await supabase
-                .from("church2")
-                .select("id, church_name, church_physical_city, church_physical_state")
-                .eq(relationsField, memberData.id);
+            const { data: leadChurches, error: leadError } = await churches.list({
+                select: "id, church_name, church_physical_city, church_physical_state",
+                filters: [{ column: relationsField, op: "eq", value: memberData.id }],
+            });
 
             // Note: project_leader is now a boolean, not a name field
             // We don't fetch churches by project_leader name anymore
@@ -260,11 +208,7 @@ export default function Profile() {
 
         setSavingNote(true);
 
-        const { data, error } = await supabase
-            .from("notes")
-            .update({ content: editingNoteContent.trim() })
-            .eq("id", noteId)
-            .select();
+        const { data, error } = await notes.update(noteId, { content: editingNoteContent.trim() });
 
         if (error) {
             alert(`Failed to update note: ${error.message}`);
@@ -289,11 +233,7 @@ export default function Profile() {
             return;
         }
 
-        const { data, error } = await supabase
-            .from("notes")
-            .delete()
-            .eq("id", noteId)
-            .select();
+        const { data, error } = await notes.remove(noteId);
 
         if (error) {
             alert(`Failed to delete note: ${error.message}`);
@@ -325,20 +265,17 @@ export default function Profile() {
             }
 
             if (scopes.includes("ALL")) {
-                const { data, error } = await supabase
-                    .from("team_members")
-                    .select("id, first_name, last_name, email, photo_url")
-                    .order("last_name", { ascending: true });
+                const { data, error } = await teamMembers.list({
+                    select: "id, first_name, last_name, email, photo_url",
+                    orderBy: { column: "last_name", ascending: true },
+                });
                 if (error) throw error;
 
                 const members = data || [];
 
                 // fetch and attach their positions
                 const memberIds = members.map((m) => m.id);
-                const { data: positionsData, error: posErr } = await supabase
-                    .from("member_positions")
-                    .select("member_id, position")
-                    .in("member_id", memberIds);
+                const { data: positionsData, error: posErr } = await memberPositions.listByMemberIds(memberIds);
 
                 if (!posErr && positionsData) {
                     const posMap = {};
@@ -357,10 +294,7 @@ export default function Profile() {
 
             const managedPositions = [...new Set(scopes.flat().filter(Boolean))];
 
-            const { data: mpRows, error: mpErr } = await supabase
-                .from("member_positions")
-                .select("member_id, position")
-                .in("position", managedPositions);
+            const { data: mpRows, error: mpErr } = await memberPositions.listByPositions(managedPositions);
 
             if (mpErr) throw mpErr;
 
@@ -370,19 +304,18 @@ export default function Profile() {
                 return;
             }
 
-            const { data: members, error: tmErr } = await supabase
-                .from("team_members")
-                .select("id, first_name, last_name, email, photo_url, active")
-                .in("id", ids)
-                .eq("active", true);
+            const { data: members, error: tmErr } = await teamMembers.list({
+                select: "id, first_name, last_name, email, photo_url, active",
+                filters: [
+                    { column: "id", op: "in", value: ids },
+                    { column: "active", op: "eq", value: true },
+                ],
+            });
                 
             if (tmErr) throw tmErr;
 
             // fetch and attach their positions
-            const { data: positionsData, error: posErr } = await supabase
-                .from("member_positions")
-                .select("member_id, position")
-                .in("member_id", ids);
+            const { data: positionsData, error: posErr } = await memberPositions.listByMemberIds(ids);
 
             if (!posErr && positionsData) {
                 const posMap = {};
@@ -410,7 +343,7 @@ export default function Profile() {
 
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        await auth.signOut();
         navigate("/login");
     };
 

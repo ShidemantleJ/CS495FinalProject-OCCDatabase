@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
 import { useEffect, useState } from "react";
+import { auth } from "../api";
 
 export default function ProtectedRoute({ children }) {
   const [user, setUser] = useState(null);
@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }) {
   useEffect(() => {
     const checkUser = async () => {
       // Always get fresh session from Supabase
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await auth.getUser();
 
       // If session exists AND token is valid, user is logged in
       setUser(user);
@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children }) {
     checkUser();
 
     // Subscribe to login/logout changes
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
       setLoading(false);
     });

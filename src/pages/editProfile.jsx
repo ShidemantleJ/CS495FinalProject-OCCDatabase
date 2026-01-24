@@ -1,7 +1,7 @@
 // src/pages/editProfile.jsx
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { auth, storage, teamMembers } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 
 // Helper component for private bucket images
@@ -19,9 +19,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // Generate signed URL for private bucket
-            const { data } = await supabase.storage
-                .from('Team Images')
-                .createSignedUrl(filePath, 3600); // 1 hour expiry
+            const { data } = await storage.createSignedUrl('Team Images', filePath, 3600); // 1 hour expiry
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -48,16 +46,14 @@ export default function EditProfile() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+                const { data: { user: authUser }, error: userError } = await auth.getUser();
                 if (userError || !authUser) {
                     navigate("/login");
                     return;
                 }
 
-                const { data: member, error: memberError } = await supabase
-                    .from("team_members")
-                    .select("*")
-                    .eq("email", authUser.email)
+                const { data: member, error: memberError } = await teamMembers
+                    .list({ filters: [{ column: "email", op: "eq", value: authUser.email }] })
                     .single();
 
                 if (memberError || !member) {
@@ -132,9 +128,7 @@ export default function EditProfile() {
             const fileName = `${formData.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
             // Upload to supabase
-            const { error: uploadError } = await supabase.storage
-                .from('Team Images')
-                .upload(fileName, file);
+            const { error: uploadError } = await storage.upload('Team Images', fileName, file);
 
             if (uploadError) {
                 throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -170,9 +164,7 @@ export default function EditProfile() {
         setLoading(true);
 
         try {
-            const { error } = await supabase
-                .from("team_members")
-                .update({
+            const { error } = await teamMembers.update(formData.id, {
                     first_name: formData.first_name ?? null,
                     last_name: formData.last_name ?? null,
                     phone_number: formData.phone_number ?? null,
@@ -193,8 +185,7 @@ export default function EditProfile() {
                     admin_flag: formData.admin_flag ?? false,
                     photo_url: formData.photo_url ?? null,
                     updated_at: new Date().toISOString()
-                })
-                .eq("id", formData.id);
+                });
 
             if (error) {
                 alert("Error updating profile: " + error.message);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { auth, churches, teamMembers } from "../api";
 
 export default function EditShoeboxCount() {
     const { churchName } = useParams();
@@ -18,16 +18,17 @@ export default function EditShoeboxCount() {
 
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await auth.getUser();
             if (!user) {
                 navigate("/");
                 return;
             }
 
-            const { data: memberData } = await supabase
-                .from("team_members")
-                .select("admin_flag")
-                .eq("id", user.id)
+            const { data: memberData } = await teamMembers
+                .list({
+                    select: "admin_flag",
+                    filters: [{ column: "id", op: "eq", value: user.id }],
+                })
                 .single();
 
             const adminStatus = memberData?.admin_flag === true || memberData?.admin_flag === "true";
@@ -58,10 +59,11 @@ export default function EditShoeboxCount() {
             
             // Try each variant
             for (const nameVariant of churchNameVariants) {
-                const { data, error } = await supabase
-                    .from("church2")
-                    .select(`church_name, ${shoeboxFieldName}`)
-                    .eq("church_name", nameVariant)
+                const { data, error } = await churches
+                    .list({
+                        select: `church_name, ${shoeboxFieldName}`,
+                        filters: [{ column: "church_name", op: "eq", value: nameVariant }],
+                    })
                     .maybeSingle();
 
                 if (!error && data) {
@@ -113,10 +115,11 @@ export default function EditShoeboxCount() {
             return;
         }
 
-        const { error: updateError } = await supabase
-            .from("church2")
-            .update(updatePayload)
-            .eq("church_name", churchData.church_name);
+        const { error: updateError } = await churches.updateByField(
+            "church_name",
+            churchData.church_name,
+            updatePayload
+        );
 
         if (updateError) {
             setError("Error updating shoebox count.");

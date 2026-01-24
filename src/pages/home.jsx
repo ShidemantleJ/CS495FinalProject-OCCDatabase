@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { auth, churches, storage, teamMembers } from "../api";
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
 
@@ -19,9 +19,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // signed URL for Church Images bucket
-            const { data } = await supabase.storage
-                .from('Church Images')
-                .createSignedUrl(filePath, 3600);
+            const { data } = await storage.createSignedUrl('Church Images', filePath, 3600);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -82,10 +80,7 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
             if (newValue !== oldValue) {
                 const updatePayload = { [shoeboxFieldName]: newValue };
                 updatesToRun.push(
-                    supabase
-                        .from("church2")
-                        .update(updatePayload)
-                        .eq("church_name", church.church_name)
+                    churches.updateByField("church_name", church.church_name, updatePayload)
                 );
             }
         });
@@ -174,7 +169,7 @@ export default function Home() {
     async function getChurches(filterValues = filters) {
         setLoading(true);
         // Explicitly select all fields including relations member fields
-        let query = supabase.from("church2").select("*");
+        let query = churches.list();
 
         if (filterValues.churchName) {
             // Search for both spaces and underscores
@@ -227,10 +222,10 @@ export default function Home() {
                     });
                     
                     if (validUuidArray.length > 0) {
-                        const { data: teamMembersData, error: teamError } = await supabase
-                            .from("team_members")
-                            .select("id, first_name, last_name")
-                            .in("id", validUuidArray);
+                        const { data: teamMembersData, error: teamError } = await teamMembers.list({
+                            select: "id, first_name, last_name",
+                            filters: [{ column: "id", op: "in", value: validUuidArray }],
+                        });
                         
                         if (teamError) {
                             console.error("Error fetching team members:", teamError, "IDs queried:", validUuidArray);
@@ -342,12 +337,13 @@ export default function Home() {
 
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await auth.getUser();
             if (user) {
-                const { data: memberData } = await supabase
-                    .from("team_members")
-                    .select("admin_flag")
-                    .eq("email", user.email)
+                const { data: memberData } = await teamMembers
+                    .list({
+                        select: "admin_flag",
+                        filters: [{ column: "email", op: "eq", value: user.email }],
+                    })
                     .single();
                 
                 setIsAdmin(memberData?.admin_flag === true || memberData?.admin_flag === "true");

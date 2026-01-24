@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { auth, churches, individuals, notes, teamMembers } from "../api";
 
 export default function ChurchPage() {
   const { churchName } = useParams();
@@ -50,10 +50,9 @@ export default function ChurchPage() {
       
       // Try each variant
       for (const nameVariant of churchNameVariants) {
-        let query = supabase
-          .from("church2")
-          .select("*")
-          .eq("church_name", nameVariant);
+        let query = churches.list({
+          filters: [{ column: "church_name", op: "eq", value: nameVariant }],
+        });
         
         // If city is provided in query params, filter by city to get the exact match
         if (city) {
@@ -71,10 +70,8 @@ export default function ChurchPage() {
       // If still not found and we have city, try without city filter
       if (!churchData && city) {
         for (const nameVariant of churchNameVariants) {
-          const { data, error } = await supabase
-            .from("church2")
-            .select("*")
-            .eq("church_name", nameVariant)
+          const { data, error } = await churches
+            .list({ filters: [{ column: "church_name", op: "eq", value: nameVariant }] })
             .maybeSingle();
           
           if (!error && data) {
@@ -95,12 +92,10 @@ export default function ChurchPage() {
   // Fetch current team member
   useEffect(() => {
     async function getCurrentTeamMember() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await auth.getUser();
       if (user) {
-        const { data: memberData, error } = await supabase
-          .from("team_members")
-          .select("*")
-          .eq("email", user.email)
+        const { data: memberData, error } = await teamMembers
+          .list({ filters: [{ column: "email", op: "eq", value: user.email }] })
           .single();
         if (error) {
           // Error fetching current team member
@@ -119,11 +114,11 @@ export default function ChurchPage() {
     async function getAllTeamMembers() {
       if (!isAdmin) return;
       
-      const { data, error } = await supabase
-        .from("team_members")
-        .select("id, first_name, last_name, active")
-        .eq("active", true)
-        .order("last_name", { ascending: true });
+      const { data, error } = await teamMembers.list({
+        select: "id, first_name, last_name, active",
+        filters: [{ column: "active", op: "eq", value: true }],
+        orderBy: { column: "last_name", ascending: true },
+      });
       
       if (error) {
         // Error fetching team members
@@ -139,14 +134,7 @@ export default function ChurchPage() {
     async function getNotes() {
       if (!church) return;
       
-      const { data: notesData, error } = await supabase
-        .from("notes")
-        .select(`
-          *,
-          team_members!added_by_team_member_id(first_name, last_name)
-        `)
-        .eq("church_id", church.id)
-        .order("created_at", { ascending: false });
+      const { data: notesData, error } = await notes.listByChurchId(church.id);
       
       if (error) {
         // Error fetching notes
@@ -174,10 +162,9 @@ export default function ChurchPage() {
       
       // Try each variant and collect all individuals
       for (const nameVariant of churchNameVariants) {
-        const { data, error } = await supabase
-          .from("individuals")
-          .select("*")
-          .eq("church_name", nameVariant);
+        const { data, error } = await individuals.list({
+          filters: [{ column: "church_name", op: "eq", value: nameVariant }],
+        });
         
         if (!error && data) {
           allIndividuals = [...allIndividuals, ...data];
@@ -242,10 +229,11 @@ export default function ChurchPage() {
     }
 
     // Use the actual church name from the database (already loaded correctly)
-    const { error } = await supabase
-      .from("church2")
-      .update(updateData)
-      .eq("church_name", church.church_name);
+    const { error } = await churches.updateByField(
+      "church_name",
+      church.church_name,
+      updateData
+    );
 
     if (error) {
       alert("Failed to update shoebox counts. Please try again.");
@@ -261,28 +249,19 @@ export default function ChurchPage() {
   const handleAddNote = async () => {
     if (!newNote.trim() || !church || !currentTeamMember) return;
 
-    const { error } = await supabase
-      .from("notes")
-      .insert({
-        church_id: church.id,
-        team_member_id: currentTeamMember.id,
-        content: newNote.trim(),
-        added_by_team_member_id: currentTeamMember.id,
-      });
+    const { error } = await notes.create({
+      church_id: church.id,
+      team_member_id: currentTeamMember.id,
+      content: newNote.trim(),
+      added_by_team_member_id: currentTeamMember.id,
+    });
 
     if (error) {
       alert("Failed to add note. Please try again.");
     } else {
       setNewNote("");
       // Refresh notes
-      const { data: notesData, error: fetchError } = await supabase
-        .from("notes")
-        .select(`
-          *,
-          team_members!added_by_team_member_id(first_name, last_name)
-        `)
-        .eq("church_id", church.id)
-        .order("created_at", { ascending: false });
+      const { data: notesData, error: fetchError } = await notes.listByChurchId(church.id);
       
       if (!fetchError && notesData) {
         setNotes(notesData);
@@ -313,25 +292,14 @@ export default function ChurchPage() {
 
     setSavingNote(true);
 
-    const { data, error } = await supabase
-      .from("notes")
-      .update({ content: editingNoteContent.trim() })
-      .eq("id", noteId)
-      .select();
+    const { data, error } = await notes.update(noteId, { content: editingNoteContent.trim() });
 
     if (error) {
       alert(`Failed to update note: ${error.message}`);
     } else {
       if (data && data.length > 0) {
         // Refresh notes
-        const { data: notesData, error: fetchError } = await supabase
-          .from("notes")
-          .select(`
-            *,
-            team_members!added_by_team_member_id(first_name, last_name)
-          `)
-          .eq("church_id", church.id)
-          .order("created_at", { ascending: false });
+        const { data: notesData, error: fetchError } = await notes.listByChurchId(church.id);
         
         if (!fetchError && notesData) {
           setNotes(notesData);
@@ -350,23 +318,13 @@ export default function ChurchPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from("notes")
-      .delete()
-      .eq("id", noteId);
+    const { error } = await notes.remove(noteId);
 
     if (error) {
       alert(`Failed to delete note: ${error.message}`);
     } else {
       // Refresh notes
-      const { data: notesData, error: fetchError } = await supabase
-        .from("notes")
-        .select(`
-          *,
-          team_members!added_by_team_member_id(first_name, last_name)
-        `)
-        .eq("church_id", church.id)
-        .order("created_at", { ascending: false });
+      const { data: notesData, error: fetchError } = await notes.listByChurchId(church.id);
       
       if (!fetchError && notesData) {
         setNotes(notesData);
@@ -392,10 +350,11 @@ export default function ChurchPage() {
     setSavingProjectLeader(true);
     
     // Use the actual church name from the database (already loaded correctly)
-    const { error } = await supabase
-      .from("church2")
-      .update({ project_leader: selectedProjectLeader })
-      .eq("church_name", church.church_name);
+    const { error } = await churches.updateByField(
+      "church_name",
+      church.church_name,
+      { project_leader: selectedProjectLeader }
+    );
 
     if (error) {
       alert("Failed to update project leader. Please try again.");
@@ -432,10 +391,11 @@ export default function ChurchPage() {
     // Use the actual church name from the database (already loaded correctly)
     const updateData = { [relationsFieldName]: selectedRelationsMember || null };
     
-    const { error } = await supabase
-      .from("church2")
-      .update(updateData)
-      .eq("church_name", church.church_name);
+    const { error } = await churches.updateByField(
+      "church_name",
+      church.church_name,
+      updateData
+    );
 
     if (error) {
       alert("Failed to update church relations team member. Please try again.");

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { churches, individuals } from "../api";
 
 export default function AddIndividual() {
   const navigate = useNavigate();
@@ -28,10 +28,10 @@ export default function AddIndividual() {
   // Fetch churches for dropdown
   useEffect(() => {
     async function getChurches() {
-      const { data, error } = await supabase
-        .from("church2")
-        .select("church_name")
-        .order("church_name", { ascending: true });
+      const { data, error } = await churches.list({
+        select: "church_name",
+        orderBy: { column: "church_name", ascending: true },
+      });
       
       if (error) {
         // Error fetching churches
@@ -70,9 +70,7 @@ export default function AddIndividual() {
       other_description: formData.other ? formData.other_description : null,
     };
 
-    const { error: insertError } = await supabase
-      .from("individuals")
-      .insert([submitData]);
+    const { error: insertError } = await individuals.create(submitData);
 
     setLoading(false);
 

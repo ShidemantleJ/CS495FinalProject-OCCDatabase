@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { auth, individuals, teamMembers } from "../api";
 
 export default function Individuals() {
     const [individuals, setIndividuals] = useState([]);
@@ -31,10 +31,9 @@ export default function Individuals() {
 
     useEffect(() => {
         async function getIndividuals() {
-            const { data, error } = await supabase
-                .from("individuals")
-                .select("*")
-                .order("first_name", { ascending: true });
+            const { data, error } = await individuals.list({
+                orderBy: { column: "first_name", ascending: true },
+            });
             
             if (error) {
                 setIndividuals([]);
@@ -49,12 +48,12 @@ export default function Individuals() {
     // Fetch current team member and check admin status
     useEffect(() => {
         async function getCurrentTeamMember() {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await auth.getUser();
             if (user) {
-                const { data: memberData, error } = await supabase
-                    .from("team_members")
-                    .select("*")
-                    .eq("email", user.email)
+                const { data: memberData, error } = await teamMembers
+                    .list({
+                        filters: [{ column: "email", op: "eq", value: user.email }],
+                    })
                     .single();
                 if (error) {
                     // Error fetching current team member
@@ -169,10 +168,7 @@ export default function Individuals() {
 
         const newStatus = !individual.active_to_emails;
         
-        const { error } = await supabase
-            .from("individuals")
-            .update({ active_to_emails: newStatus })
-            .eq("id", individual.id);
+        const { error } = await individuals.update(individual.id, { active_to_emails: newStatus });
 
         if (error) {
             alert("Failed to update status. Please try again.");
@@ -227,10 +223,7 @@ export default function Individuals() {
             notes: editingIndividual.notes,
         };
 
-        const { error } = await supabase
-            .from("individuals")
-            .update(updateData)
-            .eq("id", individualId);
+        const { error } = await individuals.update(individualId, updateData);
 
         if (error) {
             alert("Failed to update individual. Please try again.");

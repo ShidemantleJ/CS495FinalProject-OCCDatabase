@@ -1,7 +1,7 @@
 // src/pages/editMember.jsx
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate, useParams } from "react-router-dom";
+import { auth, memberPositions, positions, storage, teamMembers } from "../api";
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -18,9 +18,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // Generate signed URL for private bucket
-            const { data } = await supabase.storage
-                .from('Team Images')
-                .createSignedUrl(filePath, 3600); // 1 hour expiry
+            const { data } = await storage.createSignedUrl('Team Images', filePath, 3600); // 1 hour expiry
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -51,12 +49,13 @@ export default function EditMember() {
     // Check if current user is admin
     useEffect(() => {
         const checkAdmin = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await auth.getUser();
             if (user) {
-                const { data: memberData, error } = await supabase
-                    .from("team_members")
-                    .select("admin_flag")
-                    .eq("email", user.email)
+                const { data: memberData, error } = await teamMembers
+                    .list({
+                        select: "admin_flag",
+                        filters: [{ column: "email", op: "eq", value: user.email }],
+                    })
                     .single();
                 
                 if (!error && memberData) {
@@ -74,10 +73,7 @@ export default function EditMember() {
             if (!isAdmin) return;
             
             // Get all positions from positions table
-            const { data, error } = await supabase
-                .from("positions")
-                .select("*")
-                .order("code", { ascending: true });
+            const { data, error } = await positions.listAll();
             
             if (!error && data) {
                 setAvailablePositions(data);
@@ -91,11 +87,7 @@ export default function EditMember() {
         const loadMemberPositions = async () => {
             if (!id || !isAdmin) return;
             
-            const { data, error } = await supabase
-                .from("member_positions")
-                .select("position")
-                .eq("member_id", id)
-                .is("end_date", null); // Only get active positions (no end_date)
+            const { data, error } = await memberPositions.listActiveByMemberId(id);
             
             if (!error && data) {
                 const activePositions = data.map(p => p.position).filter(Boolean);
@@ -109,10 +101,8 @@ export default function EditMember() {
 
     useEffect(() => {
         const loadMember = async () => {
-            const { data, error } = await supabase
-                .from("team_members")
-                .select("*")
-                .eq("id", id)
+            const { data, error } = await teamMembers
+                .list({ filters: [{ column: "id", op: "eq", value: id }] })
                 .single();
 
             if (error) setError(error.message);
@@ -156,9 +146,7 @@ export default function EditMember() {
             const fileName = `${id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
             // Upload to supabase
-            const { error: uploadError } = await supabase.storage
-                .from('Team Images')
-                .upload(fileName, file);
+            const { error: uploadError } = await storage.upload('Team Images', fileName, file);
 
             if (uploadError) {
                 throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -189,10 +177,10 @@ export default function EditMember() {
         }
 
         // Update team member basic info
-        const { error: memberError } = await supabase
-            .from("team_members")
-            .update({ ...formData, updated_at: new Date().toISOString() })
-            .eq("id", id);
+        const { error: memberError } = await teamMembers.update(id, {
+            ...formData,
+            updated_at: new Date().toISOString(),
+        });
 
         if (memberError) {
             setError(memberError.message);
@@ -205,11 +193,7 @@ export default function EditMember() {
             const today = new Date().toISOString().split('T')[0];
             
             // Get current active positions to compare
-            const { data: currentPositions } = await supabase
-                .from("member_positions")
-                .select("position")
-                .eq("member_id", id)
-                .is("end_date", null);
+            const { data: currentPositions } = await memberPositions.listActiveByMemberId(id);
             
             const currentPositionCodes = (currentPositions || []).map(p => p.position);
             const selectedSet = new Set(selectedPositions);
@@ -223,11 +207,7 @@ export default function EditMember() {
             
             if (positionsChanged) {
                 // End all current active positions
-                const { error: endError } = await supabase
-                    .from("member_positions")
-                    .update({ end_date: today })
-                    .eq("member_id", id)
-                    .is("end_date", null);
+                const { error: endError } = await memberPositions.endActiveByMemberId(id, today);
 
                 if (endError) {
                     setError(endError.message);
@@ -241,14 +221,13 @@ export default function EditMember() {
                     const uniqueSelectedPositions = [...new Set(selectedPositions.filter(pos => pos))];
                     
                     // Check for existing positions with the same start_date to avoid duplicates
-                    const { data: existingToday } = await supabase
-                        .from("member_positions")
-                        .select("position")
-                        .eq("member_id", id)
-                        .eq("start_date", today)
-                        .is("end_date", null);
+                    const { data: existingToday } = await memberPositions.listByMemberId(id);
                     
-                    const existingPositionCodes = new Set((existingToday || []).map(p => p.position));
+                    const existingPositionCodes = new Set(
+                        (existingToday || [])
+                            .filter((p) => p.start_date === today && !p.end_date)
+                            .map(p => p.position)
+                    );
                     
                     // Only insert positions that don't already exist for today
                     const positionsToInsert = uniqueSelectedPositions
@@ -261,9 +240,7 @@ export default function EditMember() {
                         }));
 
                     if (positionsToInsert.length > 0) {
-                        const { error: insertError } = await supabase
-                            .from("member_positions")
-                            .insert(positionsToInsert);
+                        const { error: insertError } = await memberPositions.insertMany(positionsToInsert);
 
                         if (insertError) {
                             setError(insertError.message);

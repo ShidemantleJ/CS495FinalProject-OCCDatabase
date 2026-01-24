@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { churches, storage, teamMembers } from "../api";
 
 function PrivateBucketImage({ filePath, className }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -14,9 +14,7 @@ function PrivateBucketImage({ filePath, className }) {
                 return;
             }
 
-            const { data } = await supabase.storage
-                .from('Team Images')
-                .createSignedUrl(filePath, 3600);
+            const { data } = await storage.createSignedUrl('Team Images', filePath, 3600);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -44,10 +42,11 @@ export default function TeamMemberPage() {
 
     useEffect(() => {
         async function getMember() {
-            const { data: memberData, error: memberError } = await supabase
-                .from("team_members")
-                .select(`*, member_positions(position)`)
-                .eq("id", id)
+            const { data: memberData, error: memberError } = await teamMembers
+                .list({
+                    select: "*, member_positions(position)",
+                    filters: [{ column: "id", op: "eq", value: id }],
+                })
                 .single();
 
             if (memberError) {
@@ -74,10 +73,11 @@ export default function TeamMemberPage() {
 
             // Fetch church if there's a church affiliation
             if (memberData.church_affiliation_name) {
-                const { data: churchData, error: churchError } = await supabase
-                    .from("church2")
-                    .select("church_name, church_physical_city, church_physical_state, church_phone_number, church_physical_zip")
-                    .eq("church_name", memberData.church_affiliation_name)
+                const { data: churchData, error: churchError } = await churches
+                    .list({
+                        select: "church_name, church_physical_city, church_physical_state, church_phone_number, church_physical_zip",
+                        filters: [{ column: "church_name", op: "eq", value: memberData.church_affiliation_name }],
+                    })
                     .single();
 
                 if (!churchError && churchData) {
@@ -100,11 +100,11 @@ export default function TeamMemberPage() {
             const currentYear = new Date().getFullYear();
             const relationsField = `church_relations_member_${currentYear}`;
 
-            const { data: churchesData, error } = await supabase
-                .from("church2")
-                .select("id, church_name, church_physical_city, church_physical_state, church_physical_county")
-                .eq(relationsField, member.id)
-                .order("church_name", { ascending: true });
+            const { data: churchesData, error } = await churches.list({
+                select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+                filters: [{ column: relationsField, op: "eq", value: member.id }],
+                orderBy: { column: "church_name", ascending: true },
+            });
 
             if (error) {
                 // Error fetching relations churches
