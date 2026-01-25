@@ -1,29 +1,19 @@
 import { Link, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { auth } from "../api";
+import { useState } from "react";
+
+import { useUser } from "../contexts/UserContext";
 import logo from "../assets/OCClogo.png";
 
+const handleLogout = async () => {
+  await auth.signOut();
+};
+
 export default function Navbar() {
-  const [user, setUser] = useState(null);
+  const {user} = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await auth.getUser();
-      setUser(user);
-    };
-    getUser();
-
-    const { data: subscription } = auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user || null;
-      setUser(currentUser);
-    });
-
-    return () => {
-      subscription.subscription.unsubscribe();
-    };
-  }, []);
 
   const hideLinks = ["/login", "/reset-password"].includes(location.pathname);
 
@@ -41,7 +31,7 @@ export default function Navbar() {
         {!hideLinks && (
           <>
             {/* Desktop Navigation */}
-            <div className="hidden md:flex space-x-6">
+            <div className="hidden md:flex space-x-6 items-center">
               {!user ? (
                 <Link to="/login" className="hover:text-gray-300">Login</Link>
               ) : (
@@ -51,6 +41,7 @@ export default function Navbar() {
                   <Link to="/individuals" className="hover:text-gray-300">Individuals</Link>
                   <Link to="/about" className="hover:text-gray-300">About</Link>
                   <Link to="/profile" className="hover:text-gray-300">Profile</Link>
+                  <Link to="/login" onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-4 py-1 rounded">Logout</Link>
                 </>
               )}
             </div>
@@ -86,6 +77,7 @@ export default function Navbar() {
                 <Link to="/individuals" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Individuals</Link>
                 <Link to="/about" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>About</Link>
                 <Link to="/profile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Profile</Link>
+                <Link to="/login" onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-4 py-1 rounded">Logout</Link>
               </>
             )}
           </div>

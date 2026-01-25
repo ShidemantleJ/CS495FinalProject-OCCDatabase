@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, churches, teamMembers, storage } from "../api";
+import { churches, teamMembers, storage } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
+import { useUser } from "../contexts/UserContext";
 
 export default function AddChurch() {
+  const {user} = useUser();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
@@ -35,7 +37,6 @@ export default function AddChurch() {
   // Check admin status
   useEffect(() => {
     const checkAdminStatus = async () => {
-      const { data: { user } } = await auth.getUser();
       if (!user) {
         navigate("/");
         return;
@@ -58,7 +59,7 @@ export default function AddChurch() {
     };
 
     checkAdminStatus();
-  }, [navigate]);
+  }, [navigate, user]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, churches, storage, teamMembers } from "../api";
+import { churches, storage, teamMembers } from "../api";
+import { useUser } from "../contexts/UserContext";
 
 function PrivateBucketImage({ filePath, className, showPlaceholder = false }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -48,6 +49,8 @@ function PrivateBucketImage({ filePath, className, showPlaceholder = false }) {
 }
 
 export default function TeamMembers() {
+    const {user} = useUser();
+
     const [members, setMembers] = useState([]);
     const [filteredMembers, setFilteredMembers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -64,7 +67,6 @@ export default function TeamMembers() {
     // Fetch current logged-in user
     useEffect(() => {
         const fetchUser = async () => {
-            const { data: { user } } = await auth.getUser();
             if (user) {
                 const { data: memberData, error } = await teamMembers
                     .list({ filters: [{ column: "email", op: "eq", value: user.email }] })
@@ -77,7 +79,7 @@ export default function TeamMembers() {
             }
         };
         fetchUser();
-    }, []);
+    }, [user]);
 
     // Fetch team members with church data
     useEffect(() => {

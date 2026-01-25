@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { auth, churches, teamMembers, storage } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
+import { useUser } from "../contexts/UserContext";
 
 // Helper component for private bucket images - CHURCH VERSION
 function PrivateBucketImage({ filePath, className }) {
@@ -37,6 +38,7 @@ function PrivateBucketImage({ filePath, className }) {
 
 export default function EditChurch() {
     const { churchName } = useParams();
+    const {user} = useUser();
     const navigate = useNavigate();
     const [formData, setFormData] = useState(null);
     const [originalChurchName, setOriginalChurchName] = useState(null); // Store original name for WHERE clause
@@ -49,7 +51,6 @@ export default function EditChurch() {
     // Check admin status
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const { data: { user } } = await auth.getUser();
             if (!user) {
                 navigate("/");
                 return;
@@ -72,7 +73,7 @@ export default function EditChurch() {
         };
 
         checkAdminStatus();
-    }, [churchName, navigate]);
+    }, [churchName, navigate, user]);
 
     // Fetch existing church data
     useEffect(() => {

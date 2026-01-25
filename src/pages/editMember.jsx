@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { auth, memberPositions, positions, storage, teamMembers } from "../api";
+import {useUser} from "../contexts/UserContext";
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -37,6 +38,7 @@ function PrivateBucketImage({ filePath, className }) {
 
 export default function EditMember() {
     const { id } = useParams();
+    const {user} = useUser();
     const navigate = useNavigate();
     const [form, setForm] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -49,7 +51,6 @@ export default function EditMember() {
     // Check if current user is admin
     useEffect(() => {
         const checkAdmin = async () => {
-            const { data: { user } } = await auth.getUser();
             if (user) {
                 const { data: memberData, error } = await teamMembers
                     .list({
@@ -65,7 +66,7 @@ export default function EditMember() {
             }
         };
         checkAdmin();
-    }, []);
+    }, [user]);
 
     // Fetch available positions from positions table
     useEffect(() => {

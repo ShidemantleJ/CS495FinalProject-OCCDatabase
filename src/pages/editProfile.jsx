@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, storage, teamMembers } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
+import { useUser } from "../contexts/UserContext";
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -37,6 +38,7 @@ function PrivateBucketImage({ filePath, className }) {
 }
 
 export default function EditProfile() {
+    const {user: authUser} = useUser();
     const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -46,8 +48,7 @@ export default function EditProfile() {
     useEffect(() => {
         const fetchUserData = async () => {
             try {
-                const { data: { user: authUser }, error: userError } = await auth.getUser();
-                if (userError || !authUser) {
+                if (!authUser) {
                     navigate("/login");
                     return;
                 }
@@ -71,7 +72,7 @@ export default function EditProfile() {
         };
 
         fetchUserData();
-    }, [navigate]);
+    }, [navigate, authUser]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
