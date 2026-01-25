@@ -1,3 +1,5 @@
+// Shared helpers to apply filters, ordering, and pagination to Supabase queries.
+
 const applySingleFilter = (query, filter) => {
   const { column, op, value } = filter;
 
@@ -53,3 +55,4 @@ export const applyOrderAndRange = (query, { orderBy, limit, range } = {}) => {
 
   return nextQuery;
 };
+

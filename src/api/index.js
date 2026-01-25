@@ -1,3 +1,5 @@
+// Selects and exports the active data provider based on REACT_APP_DATA_PROVIDER.
+
 import * as supabaseProvider from "./providers/supabase";
 import * as awsProvider from "./providers/aws";
 
@@ -18,3 +20,4 @@ if (!providers[providerName]) {
 
 export const { churches, teamMembers, individuals, auth, storage, notes, positions, memberPositions } = selectedProvider;
 export const dataProvider = selectedProviderName;
+

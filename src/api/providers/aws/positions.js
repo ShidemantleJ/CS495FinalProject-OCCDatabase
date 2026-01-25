@@ -1,3 +1,5 @@
+// AWS positions provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const positions = {
@@ -5,3 +7,4 @@ export const positions = {
     return notImplemented("positions.listAll");
   },
 };
+

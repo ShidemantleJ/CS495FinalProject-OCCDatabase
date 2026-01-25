@@ -1,3 +1,5 @@
+// Supabase churches table queries and mutations.
+
 import { supabase } from "../../../supabaseClient";
 import { applyFilters, applyOrderAndRange } from "./queryHelpers";
 
@@ -30,3 +32,4 @@ export const churches = {
     return supabase.from(TABLE).delete().eq("id", id);
   },
 };
+

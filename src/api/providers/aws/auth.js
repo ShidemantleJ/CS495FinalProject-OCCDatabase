@@ -1,3 +1,5 @@
+// AWS auth provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const auth = {
@@ -26,3 +28,4 @@ export const auth = {
     return notImplemented("auth.signOut");
   },
 };
+

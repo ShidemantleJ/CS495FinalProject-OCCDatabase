@@ -1,3 +1,5 @@
+// Supabase member_positions queries and updates.
+
 import { supabase } from "../../../supabaseClient";
 
 const TABLE = "member_positions";
@@ -26,3 +28,4 @@ export const memberPositions = {
     return supabase.from(TABLE).insert(rows);
   },
 };
+

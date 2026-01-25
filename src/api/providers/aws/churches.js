@@ -1,3 +1,5 @@
+// AWS churches provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const churches = {
@@ -20,3 +22,4 @@ export const churches = {
     return notImplemented("churches.remove");
   },
 };
+

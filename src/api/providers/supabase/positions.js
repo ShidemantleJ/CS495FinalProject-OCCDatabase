@@ -1,3 +1,5 @@
+// Supabase positions lookup queries.
+
 import { supabase } from "../../../supabaseClient";
 
 const TABLE = "positions";
@@ -7,3 +9,4 @@ export const positions = {
     return supabase.from(TABLE).select("*").order("code", { ascending: true });
   },
 };
+

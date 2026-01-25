@@ -1,3 +1,5 @@
+// AWS notes provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const notes = {
@@ -17,3 +19,4 @@ export const notes = {
     return notImplemented("notes.remove");
   },
 };
+

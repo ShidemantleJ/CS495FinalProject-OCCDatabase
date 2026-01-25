@@ -1,3 +1,5 @@
+// Supabase storage helpers for signed URLs and uploads.
+
 import { supabase } from "../../../supabaseClient";
 
 export const storage = {
@@ -8,3 +10,4 @@ export const storage = {
     return supabase.storage.from(bucket).upload(path, file, options);
   },
 };
+

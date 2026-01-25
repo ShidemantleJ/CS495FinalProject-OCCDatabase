@@ -1,3 +1,5 @@
+// Supabase auth API wrapper.
+
 import { supabase } from "../../../supabaseClient";
 
 export const auth = {
@@ -26,3 +28,4 @@ export const auth = {
     return supabase.auth.signOut();
   },
 };
+

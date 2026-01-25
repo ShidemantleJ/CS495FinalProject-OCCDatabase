@@ -1,3 +1,5 @@
+// Supabase notes queries with joins and fallback hydration.
+
 import { supabase } from "../../../supabaseClient";
 
 const TABLE = "notes";
@@ -80,3 +82,4 @@ export const notes = {
     return supabase.from(TABLE).delete().eq("id", id).select();
   },
 };
+

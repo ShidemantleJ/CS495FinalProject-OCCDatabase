@@ -1,3 +1,5 @@
+// AWS member positions provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const memberPositions = {
@@ -20,3 +22,4 @@ export const memberPositions = {
     return notImplemented("memberPositions.insertMany");
   },
 };
+

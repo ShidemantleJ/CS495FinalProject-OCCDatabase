@@ -1,3 +1,5 @@
+// AWS team members provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const teamMembers = {
@@ -17,3 +19,4 @@ export const teamMembers = {
     return notImplemented("teamMembers.remove");
   },
 };
+

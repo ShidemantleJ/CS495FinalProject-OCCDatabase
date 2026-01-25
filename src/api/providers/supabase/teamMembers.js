@@ -1,3 +1,5 @@
+// Supabase team_members table queries and mutations.
+
 import { supabase } from "../../../supabaseClient";
 import { applyFilters, applyOrderAndRange } from "./queryHelpers";
 
@@ -23,3 +25,4 @@ export const teamMembers = {
     return supabase.from(TABLE).delete().eq("id", id);
   },
 };
+

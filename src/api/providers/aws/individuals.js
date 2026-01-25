@@ -1,3 +1,5 @@
+// AWS individuals provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const individuals = {
@@ -17,3 +19,4 @@ export const individuals = {
     return notImplemented("individuals.remove");
   },
 };
+

@@ -1,3 +1,5 @@
+// AWS storage provider placeholders (not implemented).
+
 import { notImplemented } from "./notImplemented";
 
 export const storage = {
@@ -8,3 +10,4 @@ export const storage = {
     return notImplemented("storage.upload");
   },
 };
+
