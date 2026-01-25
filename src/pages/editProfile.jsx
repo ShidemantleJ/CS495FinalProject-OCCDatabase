@@ -1,7 +1,7 @@
 // src/pages/editProfile.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, storage, teamMembers } from "../api";
+import { storage, teamMembers } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 

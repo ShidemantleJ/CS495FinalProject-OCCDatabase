@@ -1,7 +1,7 @@
 // src/pages/profile.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { auth, churches, memberPositions, notes, storage, teamMembers } from "../api";
+import { churches, memberPositions, notes, storage, teamMembers } from "../api";
 
 // Add the PrivateBucketImage component for profile photos
 function PrivateBucketImage({ filePath, className }) {

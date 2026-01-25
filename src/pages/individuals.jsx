@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, individuals as individualsApi, teamMembers } from "../api";
+import { individuals as individualsApi, teamMembers } from "../api";
 import { useUser } from "../contexts/UserContext";
 
 export default function Individuals() {

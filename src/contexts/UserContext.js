@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { auth } from "../api";
 
 const UserContext = createContext();
 
@@ -12,7 +12,7 @@ export const UserProvider = ({ children }) => {
       // Always get fresh session from Supabase
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await auth.getUser();
       setUser(user);
       setLoading(false);
     };
@@ -22,7 +22,7 @@ export const UserProvider = ({ children }) => {
     // Subscribe to login/logout changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
       setLoading(false);
     });

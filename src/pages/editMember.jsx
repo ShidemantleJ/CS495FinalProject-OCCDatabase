@@ -1,7 +1,7 @@
 // src/pages/editMember.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { auth, memberPositions, positions, storage, teamMembers } from "../api";
+import { memberPositions, positions, storage, teamMembers } from "../api";
 import {useUser} from "../contexts/UserContext";
 
 // Helper component for private bucket images
