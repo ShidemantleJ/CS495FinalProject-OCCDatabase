@@ -25,7 +25,7 @@ export default function Navbar() {
     };
   }, []);
 
-  const hideLinks = ["/login", "/reset-password"].includes(location.pathname);
+  const hideLinks = ["/login", "/reset-password", "/mobile"].includes(location.pathname);
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-gray-800 text-white shadow-md">
@@ -51,7 +51,7 @@ export default function Navbar() {
                   <Link to="/individuals" className="hover:text-gray-300">Individuals</Link>
                   <Link to="/about" className="hover:text-gray-300">About</Link>
                   <Link to="/profile" className="hover:text-gray-300">Profile</Link>
-                  <Link to="/mobile" className="hover:text-gray-300">Mobile</Link>
+                  <Link to="/mobile" replace={true} className="hover:text-gray-300">Mobile</Link>
                 </>
               )}
             </div>
@@ -87,7 +87,7 @@ export default function Navbar() {
                 <Link to="/individuals" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Individuals</Link>
                 <Link to="/about" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>About</Link>
                 <Link to="/profile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Profile</Link>
-                <Link to="/mobile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Mobile</Link>
+                <Link to="/mobile" replace={true} className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Mobile</Link>
               </>
             )}
           </div>
