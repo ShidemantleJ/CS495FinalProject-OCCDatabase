@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useUser } from "../contexts/UserContext";
 
 export default function Individuals() {
+    const {user} = useUser();
+
     const [individuals, setIndividuals] = useState([]);
     const [filteredIndividuals, setFilteredIndividuals] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -49,7 +52,6 @@ export default function Individuals() {
     // Fetch current team member and check admin status
     useEffect(() => {
         async function getCurrentTeamMember() {
-            const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 const { data: memberData, error } = await supabase
                     .from("team_members")
@@ -65,7 +67,7 @@ export default function Individuals() {
             }
         }
         getCurrentTeamMember();
-    }, []);
+    }, [user]);
 
     // Apply filters and sorting
     useEffect(() => {
