@@ -22,8 +22,7 @@ export const churches = {
     return supabase.from(TABLE).update(updates).eq("id", id).select(select).single();
   },
   /*
-    This might be causing the issue with updating every church with the same name.
-    It looks like this is being used to make changes to every church with a common "church_name" field. See churches.js
+    This is likely causing the issue with updating every church with the same name. Should be removed and only use the above updatre function
   */
   async updateByField(field, value, updates, { select = "*" } = {}) { 
     return supabase.from(TABLE).update(updates).eq(field, value).select(select);
