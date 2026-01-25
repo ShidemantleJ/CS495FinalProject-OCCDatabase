@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useUser } from "../contexts/UserContext";
 
 export default function EditShoeboxCount() {
+    const {user} = useUser();
     const { churchName } = useParams();
     const navigate = useNavigate();
     const [shoeboxCount, setShoeboxCount] = useState(null);
@@ -18,7 +20,6 @@ export default function EditShoeboxCount() {
 
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
                 navigate("/");
                 return;

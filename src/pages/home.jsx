@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
 
@@ -153,6 +154,8 @@ export default function Home() {
     // Get current year dynamically
     const currentYear = new Date().getFullYear();
     
+    const {user} = useUser();
+
     const [churches, setChurches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -342,7 +345,6 @@ export default function Home() {
 
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 const { data: memberData } = await supabase
                     .from("team_members")
@@ -354,7 +356,7 @@ export default function Home() {
             }
         };
         checkAdminStatus();
-    }, []);
+    }, [user]);
 
     useEffect(() => {
         getChurches();

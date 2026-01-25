@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import { useUser } from "../contexts/UserContext";
 
 export default function ChurchPage() {
+  const {user} = useUser();
   const { churchName } = useParams();
   const [searchParams] = useSearchParams();
   const [church, setChurch] = useState(null);
@@ -95,7 +97,6 @@ export default function ChurchPage() {
   // Fetch current team member
   useEffect(() => {
     async function getCurrentTeamMember() {
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: memberData, error } = await supabase
           .from("team_members")
@@ -112,7 +113,7 @@ export default function ChurchPage() {
       }
     }
     getCurrentTeamMember();
-  }, []);
+  }, [user]);
 
   // Fetch all team members for admin dropdown
   useEffect(() => {
