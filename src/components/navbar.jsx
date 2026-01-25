@@ -1,8 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { auth } from "../api";
-import { useState } from "react";
-
 import { useUser } from "../contexts/UserContext";
 import logo from "../assets/OCClogo.png";
 
