@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient";
-import { useNavigate } from "react-router-dom";
+// import { churches, memberPositions, teamMembers } from "../api";
+// import { useNavigate } from "react-router-dom";
 
 export default function Mobile() {
   const [isVerified, setIsVerified] = useState(false); // false = Admin Login, true = Registration Form
