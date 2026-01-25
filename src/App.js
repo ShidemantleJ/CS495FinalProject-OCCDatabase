@@ -18,6 +18,7 @@ import Individuals from "./pages/individuals";
 import AddIndividual from "./pages/addIndividual";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/resetPassword";
+import Mobile from "./pages/mobile";
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
                     <Route path="/team-members" element={<TeamMembers />} />
                     <Route path="/team-member/:id" element={<TeamMember />} />
                     <Route path="/individuals" element={<Individuals />} />
+                    <Route path="/mobile" element={<Mobile />} />
 
                     {/* Add/Edit routes */}
                     <Route path="/add-member" element={<AddMember />} />
