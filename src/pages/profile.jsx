@@ -529,12 +529,7 @@ export default function Profile() {
                                             <strong>Church Name:</strong>{" "}
                                             {affiliatedChurch ? (
                                                 <button
-                                                    onClick={() => {
-                                                        const cityParam = memberData.church_affiliation_city 
-                                                            ? `?city=${encodeURIComponent(memberData.church_affiliation_city)}`
-                                                            : '';
-                                                        navigate(`/church/${encodeURIComponent(affiliatedChurch.church_name)}${cityParam}`);
-                                                    }}
+                                                    onClick={() => navigate(`/church/${affiliatedChurch.id}`)}
                                                     className="text-blue-600 hover:underline"
                                                 >
                                                     {memberData.church_affiliation_name.replace(/_/g, " ")}
@@ -654,7 +649,7 @@ export default function Profile() {
                                                 <strong>Church:</strong>{" "}
                                                 {note.church_id && note.church?.church_name ? (
                                                     <button
-                                                        onClick={() => navigate(`/church/${encodeURIComponent(note.church.church_name)}`)}
+                                                        onClick={() => navigate(`/church/${note.church_id}`)}
                                                         className="text-blue-600 hover:underline"
                                                     >
                                                         {churchName}
@@ -761,7 +756,7 @@ export default function Profile() {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                        onClick={() => navigate(`/church/${church.id}`)}
                                         className="text-blue-600 hover:underline"
                                     >
                                         View Church

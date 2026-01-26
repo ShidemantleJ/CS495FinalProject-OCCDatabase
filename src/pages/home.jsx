@@ -54,16 +54,16 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
         if (isOpen) {
             const initialUpdates = {};
             churches.forEach(church => {
-                initialUpdates[church.church_name] = church[shoeboxFieldName] || '';
+                initialUpdates[church.id] = church[shoeboxFieldName] || '';
             });
             setUpdates(initialUpdates);
         }
     }, [isOpen, churches, shoeboxFieldName]);
-    const handleChange = (churchName, value) => {
+    const handleChange = (churchId, value) => {
         const numericValue = value === '' ? null : parseInt(value, 10);
         setUpdates(prev => ({
             ...prev,
-            [churchName]: isNaN(numericValue) ? '' : value,
+            [churchId]: isNaN(numericValue) ? '' : value,
         }));
     };
 
@@ -77,7 +77,7 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
 
         churches.forEach(church => {
             const oldValue = church[shoeboxFieldName] || null;
-            const newValue = updates[church.church_name] === '' ? null : parseInt(updates[church.church_name], 10);
+            const newValue = updates[church.id] === '' ? null : parseInt(updates[church.id], 10);
 
             if (newValue !== oldValue) {
                 const updatePayload = { [shoeboxFieldName]: newValue };
@@ -85,7 +85,7 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
                     supabase
                         .from("church2")
                         .update(updatePayload)
-                        .eq("church_name", church.church_name)
+                        .eq("id", church.id)
                 );
             }
         });
@@ -118,8 +118,8 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
                                         <input
                                             type="number"
                                             min="0"
-                                            value={updates[church.church_name] === null ? '' : updates[church.church_name]}
-                                            onChange={(e) => handleChange(church.church_name, e.target.value)}
+                                            value={updates[church.id] === null ? '' : updates[church.id]}
+                                            onChange={(e) => handleChange(church.id, e.target.value)}
                                             className="w-full border rounded-md p-1 text-center"
                                         />
                                     </td>
@@ -533,15 +533,7 @@ export default function Home() {
                         )}
                         <button
                             className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                            onClick={() => {
-                                // Use the actual church name from database (may have spaces or underscores)
-                                const actualChurchName = church.church_name;
-                                const cityParam = church["church_physical_city"] 
-                                    ? `?city=${encodeURIComponent(church["church_physical_city"])}`
-                                    : '';
-                                // Encode the church name as-is from the database
-                                navigate(`/church/${encodeURIComponent(actualChurchName)}${cityParam}`);
-                            }}
+                            onClick={() => navigate(`/church/${church.id}`)}
                         >
                             Church Information
                         </button>

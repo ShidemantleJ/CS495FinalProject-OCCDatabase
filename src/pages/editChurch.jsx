@@ -38,10 +38,9 @@ function PrivateBucketImage({ filePath, className }) {
 }
 
 export default function EditChurch() {
-    const { churchName } = useParams();
+    const { churchId } = useParams();
     const navigate = useNavigate();
     const [formData, setFormData] = useState(null);
-    const [originalChurchName, setOriginalChurchName] = useState(null); // Store original name for WHERE clause
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -68,45 +67,32 @@ export default function EditChurch() {
             setCheckingAdmin(false);
 
             if (!adminStatus) {
-                navigate(`/church/${encodeURIComponent(churchName)}`);
+                navigate(`/church/${churchId}`);
             }
         };
 
         checkAdminStatus();
-    }, [churchName, navigate]);
+    }, [churchId, navigate]);
 
     // Fetch existing church data
     useEffect(() => {
         if (!isAdmin || checkingAdmin) return;
         
         const fetchChurch = async () => {
-            // Try both spaces and underscores for church name
-            const nameVariants = [churchName, churchName.replace(/ /g, "_"), churchName.replace(/_/g, " ")];
-            let churchData = null;
-            
-            for (const nameVariant of nameVariants) {
-                const { data, error } = await supabase
-                    .from("church2")
-                    .select("*")
-                    .eq("church_name", nameVariant)
-                    .maybeSingle();
-
-                if (!error && data) {
-                    churchData = data;
-                    break;
-                }
-            }
-
-            if (churchData) {
-                setFormData(churchData);
-                setOriginalChurchName(churchData.church_name); // Store original name for WHERE clause
+            const { data, error } = await supabase
+                .from("church2")
+                .select("*")
+                .eq("id", churchId)
+                .maybeSingle()
+            if (!error && data) {
+                setFormData(data);
             } else {
                 setError("Error loading church details.");
             }
         };
 
         fetchChurch();
-    }, [churchName, isAdmin, checkingAdmin]);
+    }, [churchId, isAdmin, checkingAdmin]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -160,8 +146,8 @@ export default function EditChurch() {
 
         try {
             // Generate unique name for the image
-            // Use formData.church_name if available (actual DB value), otherwise use churchName from URL
-            const churchNameForFile = formData?.church_name || churchName;
+            // Use formData.church_name (actual DB value)
+            const churchNameForFile = formData?.church_name || 'church';
             // Sanitize the church name: replace spaces with underscores and remove special characters
             const sanitizedChurchName = churchNameForFile
                 .replace(/\s+/g, '_')  // Replace spaces with underscores
@@ -228,16 +214,15 @@ export default function EditChurch() {
       const { error } = await supabase
         .from("church2")
         .update(fieldsToUpdate)
-        .eq("church_name", originalChurchName); // Use original church name for WHERE clause
+        .eq("id", formData.id);
 
       if (error) {
         console.error("Update error:", error);
         setError("Error updating church information: " + (error.message || "Unknown error"));
         setLoading(false);
       } else {
-        // Navigate to the updated church name (from formData, not the old URL param)
-        const updatedChurchName = formData.church_name || originalChurchName;
-        navigate(`/church/${encodeURIComponent(updatedChurchName)}`);
+        // Navigate back to the church page using the ID
+        navigate(`/church/${formData.id}`);
       }
     } catch (err) {
       console.error("Submit error:", err);
@@ -530,7 +515,7 @@ export default function EditChurch() {
                 <div className="flex gap-3 pt-4">
                     <button
                         type="button"
-                        onClick={() => navigate(`/church/${churchName}`)}
+                        onClick={() => navigate(`/church/${churchId}`)}
                         className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                     >
                         Cancel

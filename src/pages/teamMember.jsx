@@ -168,12 +168,16 @@ export default function TeamMemberPage() {
                             <p>
                                 <strong>Church Affiliation:</strong>{" "}
                                 {member.church_affiliation_name ? (
-                                    <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(member.church_affiliation_name)}`)}
-                                        className="text-blue-600 hover:underline"
-                                    >
-                                        {member.church_affiliation_name.replace(/_/g, " ")}
-                                    </button>
+                                    church ? (
+                                        <button
+                                            onClick={() => navigate(`/church/${church.id}`)}
+                                            className="text-blue-600 hover:underline"
+                                        >
+                                            {member.church_affiliation_name.replace(/_/g, " ")}
+                                        </button>
+                                    ) : (
+                                        member.church_affiliation_name.replace(/_/g, " ")
+                                    )
                                 ) : (
                                     "N/A"
                                 )}
@@ -192,7 +196,7 @@ export default function TeamMemberPage() {
                                 <p>
                                     <strong>Name:</strong>{" "}
                                     <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                        onClick={() => navigate(`/church/${church.id}`)}
                                         className="text-blue-600 hover:underline"
                                     >
                                         {church.church_name?.replace(/_/g, " ") || "N/A"}
@@ -224,7 +228,7 @@ export default function TeamMemberPage() {
                                     <div>
                                         <p className="font-medium text-gray-900">
                                             <button
-                                                onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                                onClick={() => navigate(`/church/${church.id}`)}
                                                 className="text-blue-600 hover:underline"
                                             >
                                                 {church.church_name?.replace(/_/g, " ") || "Unknown"}
@@ -236,7 +240,7 @@ export default function TeamMemberPage() {
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                        onClick={() => navigate(`/church/${church.id}`)}
                                         className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                     >
                                         View Church

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 export default function EditShoeboxCount() {
-    const { churchName } = useParams();
+    const { churchId } = useParams();
     const navigate = useNavigate();
     const [shoeboxCount, setShoeboxCount] = useState(null);
     const [churchData, setChurchData] = useState(null);
@@ -35,51 +35,33 @@ export default function EditShoeboxCount() {
             setCheckingAdmin(false);
 
             if (!adminStatus) {
-                navigate(`/church/${encodeURIComponent(churchName)}`);
+                navigate(`/church/${churchId}`);
             }
         };
 
         checkAdminStatus();
-    }, [churchName, navigate]);
+    }, [churchId, navigate]);
 
     useEffect(() => {
         if (!isAdmin || checkingAdmin) return;
 
         const fetchChurch = async () => {
-            // Try multiple name variants to handle spaces/underscores
-            const decodedChurchName = decodeURIComponent(churchName);
-            const churchNameVariants = [
-                decodedChurchName, // Original from URL
-                decodedChurchName.replace(/ /g, "_"), // With underscores
-                decodedChurchName.replace(/_/g, " ") // With spaces
-            ];
-            
-            let churchData = null;
-            
-            // Try each variant
-            for (const nameVariant of churchNameVariants) {
-                const { data, error } = await supabase
-                    .from("church2")
-                    .select(`church_name, ${shoeboxFieldName}`)
-                    .eq("church_name", nameVariant)
-                    .maybeSingle();
+            const { data, error } = await supabase
+                .from("church2")
+                .select(`id, church_name, ${shoeboxFieldName}`)
+                .eq("id", churchId)
+                .maybeSingle();
 
-                if (!error && data) {
-                    churchData = data;
-                    break; // Found it, stop searching
-                }
-            }
-
-            if (churchData) {
-                setChurchData(churchData);
-                setShoeboxCount(churchData[shoeboxFieldName] || '');
+            if (!error && data) {
+                setChurchData(data);
+                setShoeboxCount(data[shoeboxFieldName] || '');
             } else {
                 setError("Error loading church details.");
             }
         };
 
         fetchChurch();
-    }, [churchName, shoeboxFieldName, isAdmin, checkingAdmin]);
+    }, [churchId, shoeboxFieldName, isAdmin, checkingAdmin]);
 
     const handleChange = (e) => {
         setShoeboxCount(e.target.value);
@@ -88,7 +70,7 @@ export default function EditShoeboxCount() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!isAdmin) {
-            navigate(`/church/${encodeURIComponent(churchName)}`);
+            navigate(`/church/${churchId}`);
             return;
         }
         setLoading(true);
@@ -106,8 +88,7 @@ export default function EditShoeboxCount() {
             [shoeboxFieldName]: numericValue,
         };
 
-        // Use the actual church name from the database (already loaded correctly)
-        if (!churchData || !churchData.church_name) {
+        if (!churchData || !churchData.id) {
             setError("Error: Church data not loaded.");
             setLoading(false);
             return;
@@ -116,12 +97,12 @@ export default function EditShoeboxCount() {
         const { error: updateError } = await supabase
             .from("church2")
             .update(updatePayload)
-            .eq("church_name", churchData.church_name);
+            .eq("id", churchData.id);
 
         if (updateError) {
             setError("Error updating shoebox count.");
         } else {
-            navigate(`/church/${encodeURIComponent(churchName)}`);
+            navigate(`/church/${churchId}`);
         }
 
         setLoading(false);
@@ -162,7 +143,7 @@ export default function EditShoeboxCount() {
                     <button
                         type="button"
                         className="flex-1 bg-gray-300 text-black py-3 rounded-lg hover:bg-gray-400 font-medium"
-                        onClick={() => navigate(`/church/${encodeURIComponent(churchName)}`)}
+                        onClick={() => navigate(`/church/${churchId}`)}
                     >
                         Cancel
                     </button>

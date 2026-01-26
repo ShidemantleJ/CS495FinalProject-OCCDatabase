@@ -41,7 +41,7 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/home" element={<Home />} />
                     <Route path="/about" element={<About />} />
-                    <Route path="/church/:churchName" element={<ChurchPage />} />
+                    <Route path="/church/:churchId" element={<ChurchPage />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/editProfile" element={<EditProfile />} />
                     <Route path="/team-members" element={<TeamMembers />} />
@@ -52,7 +52,7 @@ function App() {
                     <Route path="/add-member" element={<AddMember />} />
                     <Route path="/edit-member/:id" element={<EditMember />} />
                     <Route path="/add-church" element={<AddChurch />} />
-                    <Route path="/edit-church/:churchName" element={<EditChurch />} />
+                    <Route path="/edit-church/:churchId" element={<EditChurch />} />
                     <Route path="/add-individual" element={<AddIndividual />} />
 
                     {/* Redirect unknown paths */}

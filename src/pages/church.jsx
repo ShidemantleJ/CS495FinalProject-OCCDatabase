@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
 export default function ChurchPage() {
-  const { churchName } = useParams();
+  const { churchId } = useParams();
   const [searchParams] = useSearchParams();
   const [church, setChurch] = useState(null);
   const [individuals, setIndividuals] = useState([]);
@@ -35,62 +35,19 @@ export default function ChurchPage() {
 
   useEffect(() => {
     async function getChurch() {
-      // Decode the church name from URL (may have spaces or underscores)
-      const decodedChurchName = decodeURIComponent(churchName);
-      const city = searchParams.get("city");
+      const { data, error } = await supabase
+        .from("church2")
+        .select("*")
+        .eq("id", churchId)
+        .maybeSingle();
       
-      // Try multiple formats: exact match, with spaces, with underscores
-      const churchNameVariants = [
-        decodedChurchName, // Original from URL
-        decodedChurchName.replace(/ /g, "_"), // With underscores
-        decodedChurchName.replace(/_/g, " ") // With spaces
-      ];
-      
-      let churchData = null;
-      
-      // Try each variant
-      for (const nameVariant of churchNameVariants) {
-        let query = supabase
-          .from("church2")
-          .select("*")
-          .eq("church_name", nameVariant);
-        
-        // If city is provided in query params, filter by city to get the exact match
-        if (city) {
-          query = query.ilike("church_physical_city", `%${city}%`);
-        }
-        
-        const { data, error } = await query.maybeSingle();
-        
-        if (!error && data) {
-          churchData = data;
-          break; // Found it, stop searching
-        }
-      }
-      
-      // If still not found and we have city, try without city filter
-      if (!churchData && city) {
-        for (const nameVariant of churchNameVariants) {
-          const { data, error } = await supabase
-            .from("church2")
-            .select("*")
-            .eq("church_name", nameVariant)
-            .maybeSingle();
-          
-          if (!error && data) {
-            churchData = data;
-            break;
-          }
-        }
-      }
-      
-      if (churchData) {
-        setChurch(churchData);
+      if (!error && data) {
+        setChurch(data);
       }
       setLoading(false);
     }
     getChurch();
-  }, [churchName, searchParams]);
+  }, [churchId]);
 
   // Fetch current team member
   useEffect(() => {
@@ -162,34 +119,14 @@ export default function ChurchPage() {
     async function getIndividuals() {
       if (!church) return;
       
-      // Use the actual church name from the database (already loaded correctly)
-      // Try multiple variants to handle both spaces and underscores
-      const churchNameVariants = [
-        church.church_name, // Actual name from database
-        church.church_name.replace(/ /g, "_"), // With underscores
-        church.church_name.replace(/_/g, " ") // With spaces
-      ];
+      const { data, error } = await supabase
+        .from("individuals")
+        .select("*")
+        .eq("church_id", church.id);
       
-      let allIndividuals = [];
-      
-      // Try each variant and collect all individuals
-      for (const nameVariant of churchNameVariants) {
-        const { data, error } = await supabase
-          .from("individuals")
-          .select("*")
-          .eq("church_name", nameVariant);
-        
-        if (!error && data) {
-          allIndividuals = [...allIndividuals, ...data];
-        }
+      if (!error && data) {
+        setIndividuals(data);
       }
-      
-      // Remove duplicates based on id
-      const uniqueIndividuals = Array.from(
-        new Map(allIndividuals.map(ind => [ind.id, ind])).values()
-      );
-      
-      setIndividuals(uniqueIndividuals);
       setIndividualsLoading(false);
     }
     if (church) {
@@ -241,11 +178,10 @@ export default function ChurchPage() {
       }
     }
 
-    // Use the actual church name from the database (already loaded correctly)
     const { error } = await supabase
       .from("church2")
       .update(updateData)
-      .eq("church_name", church.church_name);
+      .eq("id", church.id);
 
     if (error) {
       alert("Failed to update shoebox counts. Please try again.");
@@ -391,11 +327,10 @@ export default function ChurchPage() {
     
     setSavingProjectLeader(true);
     
-    // Use the actual church name from the database (already loaded correctly)
     const { error } = await supabase
       .from("church2")
       .update({ project_leader: selectedProjectLeader })
-      .eq("church_name", church.church_name);
+      .eq("id", church.id);
 
     if (error) {
       alert("Failed to update project leader. Please try again.");
@@ -429,13 +364,12 @@ export default function ChurchPage() {
     
     setSavingRelationsMember(true);
     
-    // Use the actual church name from the database (already loaded correctly)
     const updateData = { [relationsFieldName]: selectedRelationsMember || null };
     
     const { error } = await supabase
       .from("church2")
       .update(updateData)
-      .eq("church_name", church.church_name);
+      .eq("id", church.id);
 
     if (error) {
       alert("Failed to update church relations team member. Please try again.");
@@ -863,7 +797,7 @@ export default function ChurchPage() {
         {isAdmin && (
           <button
             className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-            onClick={() => navigate(`/edit-church/${encodeURIComponent(church.church_name)}`)}
+            onClick={() => navigate(`/edit-church/${church.id}`)}
           >
             Edit Church
           </button>
