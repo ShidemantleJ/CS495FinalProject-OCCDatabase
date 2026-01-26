@@ -18,8 +18,12 @@ import Individuals from "./pages/individuals";
 import AddIndividual from "./pages/addIndividual";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/resetPassword";
+import useLastActivity from "./hooks/useLastActivity";
 
 function App() {
+  // Ping server periodically when user interacts with the site, allowing automatic logout.
+  useLastActivity();
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
