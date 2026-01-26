@@ -19,6 +19,7 @@ import AddIndividual from "./pages/addIndividual";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/resetPassword";
 import useLastActivity from "./hooks/useLastActivity";
+import Mobile from "./pages/mobile";
 
 function App() {
   // Ping server periodically when user interacts with the site, allowing automatic logout.
@@ -36,6 +37,8 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
+             <Route path="/mobile" element={<Mobile />} />
+
             {/* Protected routes */}
             <Route
               path="/*"
@@ -51,6 +54,7 @@ function App() {
                     <Route path="/team-members" element={<TeamMembers />} />
                     <Route path="/team-member/:id" element={<TeamMember />} />
                     <Route path="/individuals" element={<Individuals />} />
+                   
 
                     {/* Add/Edit routes */}
                     <Route path="/add-member" element={<AddMember />} />
