@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../api";
+import { databaseAPI } from "../api";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -12,7 +12,7 @@ export default function ResetPassword() {
     const checkSession = async () => {
       const {
         data: { session },
-      } = await auth.getSession();
+      } = await databaseAPI.getSession();
 
       if (!session) {
         setError("Invalid or expired reset link. Please request a new one.");
@@ -27,13 +27,13 @@ export default function ResetPassword() {
     setStatus("");
     setError("");
 
-    const { error } = await auth.updatePassword(password);
+    const { error } = await databaseAPI.updatePassword(password);
 
     if (error) {
       setError(error.message);
     } else {
       // Immediately sign out the recovery session
-      await auth.signOut();
+      await databaseAPI.signOut();
 
       // Optionally show a brief message before redirect
       setStatus("Your password has been updated. Redirecting to login...");

@@ -1,13 +1,13 @@
 // Selects and exports the active data provider based on REACT_APP_DATA_PROVIDER.
 
-import * as supabaseProvider from "./providers/supabase";
-import * as awsProvider from "./providers/aws";
+import { supabaseAPI } from "./providers/supabase/supabaseAPI";
+import { awsAPI } from "./providers/aws/awsAPI";
 
 const providerName = (process.env.REACT_APP_DATA_PROVIDER || "supabase").toLowerCase();
 
 const providers = {
-  supabase: supabaseProvider,
-  aws: awsProvider,
+  supabase: supabaseAPI,
+  aws: awsAPI,
 };
 
 const selectedProviderName = providers[providerName] ? providerName : "supabase";
@@ -18,6 +18,6 @@ if (!providers[providerName]) {
   console.warn(`Unknown REACT_APP_DATA_PROVIDER "${providerName}", falling back to "supabase".`);
 }
 
-export const { churches, teamMembers, individuals, auth, storage, notes, positions, memberPositions } = selectedProvider;
-export const dataProvider = selectedProviderName;
+export const databaseAPI = selectedProvider;
+export const databaseProvider = selectedProviderName;
 

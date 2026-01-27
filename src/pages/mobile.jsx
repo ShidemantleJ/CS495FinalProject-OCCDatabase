@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { churches, memberPositions, teamMembers } from "../api";
+import { databaseAPI } from "../api";
 import { useNavigate } from "react-router-dom";
 
 export default function Mobile() {
