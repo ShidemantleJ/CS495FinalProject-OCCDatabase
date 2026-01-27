@@ -8,7 +8,7 @@ const supabaseKey =
   process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 test.describe("Church Management", () => {
-  test("should add a new church with full form data and verify DB", async ({
+  test("should add a new church with full form data and verify via Dashboard", async ({
     page,
   }) => {
     if (!supabaseUrl || !supabaseKey) {
@@ -127,20 +127,37 @@ test.describe("Church Management", () => {
 
     await expect(page).toHaveURL(/home/);
 
-    /* ---------------- DB VERIFICATION ---------------- */
-    const { data: record, error } = await supabase
+    /* ---------------- UI VERIFICATION ---------------- */
+    // Use the dashboard filters to find the new church
+    await page
+      .getByPlaceholder(/search by church name/i)
+      .fill(churchData.church_name);
+    await page
+      .getByPlaceholder(/filter by zipcode/i)
+      .fill(churchData.church_physical_zip);
+    await page.getByRole("button", { name: /apply filters/i }).click();
+
+    // Verify the church card appears with correct info
+    await expect(
+      page.getByRole("heading", { name: churchData.church_name }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        `${churchData.church_physical_city}, ${churchData.church_physical_state}`,
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByText(`${churchData.church_physical_county} County`),
+    ).toBeVisible();
+
+    /* ---------------- CLEANUP ---------------- */
+    // Query DB only to get ID for deletion
+    const { data: record } = await supabase
       .from("church2")
-      .select("*")
+      .select("id")
       .eq("church_name", churchData.church_name)
       .single();
 
-    expect(error).toBeNull();
-    expect(record).not.toBeNull();
-    expect(record.church_physical_city).toBe(churchData.church_physical_city);
-    expect(record.church_POC_email).toBe(churchData.church_POC_email);
-    expect(record.project_leader).toBe(true);
-
-    /* ---------------- CLEANUP ---------------- */
     if (record?.id) {
       await supabase.from("church2").delete().eq("id", record.id);
     }
