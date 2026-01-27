@@ -43,7 +43,7 @@ test.describe("Church Management", () => {
     };
 
     /* ---------------- LOGIN ---------------- */
-    await page.goto("/");
+    await page.goto("/login");
 
     const emailInput = page.getByPlaceholder(/email/i);
     if (await emailInput.isVisible()) {
@@ -57,6 +57,10 @@ test.describe("Church Management", () => {
     }
 
     /* ---------------- NAVIGATION ---------------- */
+    await expect(
+      page.getByRole("button", { name: /add church/i }),
+    ).toBeVisible();
+
     await page.getByRole("button", { name: /add church/i }).click();
     await expect(page).toHaveURL(/add-church/);
 
