@@ -1,11 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { auth } from "../api";
+import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import logo from "../assets/OCClogo.png";
 
 const handleLogout = async () => {
-  await auth.signOut();
+  await databaseAPI.signOut();
 };
 
 export default function Navbar() {

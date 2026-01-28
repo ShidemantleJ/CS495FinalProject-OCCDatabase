@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { churches, storage, teamMembers } from "../api";
+import { databaseAPI } from "../api";
 
 function PrivateBucketImage({ filePath, className }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -14,7 +14,7 @@ function PrivateBucketImage({ filePath, className }) {
                 return;
             }
 
-            const { data } = await storage.createSignedUrl('Team Images', filePath, 3600);
+            const { data } = await databaseAPI.createSignedUrl('Team Images', filePath, 3600);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -42,8 +42,8 @@ export default function TeamMemberPage() {
 
     useEffect(() => {
         async function getMember() {
-            const { data: memberData, error: memberError } = await teamMembers
-                .list({
+            const { data: memberData, error: memberError } = await databaseAPI
+                .list("team_members", {
                     select: "*, member_positions(position)",
                     filters: [{ column: "id", op: "eq", value: id }],
                 })
@@ -73,9 +73,9 @@ export default function TeamMemberPage() {
 
             // Fetch church if there's a church affiliation
             if (memberData.church_affiliation_name) {
-                const { data: churchData, error: churchError } = await churches
-                    .list({
-                        select: "church_name, church_physical_city, church_physical_state, church_phone_number, church_physical_zip",
+                const { data: churchData, error: churchError } = await databaseAPI
+                    .list("church2", {
+                        select: "id, church_name, church_physical_city, church_physical_state, church_phone_number, church_physical_zip",
                         filters: [{ column: "church_name", op: "eq", value: memberData.church_affiliation_name }],
                     })
                     .single();
@@ -100,7 +100,7 @@ export default function TeamMemberPage() {
             const currentYear = new Date().getFullYear();
             const relationsField = `church_relations_member_${currentYear}`;
 
-            const { data: churchesData, error } = await churches.list({
+            const { data: churchesData, error } = await databaseAPI.list("church2", {
                 select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
                 filters: [{ column: relationsField, op: "eq", value: member.id }],
                 orderBy: { column: "church_name", ascending: true },
@@ -169,8 +169,13 @@ export default function TeamMemberPage() {
                                 <strong>Church Affiliation:</strong>{" "}
                                 {member.church_affiliation_name ? (
                                     <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(member.church_affiliation_name)}`)}
+                                        onClick={() => {
+                                            if (church?.id) {
+                                                navigate(`/church/${church.id}`);
+                                            }
+                                        }}
                                         className="text-blue-600 hover:underline"
+                                        disabled={!church?.id}
                                     >
                                         {member.church_affiliation_name.replace(/_/g, " ")}
                                     </button>
@@ -192,7 +197,7 @@ export default function TeamMemberPage() {
                                 <p>
                                     <strong>Name:</strong>{" "}
                                     <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                        onClick={() => navigate(`/church/${church.id}`)}
                                         className="text-blue-600 hover:underline"
                                     >
                                         {church.church_name?.replace(/_/g, " ") || "N/A"}
@@ -224,7 +229,7 @@ export default function TeamMemberPage() {
                                     <div>
                                         <p className="font-medium text-gray-900">
                                             <button
-                                                onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                                onClick={() => navigate(`/church/${church.id}`)}
                                                 className="text-blue-600 hover:underline"
                                             >
                                                 {church.church_name?.replace(/_/g, " ") || "Unknown"}
@@ -236,7 +241,7 @@ export default function TeamMemberPage() {
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                        onClick={() => navigate(`/church/${church.id}`)}
                                         className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                     >
                                         View Church

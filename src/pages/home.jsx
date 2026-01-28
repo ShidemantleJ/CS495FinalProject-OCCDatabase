@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { churches as churchesApi, storage, teamMembers } from "../api";
+import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
@@ -20,7 +20,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // signed URL for Church Images bucket
-            const { data } = await storage.createSignedUrl('Church Images', filePath, 3600);
+            const { data } = await databaseAPI.createSignedUrl('Church Images', filePath, 3600);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -81,7 +81,7 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
             if (newValue !== oldValue) {
                 const updatePayload = { [shoeboxFieldName]: newValue };
                 updatesToRun.push(
-                    churchesApi.updateByField("church_name", church.church_name, updatePayload)
+                    databaseAPI.update("church2", church.id, updatePayload)
                 );
             }
         });
@@ -172,7 +172,7 @@ export default function Home() {
     async function getChurches(filterValues = filters) {
         setLoading(true);
         // Explicitly select all fields including relations member fields
-        let query = churchesApi.list();
+        let query = databaseAPI.list("church2");
 
         if (filterValues.churchName) {
             // Search for both spaces and underscores
@@ -225,7 +225,7 @@ export default function Home() {
                     });
                     
                     if (validUuidArray.length > 0) {
-                        const { data: teamMembersData, error: teamError } = await teamMembers.list({
+                        const { data: teamMembersData, error: teamError } = await databaseAPI.list("team_members", {
                             select: "id, first_name, last_name",
                             filters: [{ column: "id", op: "in", value: validUuidArray }],
                         });
@@ -243,7 +243,7 @@ export default function Home() {
                                 const memberIdLower = memberIdStr.toLowerCase();
                                 
                                 // Store with various formats to ensure we can find it
-                                teamMembersMap[memberIdStr] = memberName;
+                                Map[memberIdStr] = memberName;
                                 teamMembersMap[String(memberId)] = memberName;
                                 teamMembersMap[memberIdLower] = memberName;
                                 // Also store the UUID object if it exists
@@ -341,8 +341,8 @@ export default function Home() {
     useEffect(() => {
         const checkAdminStatus = async () => {
             if (user) {
-                const { data: memberData } = await teamMembers
-                    .list({
+                const { data: memberData } = await databaseAPI
+                    .list("team_members", {
                         select: "admin_flag",
                         filters: [{ column: "email", op: "eq", value: user.email }],
                     })
@@ -531,15 +531,7 @@ export default function Home() {
                         )}
                         <button
                             className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                            onClick={() => {
-                                // Use the actual church name from database (may have spaces or underscores)
-                                const actualChurchName = church.church_name;
-                                const cityParam = church["church_physical_city"] 
-                                    ? `?city=${encodeURIComponent(church["church_physical_city"])}`
-                                    : '';
-                                // Encode the church name as-is from the database
-                                navigate(`/church/${encodeURIComponent(actualChurchName)}${cityParam}`);
-                            }}
+                            onClick={() => navigate(`/church/${church.id}`)}
                         >
                             Church Information
                         </button>

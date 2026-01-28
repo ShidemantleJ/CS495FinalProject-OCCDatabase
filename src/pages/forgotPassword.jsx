@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { auth } from "../api";
+import { databaseAPI } from "../api";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -11,7 +11,7 @@ export default function ForgotPassword() {
     setError("");
     setStatus("");
 
-    const { error } = await auth.resetPasswordForEmail(email, {
+    const { error } = await databaseAPI.resetPasswordForEmail(email, {
       redirectTo: "https://westalabama-occ.onrender.com/reset-password",
     });
 

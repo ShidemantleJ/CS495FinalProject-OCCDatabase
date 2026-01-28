@@ -1,7 +1,7 @@
 // src/pages/editProfile.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { storage, teamMembers } from "../api";
+import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 
@@ -20,7 +20,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // Generate signed URL for private bucket
-            const { data } = await storage.createSignedUrl('Team Images', filePath, 3600); // 1 hour expiry
+            const { data } = await databaseAPI.createSignedUrl('Team Images', filePath, 3600); // 1 hour expiry
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -53,8 +53,8 @@ export default function EditProfile() {
                     return;
                 }
 
-                const { data: member, error: memberError } = await teamMembers
-                    .list({ filters: [{ column: "email", op: "eq", value: authUser.email }] })
+                const { data: member, error: memberError } = await databaseAPI
+                    .list("team_members", { filters: [{ column: "email", op: "eq", value: authUser.email }] })
                     .single();
 
                 if (memberError || !member) {
@@ -129,7 +129,7 @@ export default function EditProfile() {
             const fileName = `${formData.id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
             // Upload to supabase
-            const { error: uploadError } = await storage.upload('Team Images', fileName, file);
+            const { error: uploadError } = await databaseAPI.uploadToStorage('Team Images', fileName, file);
 
             if (uploadError) {
                 throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -165,7 +165,7 @@ export default function EditProfile() {
         setLoading(true);
 
         try {
-            const { error } = await teamMembers.update(formData.id, {
+            const { error } = await databaseAPI.update("team_members", formData.id, {
                     first_name: formData.first_name ?? null,
                     last_name: formData.last_name ?? null,
                     phone_number: formData.phone_number ?? null,

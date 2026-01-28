@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { individuals as individualsApi, teamMembers } from "../api";
+import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 
 export default function Individuals() {
@@ -34,7 +34,7 @@ export default function Individuals() {
 
     useEffect(() => {
         async function getIndividuals() {
-            const { data, error } = await individualsApi.list({
+            const { data, error } = await databaseAPI.list("individuals", {
                 orderBy: { column: "first_name", ascending: true },
             });
             
@@ -52,11 +52,9 @@ export default function Individuals() {
     useEffect(() => {
         async function getCurrentTeamMember() {
             if (user) {
-                const { data: memberData, error } = await teamMembers
-                    .list({
-                        filters: [{ column: "email", op: "eq", value: user.email }],
-                    })
-                    .single();
+                const { data: memberData, error } = await databaseAPI.list("team_members", {
+                    filters: [{ column: "email", op: "eq", value: user.email }],
+                }).single();
                 if (error) {
                     // Error fetching current team member
                 } else {
@@ -170,7 +168,7 @@ export default function Individuals() {
 
         const newStatus = !individual.active_to_emails;
         
-        const { error } = await individualsApi.update(individual.id, { active_to_emails: newStatus });
+        const { error } = await databaseAPI.update("individuals", individual.id, { active_to_emails: newStatus });
 
         if (error) {
             alert("Failed to update status. Please try again.");
@@ -225,7 +223,7 @@ export default function Individuals() {
             notes: editingIndividual.notes,
         };
 
-        const { error } = await individualsApi.update(individualId, updateData);
+        const { error } = await databaseAPI.update("individuals", individualId, updateData);
 
         if (error) {
             alert("Failed to update individual. Please try again.");

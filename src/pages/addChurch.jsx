@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { churches, teamMembers, storage } from "../api";
+import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 
@@ -42,8 +42,8 @@ export default function AddChurch() {
         return;
       }
 
-      const { data: memberData } = await teamMembers
-        .list({
+      const { data: memberData } = await databaseAPI
+        .list("team_members", {
           select: "admin_flag",
           filters: [{ column: "email", op: "eq", value: user.email }],
         })
@@ -123,7 +123,7 @@ export default function AddChurch() {
       const fileName = `${sanitizedChurchName}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       // Upload to the correct bucket: 'Church Images' (same as editChurch)
-      const { error: uploadError } = await storage.upload('Church Images', fileName, file);
+      const { error: uploadError } = await databaseAPI.uploadToStorage('Church Images', fileName, file);
 
       if (uploadError) {
         throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -179,7 +179,7 @@ export default function AddChurch() {
       ? formData["church_POC_phone"].replace(/\D/g, '') 
       : null;
 
-    const { error } = await churches.create({
+    const { error } = await databaseAPI.create("church2",{
       church_name: formData.church_name,
       "church_POC_first_name": formData["church_POC_first_name"] || null,
       "church_POC_last_name": formData["church_POC_last_name"] || null,
