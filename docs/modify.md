@@ -33,10 +33,10 @@ src/components
 ### 3. Modify Data and Business Logic
 
 - To change tables, relationships, or stored data, use the Supabase SQL Editor.  
-- Any database changes should also be reflected in React code that reads from or writes to Supabase through:
+- Any database changes should also be reflected in React code that reads from or writes to the API layer:
 
 ```
-src/supabaseClient.js
+src/api
 ```
 
 ### 4. Update Security and Access Rules
@@ -214,10 +214,10 @@ Full pages live in:
 src/pages
 ```
 
-All Supabase logic goes through:
+All data and storage logic goes through:
 
 ```
-supabaseClient.js
+src/api
 ```
 
 Code should remain readable, modular, and match existing patterns.

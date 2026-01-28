@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 
 export default function Individuals() {
@@ -34,10 +34,9 @@ export default function Individuals() {
 
     useEffect(() => {
         async function getIndividuals() {
-            const { data, error } = await supabase
-                .from("individuals")
-                .select("*")
-                .order("first_name", { ascending: true });
+            const { data, error } = await databaseAPI.list("individuals", {
+                orderBy: { column: "first_name", ascending: true },
+            });
             
             if (error) {
                 setIndividuals([]);
@@ -53,11 +52,9 @@ export default function Individuals() {
     useEffect(() => {
         async function getCurrentTeamMember() {
             if (user) {
-                const { data: memberData, error } = await supabase
-                    .from("team_members")
-                    .select("*")
-                    .eq("email", user.email)
-                    .single();
+                const { data: memberData, error } = await databaseAPI.list("team_members", {
+                    filters: [{ column: "email", op: "eq", value: user.email }],
+                }).single();
                 if (error) {
                     // Error fetching current team member
                 } else {
@@ -171,10 +168,7 @@ export default function Individuals() {
 
         const newStatus = !individual.active_to_emails;
         
-        const { error } = await supabase
-            .from("individuals")
-            .update({ active_to_emails: newStatus })
-            .eq("id", individual.id);
+        const { error } = await databaseAPI.update("individuals", individual.id, { active_to_emails: newStatus });
 
         if (error) {
             alert("Failed to update status. Please try again.");
@@ -229,10 +223,7 @@ export default function Individuals() {
             notes: editingIndividual.notes,
         };
 
-        const { error } = await supabase
-            .from("individuals")
-            .update(updateData)
-            .eq("id", individualId);
+        const { error } = await databaseAPI.update("individuals", individualId, updateData);
 
         if (error) {
             alert("Failed to update individual. Please try again.");

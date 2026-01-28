@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 
 export default function EditShoeboxCount() {
     const {user} = useUser();
-    const { churchName } = useParams();
+    const { churchId } = useParams();
     const navigate = useNavigate();
     const [shoeboxCount, setShoeboxCount] = useState(null);
     const [churchData, setChurchData] = useState(null);
@@ -25,10 +25,11 @@ export default function EditShoeboxCount() {
                 return;
             }
 
-            const { data: memberData } = await supabase
-                .from("team_members")
-                .select("admin_flag")
-                .eq("id", user.id)
+            const { data: memberData } = await databaseAPI
+                .list("team_members", {
+                    select: "admin_flag",
+                    filters: [{ column: "email", op: "eq", value: user.email }],
+                })
                 .single();
 
             const adminStatus = memberData?.admin_flag === true || memberData?.admin_flag === "true";
@@ -36,51 +37,31 @@ export default function EditShoeboxCount() {
             setCheckingAdmin(false);
 
             if (!adminStatus) {
-                navigate(`/church/${encodeURIComponent(churchName)}`);
+                navigate(`/church/${churchId}`);
             }
         };
 
         checkAdminStatus();
-    }, [churchName, navigate]);
+    }, [churchId, navigate, user]);
 
     useEffect(() => {
         if (!isAdmin || checkingAdmin) return;
 
         const fetchChurch = async () => {
-            // Try multiple name variants to handle spaces/underscores
-            const decodedChurchName = decodeURIComponent(churchName);
-            const churchNameVariants = [
-                decodedChurchName, // Original from URL
-                decodedChurchName.replace(/ /g, "_"), // With underscores
-                decodedChurchName.replace(/_/g, " ") // With spaces
-            ];
-            
-            let churchData = null;
-            
-            // Try each variant
-            for (const nameVariant of churchNameVariants) {
-                const { data, error } = await supabase
-                    .from("church2")
-                    .select(`church_name, ${shoeboxFieldName}`)
-                    .eq("church_name", nameVariant)
-                    .maybeSingle();
+            const { data: churchData, error } = await databaseAPI.get("church2", churchId, {
+                select: `church_name, ${shoeboxFieldName}`,
+            });
 
-                if (!error && data) {
-                    churchData = data;
-                    break; // Found it, stop searching
-                }
-            }
-
-            if (churchData) {
+            if (error || !churchData) {
+                setError("Error loading church details.");
+            } else {
                 setChurchData(churchData);
                 setShoeboxCount(churchData[shoeboxFieldName] || '');
-            } else {
-                setError("Error loading church details.");
             }
         };
 
         fetchChurch();
-    }, [churchName, shoeboxFieldName, isAdmin, checkingAdmin]);
+    }, [churchId, shoeboxFieldName, isAdmin, checkingAdmin]);
 
     const handleChange = (e) => {
         setShoeboxCount(e.target.value);
@@ -89,7 +70,7 @@ export default function EditShoeboxCount() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!isAdmin) {
-            navigate(`/church/${encodeURIComponent(churchName)}`);
+            navigate(`/church/${churchId}`);
             return;
         }
         setLoading(true);
@@ -107,22 +88,16 @@ export default function EditShoeboxCount() {
             [shoeboxFieldName]: numericValue,
         };
 
-        // Use the actual church name from the database (already loaded correctly)
-        if (!churchData || !churchData.church_name) {
-            setError("Error: Church data not loaded.");
-            setLoading(false);
-            return;
-        }
-
-        const { error: updateError } = await supabase
-            .from("church2")
-            .update(updatePayload)
-            .eq("church_name", churchData.church_name);
+        const { error: updateError } = await databaseAPI.update(
+            "church2",
+            churchId,
+            updatePayload
+        );
 
         if (updateError) {
             setError("Error updating shoebox count.");
         } else {
-            navigate(`/church/${encodeURIComponent(churchName)}`);
+            navigate(`/church/${churchId}`);
         }
 
         setLoading(false);
@@ -163,7 +138,7 @@ export default function EditShoeboxCount() {
                     <button
                         type="button"
                         className="flex-1 bg-gray-300 text-black py-3 rounded-lg hover:bg-gray-400 font-medium"
-                        onClick={() => navigate(`/church/${encodeURIComponent(churchName)}`)}
+                        onClick={() => navigate(`/church/${churchId}`)}
                     >
                         Cancel
                     </button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 
 function PrivateBucketImage({ filePath, className, showPlaceholder = false }) {
@@ -21,9 +21,7 @@ function PrivateBucketImage({ filePath, className, showPlaceholder = false }) {
             }
 
             // signed URL
-            const { data, error: urlError } = await supabase.storage
-                .from('Team Images')
-                .createSignedUrl(filePath, 3600); // images lasts for 1 hour
+            const { data, error: urlError } = await databaseAPI.createSignedUrl('Team Images', filePath, 3600); // images lasts for 1 hour
 
             if (urlError || !data) {
                 setError(true);
@@ -70,10 +68,8 @@ export default function TeamMembers() {
     useEffect(() => {
         const fetchUser = async () => {
             if (user) {
-                const { data: memberData, error } = await supabase
-                    .from("team_members")
-                    .select("*")
-                    .eq("email", user.email)
+                const { data: memberData, error } = await databaseAPI
+                    .list("team_members", { filters: [{ column: "email", op: "eq", value: user.email }] })
                     .single();
                 if (error) {
                     // Error fetching current user
@@ -88,9 +84,9 @@ export default function TeamMembers() {
     // Fetch team members with church data
     useEffect(() => {
         const fetchMembers = async () => {
-            const { data: membersData, error } = await supabase
-                .from("team_members")
-                .select(`*, member_positions(position, end_date)`);
+            const { data: membersData, error } = await databaseAPI.list("team_members", {
+                select: "*, member_positions(position, end_date)",
+            });
 
             if (error) {
                 setMembers([]);
@@ -103,14 +99,21 @@ export default function TeamMembers() {
                 membersData.map(async (m) => {
                     let churchData = null;
                     if (m.church_affiliation_name) {
-                        const { data: church, error: churchError } = await supabase
-                            .from("church2")
-                            .select("church_name, church_physical_county")
-                            .eq("church_name", m.church_affiliation_name)
-                            .single();
-                        
-                        if (!churchError && church) {
-                            churchData = church;
+                        // Try to fetch church data by name (may fail if name format doesn't match)
+                        try {
+                            const { data: church, error: churchError } = await databaseAPI
+                                .list("church2", {
+                                    select: "id, church_name, church_physical_county",
+                                    filters: [{ column: "church_name", op: "eq", value: m.church_affiliation_name }],
+                                })
+                                .maybeSingle();
+                            
+                            if (!churchError && church) {
+                                churchData = church;
+                            }
+                        } catch (err) {
+                            // Silently handle church lookup errors
+                            console.warn(`Could not fetch church data for: ${m.church_affiliation_name}`);
                         }
                     }
                     
