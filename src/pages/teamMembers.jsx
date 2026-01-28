@@ -185,7 +185,7 @@ export default function TeamMembers() {
         if (searchFilters.county) {
             const searchTerm = searchFilters.county.toLowerCase();
             filtered = filtered.filter(member => 
-                member.church_county && member.church_county.toLowerCase().includes(searchTerm)
+                member.home_county && member.home_county.toLowerCase().includes(searchTerm)
             );
         }
 
@@ -409,9 +409,9 @@ export default function TeamMembers() {
                                             <strong className="text-gray-800">Church:</strong> {member.church_name.replace(/_/g, " ")}
                                         </p>
                                     )}
-                                    {member.church_county && (
+                                    {member.home_county && (
                                         <p className="text-gray-600">
-                                            <strong className="text-gray-800">County:</strong> {member.church_county}
+                                            <strong className="text-gray-800">County:</strong> {member.home_county}
                                         </p>
                                     )}
                                 </div>
@@ -473,9 +473,9 @@ export default function TeamMembers() {
                                             <strong className="text-gray-800">Church:</strong> {member.church_name.replace(/_/g, " ")}
                                         </p>
                                     )}
-                                    {member.church_county && (
+                                    {member.home_county && (
                                         <p className="text-gray-600">
-                                            <strong className="text-gray-800">County:</strong> {member.church_county}
+                                            <strong className="text-gray-800">County:</strong> {member.home_county}
                                         </p>
                                     )}
                                 </div>
