@@ -49,11 +49,20 @@ export default function useLastActivity() {
 
     events.forEach((event) => window.addEventListener(event, handleActivity)); // track click, mouse, keypress, and scroll events as activity
 
+    const inactivityCheck = setInterval(async () => {
+      const now = new Date();
+      if (now - lastActivityRef.current >= logoutThreshold) {
+        await supabase.auth.signOut();
+        window.location.href = "/login";
+      }
+    }, 10000);
+
     return () => {
       events.forEach((event) =>
         window.removeEventListener(event, handleActivity),
       );
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      clearInterval(inactivityCheck);
     };
-  }, [user]);
+  }, [user, loading]);
 }
