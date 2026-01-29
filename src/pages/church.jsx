@@ -92,10 +92,7 @@ export default function ChurchPage() {
   useEffect(() => {
     async function getNotes() {
       if (!church) return;
-      
-      const { data: notesData, error } = await databaseAPI.list("notes", {
-        filters: [{ column: "church_id", op: "eq", value: church.id }],
-      });
+      const { data: notesData, error } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
       
       if (error) {
         // Error fetching notes
@@ -222,9 +219,7 @@ export default function ChurchPage() {
     } else {
       setNewNote("");
       // Refresh notes
-      const { data: notesData, error: fetchError } = await databaseAPI.list("notes", {
-        filters: [{ column: "church_id", op: "eq", value: church.id }],
-      });
+      const { data: notesData, error: fetchError } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
       
       if (!fetchError && notesData) {
         setNotes(notesData);
@@ -261,9 +256,7 @@ export default function ChurchPage() {
       alert(`Failed to update note: ${error.message}`);
     } else {
       // Update succeeded - refresh notes
-      const { data: notesData, error: fetchError } = await databaseAPI.list("notes", {
-        filters: [{ column: "church_id", op: "eq", value: church.id }],
-      });
+      const { data: notesData, error: fetchError } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
       
       if (!fetchError && notesData) {
         setNotes(notesData);
@@ -285,9 +278,7 @@ export default function ChurchPage() {
       alert(`Failed to delete note: ${error.message}`);
     } else {
       // Refresh notes
-      const { data: notesData, error: fetchError } = await databaseAPI.list("notes", {
-        filters: [{ column: "church_id", op: "eq", value: church.id }],
-      });
+      const { data: notesData, error: fetchError } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
       
       if (!fetchError && notesData) {
         setNotes(notesData);
@@ -679,9 +670,9 @@ export default function ChurchPage() {
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {notes.map((note) => {
-                const addedBy = note.team_members;
-                const addedByName = addedBy 
-                  ? `${addedBy.first_name} ${addedBy.last_name}`
+                const addedByMember = Array.isArray(note.added_by) ? note.added_by[0] : note.added_by;
+                const addedByName = addedByMember
+                  ? `${addedByMember.first_name || ""} ${addedByMember.last_name || ""}`.trim() || "Unknown"
                   : "Unknown";
                 const noteDate = new Date(note.created_at).toLocaleDateString("en-US", {
                   year: "numeric",

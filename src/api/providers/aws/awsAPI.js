@@ -59,4 +59,7 @@ export const awsAPI = {
   async listNotesByAddedByMemberId(memberId, { includeChurch = true, tableName = "notes" } = {}) {
     return notImplemented("awsAPI.listNotesByAddedByMemberId");
   },
+  async listNotesByChurchId(churchId, { includeAddedBy = true, tableName = "notes" } = {}) {
+    return notImplemented("awsAPI.listNotesByChurchId");
+  },
 };
