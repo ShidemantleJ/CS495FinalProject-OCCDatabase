@@ -13,3 +13,7 @@ I am a Senior Computer Science Student at UA that is also pursuing and MBA at UA
 I’m currently a Senior CS student in the AMP program at the University of Alabama. My concentration is in cybersecurity, but I also have a passion for software design. I’m really interested in finding ways to combine those two interests in my future career. Through my internships and classes at UA, I’ve worked with everything from C/C++ and SQL to functional languages like Clojure and Lisp. I also have experience with LeanIX and Enterprise Architecture. This project has allowed me to get familiar with React and Supabase, which I’m excited to keep using moving forward. Aside from CS, I enjoy playing and watching sports. I played basketball and baseball for years, and I'm a fan of the Memphis Grizzlies and the Baltimore Ravens.
 
 <img src="../pictures/ThomasBio.jpg" width="200" alt="Thomas Gray">
+
+## Will Morrow (email: wcmorrow2@crimson.ua.edu)
+
+I am a senior at the University of Alabama majoring in Computer Science. I am interested in automation, and I have expirience developing internal tools for clients with high security standards. This semester I am hoping to gain expirience in web development working in a larger team. I attend First Baptist of Tuscaloosa, and in my spare time, I enjoy watching football, cooking, and physical media art. 
