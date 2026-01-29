@@ -115,14 +115,35 @@ export default function AddMember() {
     setError("");
 
     // Validate phone numbers
+
     if (form.phone_number && !validatePhoneNumber(form.phone_number)) {
       setError("Please enter a valid phone number (10 digits).");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setLoading(false);
       return;
     }
     
     if (form.alt_phone_number && !validatePhoneNumber(form.alt_phone_number)) {
       setError("Please enter a valid alternate phone number (10 digits).");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setLoading(false);
+      return;
+    }
+
+    if (form.email && !/\S+@\S+\.\S+/.test(form.email)) {
+      setError("Please enter a valid email address.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setLoading(false);
+      return;
+    }
+
+    const existingEmails = await databaseAPI.list("team_members", {
+      select: "email",
+    });
+
+    if (existingEmails.data.some(member => member.email === form.email)) {
+      setError("A member with this email address already exists.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setLoading(false);
       return;
     }
@@ -137,6 +158,7 @@ export default function AddMember() {
 
     if (error) {
       setError(error.message);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       navigate("/team-members");
     }
