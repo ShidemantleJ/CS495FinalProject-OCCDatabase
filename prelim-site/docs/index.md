@@ -4,6 +4,7 @@
     - Interface for church organizers and volunteers to register at OCC events
     - Non-technical UI/UX to facilitate easy usage
     - Limited and Secure functionality to protect underlying database structure and sensitive information
+    - Secure Admin Login Page
 * Bugfixes For Existing Web Application
     - Primary key issues causing errors in queries and database changes
 * Enhanced/New Features
