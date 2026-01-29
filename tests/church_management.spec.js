@@ -7,10 +7,8 @@ const supabaseKey =
   process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY ||
   process.env.PLAYWRIGHT_SUPABASE_SECRET_KEY;
 
-test.describe("Church Management", () => {
-  test("should add a new church with full form data and verify via Dashboard", async ({
-    page,
-  }) => {
+test.describe("Add New Church", () => {
+  test("Add new church and verify via Dashboard", async ({ page }) => {
     if (!supabaseUrl || !supabaseKey) {
       test.skip();
     }
