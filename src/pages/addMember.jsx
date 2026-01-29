@@ -1,7 +1,7 @@
 // src/pages/addMember.jsx
 import { useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 
 export default function AddMember() {
@@ -91,9 +91,7 @@ export default function AddMember() {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       // Upload to supabase - using member-images bucket
-      const { error: uploadError } = await supabase.storage
-        .from('member-images')
-        .upload(fileName, file);
+      const { error: uploadError } = await databaseAPI.uploadToStorage('member-images', fileName, file);
 
       if (uploadError) {
         throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -135,9 +133,7 @@ export default function AddMember() {
       formData.shirt_size = null;
     }
 
-    const { error } = await supabase.from("team_members").insert([
-      formData,
-    ]);
+    const { error } = await databaseAPI.create("team_members", formData);
 
     if (error) {
       setError(error.message);
