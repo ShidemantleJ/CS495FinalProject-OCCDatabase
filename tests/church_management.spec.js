@@ -5,7 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey =
   process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.REACT_APP_SUPABASE_ANON_KEY;
+  process.env.PLAYWRIGHT_SUPABASE_SECRET_KEY;
 
 test.describe("Church Management", () => {
   test("should add a new church with full form data and verify via Dashboard", async ({
@@ -42,21 +42,8 @@ test.describe("Church Management", () => {
       notes: "This church was added via automated Playwright test.",
     };
 
-    /* ---------------- LOGIN ---------------- */
-    await page.goto("/login");
-
-    const emailInput = page.getByPlaceholder(/email/i);
-    if (await emailInput.isVisible()) {
-      // @ts-ignore
-      await emailInput.fill(process.env.ADMIN_USERNAME);
-      // @ts-ignore
-      await page.getByPlaceholder(/password/i).fill(process.env.ADMIN_PASSWORD);
-      await page.getByRole("button", { name: /login/i }).click();
-      await expect(page).toHaveURL(/profile/);
-      await page.goto("/");
-    }
-
     /* ---------------- NAVIGATION ---------------- */
+    await page.goto("/");
     await expect(
       page.getByRole("button", { name: /add church/i }),
     ).toBeVisible();
@@ -152,7 +139,7 @@ test.describe("Church Management", () => {
 
     /* ---------------- CLEANUP ---------------- */
     // Query DB only to get ID for deletion
-    const { data: record } = await supabase
+    const { data: record, error } = await supabase
       .from("church2")
       .select("id")
       .eq("church_name", churchData.church_name)
