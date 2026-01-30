@@ -75,50 +75,5 @@ export const supabaseAPI = {
     return supabase.storage.from(bucket).upload(path, file, options);
   },
 
-  //specific functions
-  async listNotesByAddedByMemberId(memberId, { includeChurch = true, tableName = "notes" } = {}) {
-    const baseSelect = includeChurch
-      ? `
-        *,
-        church2!notes_church_fkey(church_name)
-      `
-      : "*";
-    const { data, error } = await supabase
-      .from(tableName)
-      .select(baseSelect)
-      .eq("added_by_team_member_id", memberId)
-      .order("created_at", { ascending: false });
-    if (!error) {
-      return { data: data || [], error: null };
-    }
-    // Fallback: no join, then hydrate church names if requested.
-    const { data: notesData, error: notesError } = await supabase
-      .from(tableName)
-      .select("*")
-      .eq("added_by_team_member_id", memberId)
-      .order("created_at", { ascending: false });
-    if (notesError || !includeChurch) {
-      return { data: notesData || [], error: notesError };
-    }
-    const churchIds = [...new Set((notesData || []).map((n) => n.church_id).filter(Boolean))];
-    if (churchIds.length === 0) {
-      return { data: notesData || [], error: null };
-    }
-    const { data: churchesData, error: churchError } = await supabase
-      .from("church2")
-      .select("id, church_name")
-      .in("id", churchIds);
-    if (churchError) {
-      return { data: notesData || [], error: null };
-    }
-    const churchesMap = {};
-    (churchesData || []).forEach((c) => {
-      churchesMap[c.id] = c;
-    });
-    const hydrated = (notesData || []).map((note) => ({
-      ...note,
-      church: churchesMap[note.church_id] || null,
-    }));
-    return { data: hydrated, error: null };
-  },
+  
 };
