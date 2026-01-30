@@ -7,8 +7,10 @@ export default function Mobile() {
   const [formData, setFormData] = useState({ name: "", email: "" }); //Can add more fields as needed once we get the actual paper forms
   const [validAdmin, setValidAdmin] = useState({ email: "", password: "" });
 
-  //Prevent Back Navigation
+  //Prevent Back Navigation & URL changes
   useEffect(() => {
+    sessionStorage.setItem("kioskMode", "true");
+
     window.history.pushState(null, null, window.location.pathname);
 
     const handleBackButton = () => {
