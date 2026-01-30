@@ -16,4 +16,4 @@ I’m currently a Senior CS student in the AMP program at the University of Alab
 
 ## Will Morrow (email: wcmorrow2@crimson.ua.edu)
 
-I am a senior at the University of Alabama majoring in Computer Science. I am interested in automation, and I have expirience developing internal tools for clients with high security standards. This semester I am hoping to gain expirience in web development working in a larger team. I attend First Baptist of Tuscaloosa, and in my spare time, I enjoy watching football, cooking, and physical media art. 
+I am a senior at the University of Alabama majoring in Computer Science. I am interested in automation, and I have experience developing internal tools for clients with high security standards. This semester I am hoping to gain experience in web development working in a larger team. I attend First Baptist of Tuscaloosa, and in my spare time, I enjoy watching football, cooking, and physical media art. 
