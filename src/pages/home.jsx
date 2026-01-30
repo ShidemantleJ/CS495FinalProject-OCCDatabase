@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
@@ -145,6 +146,7 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
     );
 }
 
+
 export default function Home() {
     // Get current year dynamically
     const currentYear = new Date().getFullYear();
@@ -153,6 +155,9 @@ export default function Home() {
 
     const [churches, setChurches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [churchToDelete, setChurchToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [filters, setFilters] = useState({
@@ -167,6 +172,24 @@ export default function Home() {
 
     const shoeboxFieldName = `shoebox_${filters.selectedYear}`;
     const modalShoeboxField = `shoebox_${filters.selectedYear}`;
+
+    const handleDeleteChurch = async () => {
+        if (!churchToDelete) return;
+        setDeleting(true);
+        try {
+            if (databaseAPI.deleteAll) {
+                await databaseAPI.deleteAll("notes", { church_id: churchToDelete.id });
+            }
+            await databaseAPI.delete("church2", churchToDelete.id);
+            setChurches((prev) => prev.filter((c) => c.id !== churchToDelete.id));
+        } catch (err) {
+            alert("Failed to delete church: " + (err.message || "Unknown error"));
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setChurchToDelete(null);
+        }
+    };
 
     // Fetch churches with optional filters
     async function getChurches(filterValues = filters) {
@@ -507,7 +530,17 @@ export default function Home() {
             {/* Church Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {churches.map((church, index) => (
-                    <div key={church.id || church.church_name || `church-card-${index}`} className="bg-white shadow-md rounded-lg p-6 flex flex-col justify-between">
+                    <div key={church.id || church.church_name || `church-card-${index}`} className="bg-white shadow-md rounded-lg p-6 flex flex-col justify-between relative">
+                        {/* Trashcan icon for admin */}
+                        {isAdmin && (
+                            <button
+                                className="absolute top-3 right-3 text-red-500 hover:text-red-700"
+                                title="Delete Church"
+                                onClick={() => { setShowDeleteModal(true); setChurchToDelete(church); }}
+                            >
+                                <FaTrash size={20} />
+                            </button>
+                        )}
                         <div>
                             <h2 className="text-xl font-bold mb-2">{church.church_name.replace(/_/g, " ")}</h2>
                             <p className="text-gray-700">{church["church_physical_city"]}, {church["church_physical_state"]} - <strong>{church["church_physical_county"]} County</strong></p>
@@ -537,6 +570,31 @@ export default function Home() {
                         </button>
                     </div>
                 ))}
+                        {/* Delete Confirmation Modal for Church */}
+                        {showDeleteModal && churchToDelete && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                                    <h2 className="text-xl font-bold mb-4 text-red-600">Delete Church</h2>
+                                    <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{churchToDelete.church_name.replace(/_/g, " ")}</span>? This action cannot be undone.</p>
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                            onClick={() => { setShowDeleteModal(false); setChurchToDelete(null); }}
+                                            disabled={deleting}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                                            onClick={handleDeleteChurch}
+                                            disabled={deleting}
+                                        >
+                                            {deleting ? "Deleting..." : "Delete"}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
             </div>
         </div>
     );

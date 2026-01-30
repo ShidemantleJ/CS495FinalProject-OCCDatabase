@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
@@ -12,6 +13,9 @@ export default function Individuals() {
     const [copyStatus, setCopyStatus] = useState(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [expandedRow, setExpandedRow] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [individualToDelete, setIndividualToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     const [editingIndividual, setEditingIndividual] = useState(null);
     const [savingIndividual, setSavingIndividual] = useState(false);
     const navigate = useNavigate();
@@ -31,6 +35,22 @@ export default function Individuals() {
     
     // Sort state
     const [sortBy, setSortBy] = useState("name_asc"); // name_asc, name_desc, church_asc, church_desc
+
+    const handleDeleteIndividual = async () => {
+        if (!individualToDelete) return;
+        setDeleting(true);
+        try {
+            await databaseAPI.delete("individuals", individualToDelete.id);
+            setIndividuals((prev) => prev.filter((i) => i.id !== individualToDelete.id));
+            setFilteredIndividuals((prev) => prev.filter((i) => i.id !== individualToDelete.id));
+        } catch (err) {
+            alert("Failed to delete individual: " + (err.message || "Unknown error"));
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setIndividualToDelete(null);
+        }
+    };
 
     useEffect(() => {
         async function getIndividuals() {
@@ -433,7 +453,7 @@ export default function Individuals() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredIndividuals.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                                         No individuals found matching the filters.
                                     </td>
                                 </tr>
@@ -507,7 +527,44 @@ export default function Individuals() {
                                                     )}
                                                 </div>
                                             </td>
+                                            {/* Trashcan icon for admin */}
+                                            {isAdmin && (
+                                                <td className="px-6 py-4 text-right align-middle">
+                                                    <button
+                                                        className="text-red-500 hover:text-red-700"
+                                                        title="Delete Individual"
+                                                        onClick={e => { e.stopPropagation(); setShowDeleteModal(true); setIndividualToDelete(ind); }}
+                                                    >
+                                                        <FaTrash size={18} />
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
+                                                                    {/* Delete Confirmation Modal for Individual */}
+                                                                    {showDeleteModal && individualToDelete && (
+                                                                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                                                            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                                                                                <h2 className="text-xl font-bold mb-4 text-red-600">Delete Individual</h2>
+                                                                                <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{individualToDelete.first_name} {individualToDelete.last_name}</span>? This action cannot be undone.</p>
+                                                                                <div className="flex justify-end gap-2">
+                                                                                    <button
+                                                                                        className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                                                                        onClick={() => { setShowDeleteModal(false); setIndividualToDelete(null); }}
+                                                                                        disabled={deleting}
+                                                                                    >
+                                                                                        Cancel
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                                                                                        onClick={handleDeleteIndividual}
+                                                                                        disabled={deleting}
+                                                                                    >
+                                                                                        {deleting ? "Deleting..." : "Delete"}
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                         {expandedRow === ind.id && isAdmin && editingIndividual && (
                                             <tr key={`${ind.id}-expand`}>
                                                 <td colSpan="5" className="px-6 py-4 bg-gray-50">

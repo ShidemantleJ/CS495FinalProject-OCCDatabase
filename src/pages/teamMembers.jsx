@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
@@ -64,6 +65,36 @@ export default function TeamMembers() {
     });
     const navigate = useNavigate();
 
+    // Modal state for delete confirmation
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [memberToDelete, setMemberToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+    // Delete member handler
+    const handleDeleteMember = async () => {
+        if (!memberToDelete) return;
+        setDeleting(true);
+        try {
+            // First, delete all member_positions for this member using deleteAll
+            const { error: posError } = await databaseAPI.deleteAll("member_positions", { member_id: memberToDelete.id });
+            if (posError) {
+                throw new Error(posError.message || "Failed to delete member positions");
+            }
+            // Then, delete the member
+            const { error } = await databaseAPI.delete("team_members", memberToDelete.id);
+            if (error) {
+                throw new Error(error.message || "Failed to delete member");
+            }
+            setMembers((prev) => prev.filter((m) => m.id !== memberToDelete.id));
+            setFilteredMembers((prev) => prev.filter((m) => m.id !== memberToDelete.id));
+        } catch (err) {
+            alert("Failed to delete member: " + (err.message || "Unknown error"));
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setMemberToDelete(null);
+        }
+    };
+
     // Fetch current logged-in user
     useEffect(() => {
         const fetchUser = async () => {
@@ -80,6 +111,8 @@ export default function TeamMembers() {
         };
         fetchUser();
     }, [user]);
+
+    const isAdmin = currentUser && (currentUser.admin_flag === true || currentUser.admin_flag === "true");
 
     // Fetch team members with church data
     useEffect(() => {
@@ -261,10 +294,6 @@ export default function TeamMembers() {
 
     if (loading) return <p className="text-center mt-10">Loading team members...</p>;
 
-    const isAdmin =
-        currentUser &&
-        (currentUser.admin_flag === true || currentUser.admin_flag === "true");
-
     // Split filtered members into active and former, and sort alphabetically
     const activeMembers = filteredMembers
         .filter((m) => m.active === true || m.active === "true")
@@ -381,7 +410,17 @@ export default function TeamMembers() {
                     <h2 className="text-2xl font-bold mb-4">Active Members</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {activeMembers.map((member) => (
-                            <div key={member.id} className="bg-white shadow-lg rounded-xl p-6 flex flex-col hover:shadow-xl transition-shadow">
+                            <div key={member.id} className="bg-white shadow-lg rounded-xl p-6 flex flex-col hover:shadow-xl transition-shadow relative">
+                                {/* Trashcan icon for admin */}
+                                {isAdmin && (
+                                    <button
+                                        className="absolute top-3 right-3 text-red-500 hover:text-red-700"
+                                        title="Delete Member"
+                                        onClick={() => { setShowDeleteModal(true); setMemberToDelete(member); }}
+                                    >
+                                        <FaTrash size={20} />
+                                    </button>
+                                )}
                                 <div className="flex justify-center mb-4">
                                     <PrivateBucketImage
                                         filePath={member.photo_url}
@@ -389,11 +428,9 @@ export default function TeamMembers() {
                                         className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
                                     />
                                 </div>
-                                
                                 <h2 className="text-xl font-bold text-center mb-2">
                                     {member.first_name} {member.last_name}
                                 </h2>
-                                
                                 <div className="space-y-2 mb-4 text-sm">
                                     <p className="text-gray-600">
                                         <strong className="text-gray-800">Email:</strong> {member.email || "N/A"}
@@ -415,7 +452,6 @@ export default function TeamMembers() {
                                         </p>
                                     )}
                                 </div>
-
                                 <div className="mt-auto space-y-2">
                                     <button
                                         onClick={() => navigate(`/team-member/${member.id}`)}
@@ -423,7 +459,6 @@ export default function TeamMembers() {
                                     >
                                         View Profile
                                     </button>
-
                                     {isAdmin && (
                                         <button
                                             onClick={() => navigate(`/edit-member/${member.id}`)}
@@ -435,6 +470,31 @@ export default function TeamMembers() {
                                 </div>
                             </div>
                         ))}
+                                {/* Delete Confirmation Modal */}
+                                {showDeleteModal && memberToDelete && (
+                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                        <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                                            <h2 className="text-xl font-bold mb-4 text-red-600">Delete Team Member</h2>
+                                            <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{memberToDelete.first_name} {memberToDelete.last_name}</span>? This action cannot be undone.</p>
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                                    onClick={() => { setShowDeleteModal(false); setMemberToDelete(null); }}
+                                                    disabled={deleting}
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                                                    onClick={handleDeleteMember}
+                                                    disabled={deleting}
+                                                >
+                                                    {deleting ? "Deleting..." : "Delete"}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                     </div>
                 </div>
             )}

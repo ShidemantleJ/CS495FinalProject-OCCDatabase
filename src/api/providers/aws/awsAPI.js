@@ -37,8 +37,8 @@ export const awsAPI = {
   async update(tableName, id, updates, { select = "*" } = {}) {
     return notImplemented(`awsAPI.update(${tableName})`);
   },
-  async remove(tableName, id) {
-    return notImplemented(`awsAPI.remove(${tableName})`);
+  async delete(tableName, id) {
+    return notImplemented(`awsAPI.delete(${tableName})`);
   },
   async get(tableName, id, { select = "*" } = {}) {
     return notImplemented(`awsAPI.get(${tableName})`);
