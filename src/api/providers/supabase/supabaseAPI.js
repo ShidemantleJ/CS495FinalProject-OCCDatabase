@@ -38,8 +38,24 @@ export const supabaseAPI = {
   async update(tableName, id, updates, { select = "*" } = {}) {
     return supabase.from(tableName).update(updates).eq("id", id).select(select).single();
   },
-  async remove(tableName, id) {
+  async delete(tableName, id) {
     return supabase.from(tableName).delete().eq("id", id);
+  },
+    // Delete all rows matching a filter or filters
+  async deleteAll(tableName, filter) {
+    let query = supabase.from(tableName).delete();
+    if (Array.isArray(filter)) {
+      filter.forEach(f => {
+        if (f.op === "eq") {
+          query = query.eq(f.column, f.value);
+        }
+      });
+    } else if (filter && typeof filter === "object") {
+      Object.entries(filter).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+    }
+    return query;
   },
   async get(tableName, id, { select = "*" } = {}) {
     return supabase.from(tableName).select(select).eq("id", id).single();

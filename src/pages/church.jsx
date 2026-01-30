@@ -279,7 +279,7 @@ export default function ChurchPage() {
       return;
     }
 
-    const { error } = await databaseAPI.remove("notes", noteId);
+    const { error } = await databaseAPI.delete("notes", noteId);
 
     if (error) {
       alert(`Failed to delete note: ${error.message}`);
