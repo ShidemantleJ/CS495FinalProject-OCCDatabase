@@ -1,6 +1,5 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey =
@@ -12,9 +11,6 @@ test.describe("Add New Church", () => {
     if (!supabaseUrl || !supabaseKey) {
       test.skip();
     }
-
-    // @ts-ignore
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const timestamp = Date.now();
 
@@ -135,16 +131,17 @@ test.describe("Add New Church", () => {
       page.getByText(`${churchData.church_physical_county} County`),
     ).toBeVisible();
 
-    /* ---------------- CLEANUP ---------------- */
-    // Query DB only to get ID for deletion
-    const { data: record, error } = await supabase
-      .from("church2")
-      .select("id")
-      .eq("church_name", churchData.church_name)
-      .single();
+    /* ---------------- CLEANUP (UI DELETE TEST) ---------------- */
+    // Find the church card and click the delete button (trash icon)
+    const churchCard = page
+      .locator("div.bg-white.shadow-md")
+      .filter({ hasText: churchData.church_name });
+    await churchCard.getByTitle("Delete Church").click();
 
-    if (record?.id) {
-      await supabase.from("church2").delete().eq("id", record.id);
-    }
+    // Confirm deletion in the modal
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+
+    // Verify the church is gone
+    await expect(churchCard).toBeHidden();
   });
 });

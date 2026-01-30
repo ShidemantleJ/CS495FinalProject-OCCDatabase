@@ -121,7 +121,7 @@ test.describe.serial("Team Members Management", () => {
 
   test("Search by County", async ({ page }) => {
     await page.goto("/team-members");
-    await page.getByPlaceholder("Search by county...").fill("TestCounty");
+    await page.getByPlaceholder("Search by county...").fill("Test County");
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible();
   });
 
@@ -179,5 +179,22 @@ test.describe.serial("Team Members Management", () => {
     // Verify change
     await page.getByPlaceholder("Search by name...").fill(firstName);
     await expect(page.getByText(`Phone: ${newPhone}`)).toBeVisible();
+  });
+
+  test("Delete Member", async ({ page }) => {
+    await page.goto("/team-members");
+    await page.getByPlaceholder("Search by name...").fill(firstName);
+
+    // Find the member card and click the delete button (trash icon)
+    const memberCard = page
+      .locator("div.bg-white.shadow-lg.rounded-xl")
+      .filter({ hasText: `${firstName} ${lastName}` });
+    await memberCard.getByTitle("Delete Member").click();
+
+    // Confirm deletion in the modal
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+
+    // Verify the member is gone
+    await expect(memberCard).toBeHidden();
   });
 });
