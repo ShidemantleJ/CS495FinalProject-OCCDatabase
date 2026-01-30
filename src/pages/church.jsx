@@ -30,6 +30,23 @@ export default function ChurchPage() {
   const [savingNote, setSavingNote] = useState(false);
   const navigate = useNavigate();
   
+  const fetchNotesForChurch = async (churchId) => {
+    const { data, error } = await databaseAPI.list("notes", {
+      select: `
+        *,
+        added_by:added_by_team_member_id(first_name, last_name)
+      `,
+      filters: [{ column: "church_id", op: "eq", value: churchId }],
+      orderBy: { column: "created_at", ascending: false },
+    });
+
+    if (!error) {
+      setNotes(data || []);
+    }
+
+    return { data, error };
+  };
+
   // Get current year dynamically - automatically switches to 2026 when the year changes
   const SHOEBOX_YEAR = new Date().getFullYear();
   const relationsFieldName = `church_relations_member_${SHOEBOX_YEAR}`; 
@@ -92,13 +109,8 @@ export default function ChurchPage() {
   useEffect(() => {
     async function getNotes() {
       if (!church) return;
-      const { data: notesData, error } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
-      
-      if (error) {
-        // Error fetching notes
-      } else {
-        setNotes(notesData || []);
-      }
+      setNotesLoading(true);
+      await fetchNotesForChurch(church.id);
       setNotesLoading(false);
     }
     getNotes();
@@ -219,11 +231,7 @@ export default function ChurchPage() {
     } else {
       setNewNote("");
       // Refresh notes
-      const { data: notesData, error: fetchError } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
-      
-      if (!fetchError && notesData) {
-        setNotes(notesData);
-      }
+      await fetchNotesForChurch(church.id);
     }
   };
 
@@ -256,11 +264,7 @@ export default function ChurchPage() {
       alert(`Failed to update note: ${error.message}`);
     } else {
       // Update succeeded - refresh notes
-      const { data: notesData, error: fetchError } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
-      
-      if (!fetchError && notesData) {
-        setNotes(notesData);
-      }
+      await fetchNotesForChurch(church.id);
       setEditingNoteId(null);
       setEditingNoteContent("");
     }
@@ -278,11 +282,7 @@ export default function ChurchPage() {
       alert(`Failed to delete note: ${error.message}`);
     } else {
       // Refresh notes
-      const { data: notesData, error: fetchError } = await databaseAPI.listNotesByChurchId(church.id, { includeAddedBy: true });
-      
-      if (!fetchError && notesData) {
-        setNotes(notesData);
-      }
+      await fetchNotesForChurch(church.id);
     }
   };
 

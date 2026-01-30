@@ -76,82 +76,52 @@ export const supabaseAPI = {
   },
 
   //specific functions
-  async listNotesByAddedByMemberId(memberId, { includeChurch = true, tableName = "notes" } = {}) {
-    // This call always fails ?
+  // async listNotesByAddedByMemberId(memberId, { includeChurch = true, tableName = "notes" } = {}) {
+  //   // This call always fails ?
     
-    // const baseSelect = includeChurch
-    //   ? `
-    //     *,
-    //     church2!notes_church_id_fkey(church_name)
-    //   `
-    //   : "*";
-    // const { data, error } = await supabase
-    //   .from(tableName)
-    //   .select(baseSelect)
-    //   .eq("added_by_team_member_id", memberId)
-    //   .order("created_at", { ascending: false });
-    // if (!error) {
-    //   return { data: data || [], error: null };
-    // }
-    // Fallback: no join, then hydrate church names if requested.
-    const { data: notesData, error: notesError } = await supabase
-      .from(tableName)
-      .select("*")
-      .eq("added_by_team_member_id", memberId)
-      .order("created_at", { ascending: false });
-    if (notesError || !includeChurch) {
-      return { data: notesData || [], error: notesError };
-    }
-    const churchIds = [...new Set((notesData || []).map((n) => n.church_id).filter(Boolean))];
-    if (churchIds.length === 0) {
-      return { data: notesData || [], error: null };
-    }
-    const { data: churchesData, error: churchError } = await supabase
-      .from("church2")
-      .select("id, church_name")
-      .in("id", churchIds);
-    if (churchError) {
-      return { data: notesData || [], error: null };
-    }
-    const churchesMap = {};
-    (churchesData || []).forEach((c) => {
-      churchesMap[c.id] = c;
-    });
-    const hydrated = (notesData || []).map((note) => ({
-      ...note,
-      church: churchesMap[note.church_id] || null,
-    }));
-    return { data: hydrated, error: null };
-  },
-  async listNotesByChurchId(churchId, { includeAddedBy = true, tableName = "notes" } = {}) {
-    
-    const { data: notesData, error: notesError } = await supabase
-      .from(tableName)
-      .select("*")
-      .eq("church_id", churchId)
-      .order("created_at", { ascending: false });
-    if (notesError || !includeAddedBy) {
-      return { data: notesData || [], error: notesError };
-    }
-    const memberIds = [...new Set((notesData || []).map((n) => n.added_by_team_member_id).filter(Boolean))];
-    if (memberIds.length === 0) {
-      return { data: notesData || [], error: null };
-    }
-    const { data: membersData, error: membersError } = await supabase
-      .from("team_members")
-      .select("id, first_name, last_name")
-      .in("id", memberIds);
-    if (membersError) {
-      return { data: notesData || [], error: null };
-    }
-    const membersMap = {};
-    (membersData || []).forEach((m) => {
-      membersMap[m.id] = m;
-    });
-    const hydrated = (notesData || []).map((note) => ({
-      ...note,
-      added_by: membersMap[note.added_by_team_member_id] || null,
-    }));
-    return { data: hydrated, error: null };
-  },
+  //   const baseSelect = includeChurch
+  //     ? `
+  //       *,
+  //       church2!notes_church_id_fkey(church_name)
+  //     `
+  //     : "*";
+  //   const { data, error } = await supabase
+  //     .from(tableName)
+  //     .select(baseSelect)
+  //     .eq("added_by_team_member_id", memberId)
+  //     .order("created_at", { ascending: false });
+  //   if (!error) {
+  //     return { data: data || [], error: null };
+  //   }
+  //   // Fallback: no join, then hydrate church names if requested.
+  //   const { data: notesData, error: notesError } = await supabase
+  //     .from(tableName)
+  //     .select("*")
+  //     .eq("added_by_team_member_id", memberId)
+  //     .order("created_at", { ascending: false });
+  //   if (notesError || !includeChurch) {
+  //     return { data: notesData || [], error: notesError };
+  //   }
+  //   const churchIds = [...new Set((notesData || []).map((n) => n.church_id).filter(Boolean))];
+  //   if (churchIds.length === 0) {
+  //     return { data: notesData || [], error: null };
+  //   }
+  //   const { data: churchesData, error: churchError } = await supabase
+  //     .from("church2")
+  //     .select("id, church_name")
+  //     .in("id", churchIds);
+  //   if (churchError) {
+  //     return { data: notesData || [], error: null };
+  //   }
+  //   const churchesMap = {};
+  //   (churchesData || []).forEach((c) => {
+  //     churchesMap[c.id] = c;
+  //   });
+  //   const hydrated = (notesData || []).map((note) => ({
+  //     ...note,
+  //     church: churchesMap[note.church_id] || null,
+  //   }));
+  //   return { data: hydrated, error: null };
+  // },
+  
 };

@@ -149,8 +149,18 @@ export default function Profile() {
 
             setNotesLoading(true);
             // Try with foreign key join first
-            const { data: notesData } = await databaseAPI.listNotesByAddedByMemberId(memberData.id, { includeChurch: true });
-            setMyNotes(notesData || []);
+            const { data: notesData, error: notesError } = await databaseAPI.list("notes", {select:`
+                *,
+                church2:church_id(church_name)
+                `, filters:[
+                    { column: "added_by_team_member_id", op: "eq", value: memberData.id }
+                ], orderBy: { column: "created_at", ascending: false }})
+
+            if (notesError) {
+                setMyNotes([]);
+            } else {
+                setMyNotes(notesData || []);
+            }
             setNotesLoading(false);
         }
         getMyNotes();
@@ -591,8 +601,8 @@ export default function Profile() {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                 });
-                                const churchName = note.church?.church_name
-                                    ? note.church.church_name.replace(/_/g, " ")
+                                const churchName = note.church2?.church_name
+                                    ? note.church2?.church_name.replace(/_/g, " ")
                                     : "Unknown Church";
 
                                 const isEditing = editingNoteId === note.id;
