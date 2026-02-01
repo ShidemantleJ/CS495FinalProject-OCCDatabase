@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { authenticate } from "./auth.setup.js";
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey =
@@ -60,6 +61,10 @@ test.describe.serial("Team Members Management", () => {
         await supabase.from("church2").delete().eq("id", testChurchId);
       }
     }
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await authenticate(page);
   });
 
   test("Add Team Member", async ({ page }) => {
@@ -144,7 +149,11 @@ test.describe.serial("Team Members Management", () => {
   test("View Profile", async ({ page }) => {
     await page.goto("/team-members");
     await page.getByPlaceholder("Search by name...").fill(firstName);
-    await page.getByRole("button", { name: /view profile/i }).click();
+    await page
+      .locator("div.bg-white.shadow-lg.rounded-xl")
+      .filter({ hasText: `${firstName} ${lastName}` })
+      .getByRole("button", { name: /view profile/i })
+      .click();
 
     // Verify profile page content
     await expect(
@@ -160,7 +169,11 @@ test.describe.serial("Team Members Management", () => {
   test("Edit Member", async ({ page }) => {
     await page.goto(`/team-members`);
     await page.getByPlaceholder("Search by name...").fill(firstName);
-    await page.getByRole("button", { name: /edit member/i }).click();
+    await page
+      .locator("div.bg-white.shadow-lg.rounded-xl")
+      .filter({ hasText: `${firstName} ${lastName}` })
+      .getByRole("button", { name: /edit member/i })
+      .click();
 
     const newPhone = "555-999-0000";
     const phoneInput = page.locator('input[name="phone_number"]');

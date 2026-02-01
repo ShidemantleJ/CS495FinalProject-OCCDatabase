@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { authenticate } from "./auth.setup.js";
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey =
@@ -76,6 +77,7 @@ test.describe("Home Page Filters & Sorting", () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await authenticate(page);
     await page.goto("/");
     // Ensure page is loaded
     await expect(page.getByText("Filter by County")).toBeVisible();

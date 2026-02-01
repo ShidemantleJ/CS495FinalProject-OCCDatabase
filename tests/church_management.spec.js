@@ -1,5 +1,6 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
+import { authenticate } from "./auth.setup.js";
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey =
@@ -7,6 +8,10 @@ const supabaseKey =
   process.env.PLAYWRIGHT_SUPABASE_SECRET_KEY;
 
 test.describe("Add New Church", () => {
+  test.beforeEach(async ({ page }) => {
+    await authenticate(page);
+  });
+
   test("Add new church and verify via Dashboard", async ({ page }) => {
     if (!supabaseUrl || !supabaseKey) {
       test.skip();

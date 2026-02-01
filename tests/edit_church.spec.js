@@ -1,6 +1,7 @@
 // @ts-check
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { authenticate } from "./auth.setup.js";
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey =
@@ -56,6 +57,10 @@ test.describe("Church Management & Editing", () => {
     if (supabase && testChurchId) {
       await supabase.from("church2").delete().eq("id", testChurchId);
     }
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await authenticate(page);
   });
 
   test("Edit Church: Basic Information", async ({ page }) => {

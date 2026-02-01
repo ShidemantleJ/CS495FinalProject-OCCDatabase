@@ -1,9 +1,8 @@
 // @ts-check
-import { test as setup, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
 
-const authFile = "playwright/.auth/user.json";
-
-setup("authenticate", async ({ page }) => {
+// @ts-ignore
+export async function authenticate(page) {
   const username = process.env.ADMIN_USERNAME;
   const password = process.env.ADMIN_PASSWORD;
 
@@ -18,7 +17,5 @@ setup("authenticate", async ({ page }) => {
   await page.getByPlaceholder(/email/i).fill(username);
   await page.getByPlaceholder(/password/i).fill(password);
   await page.getByRole("button", { name: /login/i }).click();
-  await expect(page).toHaveURL(/profile/);
-
-  await page.context().storageState({ path: authFile });
-});
+  await expect(page).toHaveURL(/profile/, { timeout: 15000 });
+}
