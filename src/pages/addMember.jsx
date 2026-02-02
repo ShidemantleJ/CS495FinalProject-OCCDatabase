@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
+import DOMPurify from "dompurify";
 
 export default function AddMember() {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ export default function AddMember() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const sanitizedValue = DOMPurify.sanitize(value);
     // Apply character limits based on field type
     const maxLengths = {
       first_name: 50,
@@ -53,8 +55,10 @@ export default function AddMember() {
       church_affiliation_county: 100,
       member_notes: 1000,
     };
-    
-    const processedValue = maxLengths[name] ? value.slice(0, maxLengths[name]) : value;
+
+    const processedValue = maxLengths[name]
+      ? sanitizedValue.slice(0, maxLengths[name])
+      : sanitizedValue;
     setForm({ ...form, [name]: processedValue });
   };
 
@@ -84,7 +88,10 @@ export default function AddMember() {
     try {
       // Create a preview URL
       const previewUrl = URL.createObjectURL(file);
-      setPhotoPreview(previewUrl);
+      const sanitizedPreview = DOMPurify.sanitize(previewUrl, {
+        ADD_URI_SCHEMES: ["blob"],
+      });
+      setPhotoPreview(sanitizedPreview);
 
       // Generate unique name for the image
       const fileExt = file.name.split('.').pop();
