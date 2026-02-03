@@ -44,11 +44,13 @@ export default function TeamMemberPage() {
         async function getMember() {
             const { data: memberData, error: memberError } = await databaseAPI
                 .list("team_members", {
-                    select: "*, member_positions(position)",
-                    filters: [{ column: "id", op: "eq", value: id }],
+                    select: "*, member_positions(position, end_date)",
+                    filters: [
+                        { column: "id", op: "eq", value: id},
+                        { column: "member_positions.end_date", op: "is", value: null }
+                    ],
                 })
                 .single();
-
             if (memberError) {
                 setLoading(false);
                 return;
