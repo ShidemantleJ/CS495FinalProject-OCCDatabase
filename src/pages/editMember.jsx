@@ -48,6 +48,27 @@ export default function EditMember() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [availablePositions, setAvailablePositions] = useState([]);
     const [selectedPositions, setSelectedPositions] = useState([]);
+    const [churches, setChurches] = useState([]);
+    const [selectedChurchId, setSelectedChurchId] = useState("");
+
+    // Fetch churches on component mount
+    useEffect(() => {
+        const fetchChurches = async () => {
+            try {
+                const { data, error } = await databaseAPI.list("church2", {
+                    select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
+                });
+                if (error) {
+                    console.error("Error fetching churches:", error);
+                } else {
+                    setChurches(data || []);
+                }
+            } catch (err) {
+                console.error("Error fetching churches:", err);
+            }
+        };
+        fetchChurches();
+    }, []);
 
     // Check if current user is admin
     useEffect(() => {
@@ -113,11 +134,51 @@ export default function EditMember() {
             }).single();
 
             if (error) setError(error.message);
-            else setForm(data);
+            else {
+                setForm(data);
+                // Find matching church if affiliation exists
+                if (data.church_affiliation_name && churches.length > 0) {
+                    const matchingChurch = churches.find(c => 
+                        c.church_name === data.church_affiliation_name &&
+                        c.church_physical_city === data.church_affiliation_city &&
+                        c.church_physical_state === data.church_affiliation_state
+                    );
+                    if (matchingChurch) {
+                        setSelectedChurchId(matchingChurch.id);
+                    }
+                }
+            }
             setLoading(false);
         };
         loadMember();
-    }, [id]);
+    }, [id, churches]);
+
+    const handleChurchChange = (e) => {
+        const churchId = e.target.value;
+        setSelectedChurchId(churchId);
+        
+        if (churchId) {
+            const selectedChurch = churches.find(c => c.id === churchId);
+            if (selectedChurch) {
+                setForm(prev => ({
+                    ...prev,
+                    church_affiliation_name: selectedChurch.church_name || "",
+                    church_affiliation_city: selectedChurch.church_physical_city || "",
+                    church_affiliation_state: selectedChurch.church_physical_state || "",
+                    church_affiliation_county: selectedChurch.church_physical_county || ""
+                }));
+            }
+        } else {
+            // Clear church affiliation fields if no church selected
+            setForm(prev => ({
+                ...prev,
+                church_affiliation_name: "",
+                church_affiliation_city: "",
+                church_affiliation_state: "",
+                church_affiliation_county: ""
+            }));
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -317,6 +378,26 @@ export default function EditMember() {
             </div>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Church Affiliation Dropdown */}
+                <div className="col-span-2 mb-4 p-4 border rounded-lg">
+                    <label className="block text-lg font-medium mb-2">Church Affiliation</label>
+                    <select
+                        value={selectedChurchId}
+                        onChange={handleChurchChange}
+                        className="w-full border rounded-md px-3 py-2"
+                    >
+                        <option value="">Select a church (optional)</option>
+                        {churches.map((church) => (
+                            <option key={church.id} value={church.id}>
+                                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Select the church the member is affiliated with
+                    </p>
+                </div>
+
                 {/* Primary Fields - At the Top */}
                 {["first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address"].map((field) => (
                     <div key={field} className="col-span-1">
@@ -335,7 +416,7 @@ export default function EditMember() {
 
                 {/* Remaining Fields */}
                 {Object.keys(form).map((field) =>
-                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address"].includes(field)
+                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address", "church_affiliation_name", "church_affiliation_city", "church_affiliation_state", "church_affiliation_county"].includes(field)
                         ? null
                         : field === "active" ? (
                             <label key={field} className="col-span-2 flex items-center gap-2">
