@@ -1,5 +1,5 @@
 // src/pages/addMember.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
@@ -33,6 +33,57 @@ export default function AddMember() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [photoPreview, setPhotoPreview] = useState("");
+  const [churches, setChurches] = useState([]);
+  const [selectedChurchId, setSelectedChurchId] = useState("");
+
+  // Fetch churches on component mount
+  useEffect(() => {
+    const fetchChurches = async () => {
+      try {
+        const { data, error } = await databaseAPI.list("church2", {
+          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
+        });
+        if (error) {
+          console.error("Error fetching churches:", error);
+        } else {
+          setChurches(data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching churches:", err);
+      }
+    };
+    fetchChurches();
+  }, []);
+
+  const handleChurchChange = (e) => {
+    const churchId = e.target.value;
+    setSelectedChurchId(churchId);
+    console.log("Selected church ID:", churchId);
+    
+    if (churchId) {
+      const selectedChurch = churches.find(c => c.id === churchId);
+      console.log("Churches list:", churches);
+      console.log("Selected church data:", selectedChurch);
+      if (selectedChurch) {
+        setForm(prev => ({
+          ...prev,
+          church_affiliation_name: selectedChurch.church_name || "",
+          church_affiliation_city: selectedChurch.church_physical_city || "",
+          church_affiliation_state: selectedChurch.church_physical_state || "",
+          church_affiliation_county: selectedChurch.church_physical_county || ""
+        }));
+      }
+    } else {
+      // Clear church affiliation fields if no church selected
+      setForm(prev => ({
+        ...prev,
+        church_affiliation_name: "",
+        church_affiliation_city: "",
+        church_affiliation_state: "",
+        church_affiliation_county: ""
+      }));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -173,9 +224,14 @@ export default function AddMember() {
     setLoading(false);
   };
 
-  // Filter out "active" and "photo_url" so they don't appear in the regular form fields
+  // Filter out "active", "photo_url", and church affiliation fields so they don't appear in the regular form fields
   const formFields = Object.keys(form).filter((field) => 
-    field !== "active" && field !== "photo_url"
+    field !== "active" && 
+    field !== "photo_url" &&
+    field !== "church_affiliation_name" &&
+    field !== "church_affiliation_city" &&
+    field !== "church_affiliation_state" &&
+    field !== "church_affiliation_county"
   );
 
   return (
@@ -213,6 +269,26 @@ export default function AddMember() {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* Church Affiliation Dropdown */}
+        <div className="mb-6 p-4 border rounded-lg">
+          <label className="block text-lg font-medium mb-2">Church Affiliation</label>
+          <select
+            value={selectedChurchId}
+            onChange={handleChurchChange}
+            className="w-full border rounded-md px-3 py-2"
+          >
+            <option value="">Select a church (optional)</option>
+            {churches.map((church) => (
+              <option key={church.id} value={church.id}>
+                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
+              </option>
+            ))}
+          </select>
+          <p className="text-sm text-gray-500 mt-1">
+            Select the church the member is affiliated with
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {formFields.map((field) => (
             <div key={field} className="col-span-1">
