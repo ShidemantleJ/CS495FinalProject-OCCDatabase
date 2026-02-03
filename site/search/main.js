@@ -28,8 +28,16 @@ function escapeHtml (value) {
     .replace(/>/g, '&gt;');
 }
 
-function formatResult (location, title, summary) {
-  return '<article><h3><a href="' + joinUrl(base_url, location) + '">'+ escapeHtml(title) + '</a></h3><p>' + escapeHtml(summary) +'</p></article>';
+function formatResult(location, title, summary) {
+  return (
+    '<article><h3><a href="' +
+    escapeHtml(joinUrl(base_url, location)) +
+    '">' +
+    escapeHtml(title) +
+    "</a></h3><p>" +
+    escapeHtml(summary) +
+    "</p></article>"
+  );
 }
 
 function displayResults (results) {
@@ -48,7 +56,10 @@ function displayResults (results) {
     if (!noResultsText) {
       noResultsText = "No results found";
     }
-    search_results.insertAdjacentHTML('beforeend', '<p>' + noResultsText + '</p>');
+    search_results.insertAdjacentHTML(
+      "beforeend",
+      "<p>" + escapeHtml(noResultsText) + "</p>",
+    );
   }
 }
 
