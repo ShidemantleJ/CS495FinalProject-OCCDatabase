@@ -149,8 +149,18 @@ export default function Profile() {
 
             setNotesLoading(true);
             // Try with foreign key join first
-            const { data: notesData } = await databaseAPI.listNotesByAddedByMemberId(memberData.id, { includeChurch: true });
-            setMyNotes(notesData || []);
+            const { data: notesData, error: notesError } = await databaseAPI.list("notes", {select:`
+                *,
+                church2:church_id(church_name)
+                `, filters:[
+                    { column: "added_by_team_member_id", op: "eq", value: memberData.id }
+                ], orderBy: { column: "created_at", ascending: false }})
+
+            if (notesError) {
+                setMyNotes([]);
+            } else {
+                setMyNotes(notesData || []);
+            }
             setNotesLoading(false);
         }
         getMyNotes();
@@ -465,7 +475,15 @@ export default function Profile() {
                                 </div>
                             </div>
                         )}
-
+                        {/* Member Notes */}
+                        {memberData.member_notes && (
+                            <div>
+                                <h2 className="text-lg font-semibold mb-2">Member Notes</h2>
+                                <div className="space-y-1 text-gray-700">
+                                    <p>{memberData.member_notes}</p>
+                                </div>
+                            </div>
+                        )}
                         {/* Church Affiliation */}
                         {(memberData.church_affiliation_name || memberData.church_affiliation_city || memberData.church_affiliation_state || memberData.church_affiliation_county) && (
                             <div>
@@ -565,10 +583,10 @@ export default function Profile() {
                 </div>
             )}
 
-            {/* MY NOTES SECTION */}
+            {/* CHURCH NOTES SECTION */}
             {activeTab === "profile" && memberData && (
                 <div className="mt-6">
-                    <h2 className="text-lg font-semibold mb-2">My Notes</h2>
+                    <h2 className="text-lg font-semibold mb-2">Church Notes</h2>
                     {notesLoading ? (
                         <p>Loading notes...</p>
                     ) : myNotes.length === 0 ? (
@@ -583,8 +601,8 @@ export default function Profile() {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                 });
-                                const churchName = note.church?.church_name
-                                    ? note.church.church_name.replace(/_/g, " ")
+                                const churchName = note.church2?.church_name
+                                    ? note.church2?.church_name.replace(/_/g, " ")
                                     : "Unknown Church";
 
                                 const isEditing = editingNoteId === note.id;
