@@ -235,7 +235,7 @@ export default function EditMember() {
             const currentPositionCodes = (currentPositions || []).map(p => p.position);
             const selectedSet = new Set(selectedPositions);
             const currentSet = new Set(currentPositionCodes);
-            
+
             // Check if positions actually changed
             const positionsChanged = 
                 selectedPositions.length !== currentPositionCodes.length ||
@@ -243,59 +243,43 @@ export default function EditMember() {
                 !currentPositionCodes.every(pos => selectedSet.has(pos));
             
             if (positionsChanged) {
-                // End all current active positions
-                const { error: endError } = await supabase
-                    .from("member_positions")
-                    .update({ end_date: today })
-                    .eq("member_id", id)
-                    .is("end_date", null);
+                const uniqueSelectedPositions = [...new Set(selectedPositions.filter(pos => pos))];
+                const selectedUniqueSet = new Set(uniqueSelectedPositions);
 
-                if (endError) {
-                    setError(endError.message);
-                    setLoading(false);
-                    return;
+                const positionsToEnd = currentPositionCodes.filter(pos => !selectedUniqueSet.has(pos));
+                const positionsToAdd = uniqueSelectedPositions.filter(pos => !currentSet.has(pos));
+
+                if (positionsToEnd.length > 0) {
+                    const { error: endError } = await supabase
+                        .from("member_positions")
+                        .update({ end_date: today })
+                        .eq("member_id", id)
+                        .is("end_date", null)
+                        .in("position", positionsToEnd);
+
+                    if (endError) {
+                        setError(endError.message);
+                        setLoading(false);
+                        return;
+                    }
                 }
 
-                // Add new positions for selected ones
-                if (selectedPositions.length > 0) {
-                    // Remove duplicates from selectedPositions
-                    const uniqueSelectedPositions = [...new Set(selectedPositions.filter(pos => pos))];
-                    
-                    // Check for existing positions with the same start_date to avoid duplicates
-                    const { data: existingToday } = await databaseAPI.list("member_positions", {
-                        filters: [
-                            { column: "member_id", op: "eq", value: id },
-                            { column: "start_date", op: "eq", value: today },
-                            { column: "end_date", op: "is", value: null }
-                        ]
-                    });
-                    
-                    const existingPositionCodes = new Set(
-                        (existingToday || [])
-                            .filter((p) => p.start_date === today && !p.end_date)
-                            .map(p => p.position)
-                    );
-                    
-                    // Only insert positions that don't already exist for today
-                    const positionsToInsert = uniqueSelectedPositions
-                        .filter(position => !existingPositionCodes.has(position))
-                        .map(position => ({
-                            member_id: id,
-                            position: position,
-                            start_date: today,
-                            end_date: null
-                        }));
+                if (positionsToAdd.length > 0) {
+                    const positionsToInsert = positionsToAdd.map(position => ({
+                        member_id: id,
+                        position: position,
+                        start_date: today,
+                        end_date: null
+                    }));
 
-                    if (positionsToInsert.length > 0) {
-                        const { error: insertError } = await supabase
-                            .from("member_positions")
-                            .insert(positionsToInsert);
+                    const { error: insertError } = await supabase
+                        .from("member_positions")
+                        .insert(positionsToInsert);
 
-                        if (insertError) {
-                            setError(insertError.message);
-                            setLoading(false);
-                            return;
-                        }
+                    if (insertError) {
+                        setError(insertError.message);
+                        setLoading(false);
+                        return;
                     }
                 }
             }
