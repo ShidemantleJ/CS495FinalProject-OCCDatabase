@@ -48,6 +48,8 @@ export default function EditMember() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [availablePositions, setAvailablePositions] = useState([]);
     const [selectedPositions, setSelectedPositions] = useState([]);
+    const [expiredPositions, setExpiredPositions] = useState([]);
+    const [expiredLoading, setExpiredLoading] = useState(false);
 
     // Check if current user is admin
     useEffect(() => {
@@ -104,6 +106,29 @@ export default function EditMember() {
             }
         };
         loadMemberPositions();
+    }, [id, isAdmin]);
+
+    // Fetch expired member positions
+    useEffect(() => {
+        const loadExpiredPositions = async () => {
+            if (!id || !isAdmin) return;
+            setExpiredLoading(true);
+
+            const { data, error } = await supabase
+                .from("member_positions")
+                .select("id, position, start_date, end_date")
+                .eq("member_id", id)
+                .not("end_date", "is", null)
+                .order("end_date", { ascending: false });
+
+            if (!error && data) {
+                setExpiredPositions(data);
+            } else {
+                setExpiredPositions([]);
+            }
+            setExpiredLoading(false);
+        };
+        loadExpiredPositions();
     }, [id, isAdmin]);
 
     useEffect(() => {
@@ -290,6 +315,21 @@ export default function EditMember() {
         });
     };
 
+    const handleDeleteExpiredPosition = async (positionId) => {
+        setError("");
+        const { error: deleteError } = await databaseAPI.delete("member_positions", positionId);
+        if (deleteError) {
+            setError(deleteError.message);
+            return;
+        }
+        setExpiredPositions(prev => prev.filter(pos => pos.id !== positionId));
+    };
+
+    const getPositionLabel = (positionCode) => {
+        const match = availablePositions.find((pos) => (pos.code || "") === positionCode);
+        return match?.name || match?.description || positionCode || "Unknown";
+    };
+
     if (loading || !form) return <p className="text-center mt-10">Loading...</p>;
 
     return (
@@ -386,7 +426,7 @@ export default function EditMember() {
 
                 {/* Position Selection - Admin Only */}
                 <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-2">Position(s)</label>
+                    <label className="block text-sm font-medium mb-2">Current Position(s)</label>
                     {!isAdmin ? (
                         <p className="text-sm text-gray-500">Only admins can edit positions.</p>
                     ) : availablePositions.length === 0 ? (
@@ -427,6 +467,40 @@ export default function EditMember() {
                         </div>
                     )}
                 </div>
+
+                {/* Expired Positions - Admin Only */}
+                {isAdmin && (
+                    <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2">Expired Position(s)</label>
+                        {expiredLoading ? (
+                            <p className="text-sm text-gray-500">Loading expired positions...</p>
+                        ) : expiredPositions.length === 0 ? (
+                            <p className="text-sm text-gray-500">No expired positions found.</p>
+                        ) : (
+                            <div className="border rounded-md bg-gray-50">
+                                {expiredPositions.map((pos) => (
+                                    <div key={pos.id} className="flex items-center justify-between px-3 py-2 border-b last:border-b-0">
+                                        <div className="text-sm text-gray-700">
+                                            <span className="font-medium text-gray-900">{getPositionLabel(pos.position)}</span>
+                                            {pos.end_date && (
+                                                <span className="ml-2 text-xs text-gray-500">
+                                                    (ended {pos.end_date})
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteExpiredPosition(pos.id)}
+                                            className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="col-span-2 flex justify-end gap-2 mt-4">
                     <button
