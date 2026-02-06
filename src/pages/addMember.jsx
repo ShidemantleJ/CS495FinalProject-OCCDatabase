@@ -88,10 +88,7 @@ export default function AddMember() {
     try {
       // Create a preview URL
       const previewUrl = URL.createObjectURL(file);
-      const sanitizedPreview = DOMPurify.sanitize(previewUrl, {
-        ADD_URI_SCHEMES: ["blob"],
-      });
-      setPhotoPreview(sanitizedPreview);
+      setPhotoPreview(previewUrl);
 
       // Generate unique name for the image
       const fileExt = file.name.split('.').pop();
