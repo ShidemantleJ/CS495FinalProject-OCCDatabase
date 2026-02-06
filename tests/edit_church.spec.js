@@ -183,8 +183,12 @@ test.describe("Church Management & Editing", () => {
     await page.getByPlaceholder("Search by church name").fill(churchName);
     await page.getByRole("button", { name: "Apply Filters" }).click();
 
+    const churchCard = page
+      .locator("div.bg-white.shadow-md")
+      .filter({ hasText: churchName });
+
     await expect(
-      page.getByText("Church Relations Team Member: N/A"),
+      churchCard.getByText("Church Relations Team Member: N/A"),
     ).toBeVisible();
   });
 });
