@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
+import { processImage } from "../utils/imageProcessing";
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -20,7 +21,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // Generate signed URL for private bucket
-            const { data } = await databaseAPI.createSignedUrl('Team Images', filePath, 3600); // 1 hour expiry
+            const { data } = await databaseAPI.createSignedUrl('Team Images', filePath, 31536000); // 1 year expiry
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -173,12 +174,13 @@ export default function EditMember() {
         setError("");
 
         try {
+            const processedFile = await processImage(file);
             // Generate unique name for the image
             const fileExt = file.name.split('.').pop();
             const fileName = `${id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
             // Upload to supabase
-            const { error: uploadError } = await databaseAPI.uploadToStorage('Team Images', fileName, file);
+            const { error: uploadError } = await databaseAPI.uploadToStorage('Team Images', fileName, processedFile);
 
             if (uploadError) {
                 throw new Error(uploadError.message || 'Upload failed. Please try again.');

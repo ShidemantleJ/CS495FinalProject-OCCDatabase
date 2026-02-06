@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
+import { processImage } from "../utils/imageProcessing";
 
 // Helper component for private bucket images - CHURCH VERSION
 function PrivateBucketImage({ filePath, className }) {
@@ -19,7 +20,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // Generate signed URL for church bucket
-            const { data } = await databaseAPI.createSignedUrl('Church Images', filePath, 3600); // 1 hour expiry
+            const { data } = await databaseAPI.createSignedUrl('Church Images', filePath, 31536000); // 1 year expiry
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -142,6 +143,7 @@ export default function EditChurch() {
         setError(null);
 
         try {
+            const processedFile = await processImage(file);
             // Generate unique name for the image
             const churchNameForFile = formData?.church_name || 'church';
             // Sanitize the church name: replace spaces with underscores and remove special characters
@@ -154,7 +156,7 @@ export default function EditChurch() {
             const fileName = `${sanitizedChurchName}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
             // Upload to supabase - using Church Images bucket
-            const { error: uploadError } = await databaseAPI.uploadToStorage('Church Images', fileName, file);
+            const { error: uploadError } = await databaseAPI.uploadToStorage('Church Images', fileName, processedFile);
 
             if (uploadError) {
                 throw new Error(uploadError.message || 'Upload failed. Please try again.');
