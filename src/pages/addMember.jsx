@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import DOMPurify from "dompurify";
+import { processImage } from "../utils/imageProcessing";
 
 export default function AddMember() {
   const navigate = useNavigate();
@@ -86,6 +87,7 @@ export default function AddMember() {
     setError("");
 
     try {
+      const processedFile = await processImage(file);
       // Create a preview URL
       const previewUrl = URL.createObjectURL(file);
       const sanitizedPreview = DOMPurify.sanitize(previewUrl, {
@@ -98,7 +100,7 @@ export default function AddMember() {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       // Upload to supabase - using member-images bucket
-      const { error: uploadError } = await databaseAPI.uploadToStorage('member-images', fileName, file);
+      const { error: uploadError } = await databaseAPI.uploadToStorage('member-images', fileName, processedFile);
 
       if (uploadError) {
         throw new Error(uploadError.message || 'Upload failed. Please try again.');

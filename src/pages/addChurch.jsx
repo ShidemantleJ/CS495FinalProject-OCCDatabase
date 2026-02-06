@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
+import { processImage } from "../utils/imageProcessing";
 
 export default function AddChurch() {
   const {user} = useUser();
@@ -112,6 +113,7 @@ export default function AddChurch() {
     setError(null);
     
     try {
+      const processedFile = await processImage(file);
       const fileExt = file.name.split('.').pop();
       // Use church name or timestamp for unique filename
       const churchName = formData.church_name || 'new-church';
@@ -123,7 +125,7 @@ export default function AddChurch() {
       const fileName = `${sanitizedChurchName}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       // Upload to the correct bucket: 'Church Images' (same as editChurch)
-      const { error: uploadError } = await databaseAPI.uploadToStorage('Church Images', fileName, file);
+      const { error: uploadError } = await databaseAPI.uploadToStorage('Church Images', fileName, processedFile);
 
       if (uploadError) {
         throw new Error(uploadError.message || 'Upload failed. Please try again.');

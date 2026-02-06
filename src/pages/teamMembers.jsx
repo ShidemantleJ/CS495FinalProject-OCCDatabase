@@ -22,7 +22,7 @@ function PrivateBucketImage({ filePath, className, showPlaceholder = false }) {
             }
 
             // signed URL
-            const { data, error: urlError } = await databaseAPI.createSignedUrl('Team Images', filePath, 3600); // images lasts for 1 hour
+            const { data, error: urlError } = await databaseAPI.createSignedUrl('Team Images', filePath, 31536000); // images lasts for 1 year
 
             if (urlError || !data) {
                 setError(true);
