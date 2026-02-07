@@ -17,6 +17,7 @@ export default function Mobile() {
     churchOrGroupMailingAddress: "", //Church/Group Drop-Off
     churchOrGroupPhone: "", //Church/Group Drop-Off
     churchOrGroupCity: "",
+    churchOrGroupState: "",
     representingGroup: "",    //NCW Short-Term
     projectLeader: "", //Church/Group Drop-Off
 
@@ -101,6 +102,7 @@ export default function Mobile() {
       churchOrGroupMailingAddress: "", 
       churchOrGroupPhone: "", 
       churchOrGroupCity: "",
+      churchOrGroupState: "",
       representingGroup: "",    
       projectLeader: "", 
   
@@ -254,7 +256,7 @@ export default function Mobile() {
                 {view === "church" && "Church/Group"}
                 {view === "ncw" && "NCW"}
                 {view === "plw" && "PLW"}
-                {" Registration"}
+                {" Form"}
               </h1>
             </div>
             <button 
@@ -271,6 +273,18 @@ export default function Mobile() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+
+              //Checks if buttons were clicked for specific views
+              if ((view === "church" || view === "plw") && !formData.projectLeader) {
+                alert("Please select if you are the Project Leader.");
+                return;
+              }
+              
+              if ((view === "ncw" || view === "plw" )&& !formData.interestedInServing) {
+                alert("Please select if you are interested in serving.");
+                return;
+              }
+
               console.log(`Saving ${view} data:`, formData);
             }}
             className="w-full space-y-6"
@@ -289,6 +303,7 @@ export default function Mobile() {
                       className="w-full p-5 text-xl font-mono bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all tracking-[0.3em]"
                       value={formData.locationCode}
                       onChange={(e) => setFormData({ ...formData, locationCode: e.target.value })}
+                      required
                     />
                   </div>
                 )}
@@ -303,10 +318,106 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      required
                     />
                   </div>
                 )}
+
+                {/* Shoebox Number for Individual and Church */}
+                {(view === "individual" || view === "church") && (
+                    <div className="space-y-2 md:col-span-2 animate-in fade-in duration-300">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">NUMBER OF SHOEBOXES YOU ARE DROPPING OFF / <span className="text-slate-300">CANTIDAD DE CAJAS DE REGALOS QUE ESTÁS ENTREGANDO</span></label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="e.g. 10"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={formData.numOfShoeboxes}
+                        onChange={(e) => setFormData({ ...formData, numOfShoeboxes: e.target.value })}
+                        required
+                      />
+                    </div>
+                  )}
               </div>
+
+              {/* INDIVIDUAL: Shoebox Check */}
+              {view === "individual" && (
+                <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4">
+                    <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
+                      IF YOU ARE DROPPING OFF SHOEBOX GIFTS ON BEHALF OF A CHURCH OR GROUP, 
+                      PLEASE ASK FOR A CHURCH/GROUP FORM. / <span className="text-slate-500">SI ESTAS ENTREGANDO 
+                      CAJAS DE REGALOS A NOMBRE DE UNA IGLESIA O GRUPO, POR FAVOR SOLICITA UN FORMULARIO PARA IGLESIA O GRUPO.</span>
+                    </p>                 
+                  </div>  
+                </div>
+              )}
+
+              {/* NCW SPECIFIC FIELDS */}
+              {view === "ncw" && (
+                <div className="space-y-8 mb-8 animate-in fade-in duration-300">
+                  {/* 1. TITLE SELECTION */}
+                  <div className="space-y-4">
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Title</label>
+                    <div className="flex flex-wrap gap-3">
+                      <button type="button" onClick={() => setFormData({ ...formData, title: 'Mr.' })}
+                        className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${formData.title === 'Mr.' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                        Mr.
+                      </button>
+                      <button type="button" onClick={() => setFormData({ ...formData, title: 'Mrs.' })}
+                        className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${formData.title === 'Mrs.' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                        Mrs.
+                      </button>
+                      <button type="button" onClick={() => setFormData({ ...formData, title: 'Miss' })}
+                        className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${formData.title === 'Miss' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                        Miss
+                      </button>
+                      <button type="button" onClick={() => setFormData({ ...formData, title: 'Dr.' })}
+                        className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${formData.title === 'Dr.' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                        Dr.
+                      </button>
+                      <button type="button" onClick={() => setFormData({ ...formData, title: 'Rev.' })}
+                        className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${formData.title === 'Rev.' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                        Rev.
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* 2. GENDER SELECTION*/}
+                    <div className="space-y-4">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Gender</label>
+                      <div className="flex gap-4">
+                        <button type="button" onClick={() => setFormData({ ...formData, gender: 'M' })}
+                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.gender === 'M' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                          Male
+                        </button>
+                        <button type="button" onClick={() => setFormData({ ...formData, gender: 'F' })}
+                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.gender === 'F' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                          Female
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 3. AGE CATEGORY SELECTION (Manual Buttons) */}
+                    <div className="space-y-4">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Age Category</label>
+                      <div className="flex gap-4">
+                        <button type="button" onClick={() => setFormData({ ...formData, ageCategory: '13-17' })}
+                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.ageCategory === '13-17' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                          13-17
+                        </button>
+                        <button type="button" onClick={() => setFormData({ ...formData, ageCategory: '18+' })}
+                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.ageCategory === '18+' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                          18+
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/*PRIMARY IDENTITY (NAME & EMAIL) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -336,6 +447,19 @@ export default function Mobile() {
               </div>
 
               <div className="space-y-2 mb-8">
+                <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Phone / <span className="text-slate-300">TELÉFONO</span></label>
+                <input
+                  type="text"
+                  inputMode="tel"
+                  placeholder="(123) 456-7890"
+                  className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2 mb-8">
                 <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">EMAIL ADDRESS / <span className="text-slate-300">CORREO ELECTRÓNICO</span></label>
                 <input
                   type="email"
@@ -359,7 +483,67 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      required
                     />
+                  </div>
+                )}
+                
+                {/* Individual Section: Mailing Address (Here for formatting)*/} 
+                {view === "individual" && (
+                  <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">MAILING ADDRESS / <span className="text-slate-300">DIRECCIÓN DE CORREO</span></label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 123 Main St"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={formData.mailingAddress}
+                        onChange={(e) => setFormData({ ...formData, mailingAddress: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* CHURCH/GROUP Specfic Fields (Here for formatting)*/}
+                {(view === "church") && (
+                  <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1"> CHURCH/GROUP NAME / <span className="text-slate-300">NOMBRE DE LA IGLESIA O GRUPO</span></label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 1st Baptist"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={formData.churchOrGroupName}
+                        onChange={(e) => setFormData({ ...formData, churchOrGroupName: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2 mb-8">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP PHONE / <span className="text-slate-300">TELÉFONO DE LA IGLESIA O GRUPO</span></label>
+                      <input
+                        type="text"
+                        inputMode="tel"
+                        placeholder="(123) 456-7890"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={formData.churchOrGroupPhone}
+                        onChange={(e) => setFormData({ ...formData, churchOrGroupPhone: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP MAILING ADDRESS / <span className="text-slate-300">DIRECCIÓN DE CORREO DE LA IGLESIA O GRUPO</span></label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 123 Main St"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={formData.churchOrGroupMailingAddress}
+                        onChange={(e) => setFormData({ ...formData, churchOrGroupMailingAddress: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -407,25 +591,51 @@ export default function Mobile() {
               </div>
 
               {/* CONDITIONAL SPECIFIC QUESTIONS */}
-
-              {/* INDIVIDUAL: 18+ Acknowledgment */}
-              {view === "individual" && (
+              {/* PLW Specfic Fields */}
+              {(view === "plw") && (
                 <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4">
-                    <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
-                      IF YOU ARE DROPPING OFF SHOEBOX GIFTS ON BEHALF OF A CHURCH OR GROUP, 
-                      PLEASE ASK FOR A CHURCH/GROUP FORM. / <span className="text-slate-500">SI ESTAS ENTREGANDO 
-                      CAJAS DE REGALOS A NOMBRE DE UNA IGLESIA O GRUPO, POR FAVOR SOLICITA UN FORMULARIO PARA IGLESIA O GRUPO.</span>
-                    </p>
-                    <div className="h-px bg-slate-200 w-1/2 mx-auto" />
-                    <p className="text-xs font-black text-slate-900 uppercase tracking-widest">
-                      BY FILLING OUT THIS FORM, I ACKNOWLEDGE I AM 18 YEARS OF AGE OR OLDER. / <span className="text-slate-600">AL LLENAR ESTE FORMULARIO, ADMITO TENER POR LO MENOS 18 AÑOS DE EDAD.</span>
-                    </p>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP NAME</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 1st Baptist"
+                      className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                      value={formData.churchOrGroupName}
+                      onChange={(e) => setFormData({ ...formData, churchOrGroupName: e.target.value })}
+                      required
+                    />
                   </div>
-                </div>
-              )}
 
-              {/* CHURCH && PLW Common Fields */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP CITY</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Tuscaloosa"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={formData.churchOrGroupCity}
+                        onChange={(e) => setFormData({ ...formData, churchOrGroupCity: e.target.value })}
+                        required
+                      />
+                    </div>
+                
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP STATE</label>
+                      <input
+                        type="text"
+                        maxLength={2}
+                        placeholder="e.g. AL"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all uppercase"
+                        value={formData.churchOrGroupState}
+                        onChange={(e) => setFormData({ ...formData, churchOrGroupState: e.target.value })}
+                        required
+                      />
+                    </div>
+                </div>
+              </div>
+            )}
+
+              {/* Church & PLW Project Leader Question */}
               {(view === "church" || view === "plw") && (
                 <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
                   <div className="space-y-4">
@@ -457,28 +667,25 @@ export default function Mobile() {
                       </button>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP NAME</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. 1st Baptist"
-                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
-                        value={formData.churchOrGroupName}
-                        onChange={(e) => setFormData({ ...formData, churchOrGroupName: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP CITY</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Tuscaloosa"
-                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
-                        value={formData.churchOrGroupCity}
-                        onChange={(e) => setFormData({ ...formData, churchOrGroupCity: e.target.value })}
-                      />
-                    </div>
+              {/* INDIVIDUAL & CHURCH/GROUP: Statements */}
+              {(view === "individual" || view === "church") && (
+                <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4">
+                    
+                    <p className="text-xs font-black text-slate-900 uppercase tracking-widest">
+                      BY FILLING OUT THIS FORM, I ACKNOWLEDGE I AM 18 YEARS OF AGE OR OLDER. / <span className="text-slate-600">AL LLENAR ESTE FORMULARIO, ADMITO TENER POR LO MENOS 18 AÑOS DE EDAD.</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4">
+                    <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">
+                      BY GIVING US THIS INFORMATION, YOU ACKNOWLEDGE THAT YOU ARE ALLOWING US TO PROVIDE YOU WITH FURTHER
+                      COMMUNICATIONS ABOUT OUR MINISTRY, EVENTS, AND VOLUNTEER OPPORTUNITIES. / <span className="text-slate-500">AL DARNOS ESTA INFORMACIÓN,
+                      ACEPTAS QUE PODEMOS ENVIARTE FUTURAS COMUNICACIONES SOBRE NUESTRO MINISTERIO, EVENTOS, Y OPORTUNIDADES DE VOLUNTARIADO.</span>
+                    </p>
                   </div>
                 </div>
               )}
@@ -488,7 +695,8 @@ export default function Mobile() {
                 <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
                   <div className="space-y-4 text-center">
                     <label className="block text-lg font-bold text-slate-800">
-                      Local volunteer teams serve throughout the year. Are you interested in learning more?
+                    Local volunteer teams serve throughout the year to promote Operation Christmas Child in their communities. 
+                    Are you interested in learning more about these opportunities to serve? 
                     </label>
                     <div className="flex gap-4">
                       <button
@@ -514,6 +722,17 @@ export default function Mobile() {
                         No
                       </button>
                     </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Name of church or group you are representing: (if any)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 1st Baptist"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={formData.churchOrGroupName}
+                        onChange={(e) => setFormData({ ...formData, churchOrGroupName: e.target.value })}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -531,6 +750,7 @@ export default function Mobile() {
                       onChange={(e) => setFormData({ ...formData, referralSource: e.target.value })}
                     />
                   </div>
+
                   <div className="space-y-2">
                     <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1 leading-relaxed">How can we support your OCC ministry?</label>
                     <textarea
@@ -538,7 +758,36 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all resize-none"
                       value={formData.supportNeeds}
                       onChange={(e) => setFormData({ ...formData, supportNeeds: e.target.value })}
+                      required
                     />
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1 text-center">Would you like more information about opportunity to volunteer year round with the West Alabama OCC Team? </label>
+                    <div className="flex gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, interestedInServing: "Yes" })}
+                        className={`flex-1 py-5 text-2xl font-black rounded-2xl border-2 transition-all ${
+                          formData.interestedInServing === "Yes" 
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" 
+                            : "border-slate-100 bg-slate-50 text-slate-400"
+                        }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, interestedInServing: "No" })}
+                        className={`flex-1 py-5 text-2xl font-black rounded-2xl border-2 transition-all ${
+                          formData.interestedInServing === "No" 
+                            ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" 
+                            : "border-slate-100 bg-slate-50 text-slate-400"
+                        }`}
+                      >
+                        No
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
