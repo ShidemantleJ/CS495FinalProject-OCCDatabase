@@ -29,15 +29,20 @@ function escapeHtml (value) {
 }
 
 function formatResult(location, title, summary) {
-  return (
-    '<article><h3><a href="' +
-    escapeHtml(joinUrl(base_url, location)) +
-    '">' +
-    escapeHtml(title) +
-    "</a></h3><p>" +
-    escapeHtml(summary) +
-    "</p></article>"
-  );
+  var article = document.createElement('article');
+  var h3 = document.createElement('h3');
+  var a = document.createElement('a');
+  var p = document.createElement('p');
+  
+  a.href = joinUrl(base_url, location);
+  a.textContent = title;
+  p.textContent = summary;
+  
+  h3.appendChild(a);
+  article.appendChild(h3);
+  article.appendChild(p);
+  
+  return article;
 }
 
 function displayResults (results) {
@@ -48,18 +53,17 @@ function displayResults (results) {
   if (results.length > 0){
     for (var i=0; i < results.length; i++){
       var result = results[i];
-      var html = formatResult(result.location, result.title, result.summary);
-      search_results.insertAdjacentHTML('beforeend', html);
+      var resultElement = formatResult(result.location, result.title, result.summary);
+      search_results.appendChild(resultElement);
     }
   } else {
     var noResultsText = search_results.getAttribute('data-no-results-text');
     if (!noResultsText) {
       noResultsText = "No results found";
     }
-    search_results.insertAdjacentHTML(
-      "beforeend",
-      "<p>" + escapeHtml(noResultsText) + "</p>",
-    );
+    var p = document.createElement('p');
+    p.textContent = noResultsText;
+    search_results.appendChild(p);
   }
 }
 
