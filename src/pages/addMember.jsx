@@ -271,8 +271,9 @@ export default function AddMember() {
       <form onSubmit={handleSubmit}>
         {/* Church Affiliation Dropdown */}
         <div className="mb-6 p-4 border rounded-lg">
-          <label className="block text-lg font-medium mb-2">Church Affiliation</label>
+          <label htmlFor="church-affiliation" className="block text-lg font-medium mb-2">Church Affiliation</label>
           <select
+            id="church-affiliation"
             value={selectedChurchId}
             onChange={handleChurchChange}
             className="w-full border rounded-md px-3 py-2"
