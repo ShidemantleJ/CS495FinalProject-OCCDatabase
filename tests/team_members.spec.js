@@ -91,15 +91,8 @@ test.describe.serial("Team Members Management", () => {
 
     // Church info
     await page
-      .locator('input[name="church_affiliation_name"]')
-      .fill(churchName);
-    await page
-      .locator('input[name="church_affiliation_city"]')
-      .fill("TestCity");
-    await page.locator('input[name="church_affiliation_state"]').fill("TS");
-    await page
-      .locator('input[name="church_affiliation_county"]')
-      .fill("TestCounty");
+      .getByRole("combobox", { name: "Church Affiliation" })
+      .selectOption({ label: `${churchName} - TestCity, TS` });
 
     await page.getByRole("button", { name: /add member/i }).click();
 
@@ -174,7 +167,7 @@ test.describe.serial("Team Members Management", () => {
       .filter({ hasText: `${firstName} ${lastName}` })
       .getByRole("button", { name: /edit member/i })
       .click();
-
+    await page.waitForTimeout(1000);
     const newPhone = "555-999-0000";
     const phoneInput = page.locator('input[name="phone_number"]');
 
