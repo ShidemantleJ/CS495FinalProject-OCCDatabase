@@ -99,8 +99,8 @@ export default function AddMember() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
-      // Upload to supabase - using member-images bucket
-      const { error: uploadError } = await databaseAPI.uploadToStorage('member-images', fileName, processedFile);
+      // Upload to supabase - using Team Images bucket
+      const { error: uploadError } = await databaseAPI.uploadToStorage('Team Images', fileName, file);
 
       if (uploadError) {
         throw new Error(uploadError.message || 'Upload failed. Please try again.');
