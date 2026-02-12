@@ -18,8 +18,13 @@ import Individuals from "./pages/individuals";
 import AddIndividual from "./pages/addIndividual";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/resetPassword";
+import useLastActivity from "./hooks/useLastActivity";
+import Mobile from "./pages/mobile";
 
 function App() {
+  // Ping server periodically when user interacts with the site, allowing automatic logout.
+  useLastActivity();
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
@@ -32,6 +37,8 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
 
+             <Route path="/mobile" element={<Mobile />} />
+
             {/* Protected routes */}
             <Route
               path="/*"
@@ -41,18 +48,19 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/home" element={<Home />} />
                     <Route path="/about" element={<About />} />
-                    <Route path="/church/:churchName" element={<ChurchPage />} />
+                    <Route path="/church/:churchId" element={<ChurchPage />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/editProfile" element={<EditProfile />} />
                     <Route path="/team-members" element={<TeamMembers />} />
                     <Route path="/team-member/:id" element={<TeamMember />} />
                     <Route path="/individuals" element={<Individuals />} />
+                   
 
                     {/* Add/Edit routes */}
                     <Route path="/add-member" element={<AddMember />} />
                     <Route path="/edit-member/:id" element={<EditMember />} />
                     <Route path="/add-church" element={<AddChurch />} />
-                    <Route path="/edit-church/:churchName" element={<EditChurch />} />
+                    <Route path="/edit-church/:churchId" element={<EditChurch />} />
                     <Route path="/add-individual" element={<AddIndividual />} />
 
                     {/* Redirect unknown paths */}

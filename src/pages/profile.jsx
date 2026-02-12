@@ -1,7 +1,7 @@
 // src/pages/profile.jsx
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
+import { databaseAPI } from "../api";
 
 // Add the PrivateBucketImage component for profile photos
 function PrivateBucketImage({ filePath, className }) {
@@ -18,9 +18,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // signed URL for Team Images bucket
-            const { data } = await supabase.storage
-                .from('Team Images')
-                .createSignedUrl(filePath, 3600);
+            const { data } = await databaseAPI.createSignedUrl('Team Images', filePath, 3600);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -68,18 +66,16 @@ export default function Profile() {
 
     useEffect(() => {
         const getUserAndData = async () => {
-            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const { data: { user: authUser } } = await databaseAPI.getUser();
             if (!authUser) {
                 navigate("/login");
                 return;
             }
             setUser(authUser);
 
-            const { data: member, error: memberError } = await supabase
-                .from("team_members")
-                .select("*")
-                .eq("email", authUser.email)
-                .maybeSingle();
+            const { data: member, error: memberError } = await databaseAPI.list("team_members", {
+                filters: [{ column: "email", op: "eq", value: authUser.email }]
+            }).maybeSingle();
 
             if (memberError) {
                 // Error fetching member data
@@ -88,11 +84,13 @@ export default function Profile() {
             setMemberData(member || null);
 
             if (member?.id) {
-                const { data: posRows, error: posError } = await supabase
-                    .from("member_positions")
-                    .select("position")
-                    .eq("member_id", member.id)
-                    .is("end_date", null); // Only get active positions
+                const { data: posRows, error: posError } = await databaseAPI.list("member_positions", {
+                    select: "position",
+                    filters: [
+                        { column: "member_id", op: "eq", value: member.id },
+                        { column: "end_date", op: "is", value: null }
+                    ]
+                });
 
                 if (!posError && posRows) {
                     // Remove duplicates and get unique positions
@@ -113,10 +111,10 @@ export default function Profile() {
                     
                     // Try each variant
                     for (const nameVariant of churchNameVariants) {
-                        let churchQuery = supabase
-                            .from("church2")
-                            .select("id, church_name, church_physical_city, church_physical_state")
-                            .eq("church_name", nameVariant);
+                        let churchQuery = databaseAPI.list("church2", {
+                            select: "id, church_name, church_physical_city, church_physical_state",
+                            filters: [{ column: "church_name", op: "eq", value: nameVariant }],
+                        });
                         
                         // If we have city info, filter by city to get the exact match
                         if (member.church_affiliation_city) {
@@ -151,52 +149,18 @@ export default function Profile() {
 
             setNotesLoading(true);
             // Try with foreign key join first
-            let { data: notesData, error } = await supabase
-                .from("notes")
-                .select(`
-          *,
-          church2!notes_church_fkey(church_name)
-        `)
-                .eq("added_by_team_member_id", memberData.id)
-                .order("created_at", { ascending: false });
+            const { data: notesData, error: notesError } = await databaseAPI.list("notes", {select:`
+                *,
+                church2:church_id(church_name)
+                `, filters:[
+                    { column: "added_by_team_member_id", op: "eq", value: memberData.id }
+                ], orderBy: { column: "created_at", ascending: false }})
 
-            // If that fails, try without join
-            if (error) {
-                const { data: simpleData, error: simpleError } = await supabase
-                    .from("notes")
-                    .select("*")
-                    .eq("added_by_team_member_id", memberData.id)
-                    .order("created_at", { ascending: false });
-                
-                if (simpleError) {
-                    setMyNotes([]);
-                } else {
-                    // Fetch church names separately
-                    if (simpleData && simpleData.length > 0) {
-                        const churchIds = [...new Set(simpleData.map(n => n.church_id).filter(Boolean))];
-                        const { data: churchesData } = await supabase
-                            .from("church2")
-                            .select("id, church_name")
-                            .in("id", churchIds);
-                        
-                        const churchesMap = {};
-                        if (churchesData) {
-                            churchesData.forEach(c => {
-                                churchesMap[c.id] = c;
-                            });
-                        }
-                        
-                        notesData = simpleData.map(note => ({
-                            ...note,
-                            church: churchesMap[note.church_id] || null
-                        }));
-                    } else {
-                        notesData = [];
-                    }
-                }
+            if (notesError) {
+                setMyNotes([]);
+            } else {
+                setMyNotes(notesData || []);
             }
-
-            setMyNotes(notesData || []);
             setNotesLoading(false);
         }
         getMyNotes();
@@ -212,10 +176,10 @@ export default function Profile() {
             const relationsField = `church_relations_member_${currentYear}`;
 
             // Fetch churches where user is the lead (church_relations_member_YEAR)
-            const { data: leadChurches, error: leadError } = await supabase
-                .from("church2")
-                .select("id, church_name, church_physical_city, church_physical_state")
-                .eq(relationsField, memberData.id);
+            const { data: leadChurches, error: leadError } = await databaseAPI.list("church2", {
+                select: "id, church_name, church_physical_city, church_physical_state",
+                filters: [{ column: relationsField, op: "eq", value: memberData.id }],
+            });
 
             // Note: project_leader is now a boolean, not a name field
             // We don't fetch churches by project_leader name anymore
@@ -260,26 +224,19 @@ export default function Profile() {
 
         setSavingNote(true);
 
-        const { data, error } = await supabase
-            .from("notes")
-            .update({ content: editingNoteContent.trim() })
-            .eq("id", noteId)
-            .select();
+        const { error } = await databaseAPI.update("notes", noteId, { content: editingNoteContent.trim() });
 
         if (error) {
             alert(`Failed to update note: ${error.message}`);
         } else {
-            if (data && data.length > 0) {
-                setMyNotes(prev => prev.map(note => 
-                    note.id === noteId 
-                        ? { ...note, ...data[0] }
-                        : note
-                ));
-                setEditingNoteId(null);
-                setEditingNoteContent("");
-            } else {
-                alert("Failed to update note: The update was blocked. Please check your RLS policies.");
-            }
+            // Update succeeded - update local state
+            setMyNotes(prev => prev.map(note => 
+                note.id === noteId 
+                    ? { ...note, content: editingNoteContent.trim() }
+                    : note
+            ));
+            setEditingNoteId(null);
+            setEditingNoteContent("");
         }
         setSavingNote(false);
     };
@@ -289,21 +246,13 @@ export default function Profile() {
             return;
         }
 
-        const { data, error } = await supabase
-            .from("notes")
-            .delete()
-            .eq("id", noteId)
-            .select();
+        const { error } = await databaseAPI.delete("notes", noteId);
 
         if (error) {
             alert(`Failed to delete note: ${error.message}`);
         } else {
-            // Check if anything was actually deleted
-            if (data && data.length > 0) {
-                setMyNotes(prev => prev.filter(note => note.id !== noteId));
-            } else {
-                alert("Failed to delete note: The delete was blocked. Please check your RLS policies.");
-            }
+            // Delete succeeded - update local state
+            setMyNotes(prev => prev.filter(note => note.id !== noteId));
         }
     };
 
@@ -325,20 +274,22 @@ export default function Profile() {
             }
 
             if (scopes.includes("ALL")) {
-                const { data, error } = await supabase
-                    .from("team_members")
-                    .select("id, first_name, last_name, email, photo_url")
-                    .order("last_name", { ascending: true });
+                const { data, error } = await databaseAPI.list("team_members", {
+                    select: "id, first_name, last_name, email, photo_url",
+                    orderBy: { column: "last_name", ascending: true },
+                });
                 if (error) throw error;
 
                 const members = data || [];
 
                 // fetch and attach their positions
                 const memberIds = members.map((m) => m.id);
-                const { data: positionsData, error: posErr } = await supabase
-                    .from("member_positions")
-                    .select("member_id, position")
-                    .in("member_id", memberIds);
+                const { data: positionsData, error: posErr } = await databaseAPI.list("member_positions", {
+                    select: "member_id, position",
+                    filters: [
+                        { column: "member_id", op: "in", value: memberIds }
+                    ]
+                });
 
                 if (!posErr && positionsData) {
                     const posMap = {};
@@ -357,10 +308,12 @@ export default function Profile() {
 
             const managedPositions = [...new Set(scopes.flat().filter(Boolean))];
 
-            const { data: mpRows, error: mpErr } = await supabase
-                .from("member_positions")
-                .select("member_id, position")
-                .in("position", managedPositions);
+            const { data: mpRows, error: mpErr } = await databaseAPI.list("member_positions", {
+                select: "member_id, position",
+                filters: [
+                    { column: "position", op: "in", value: managedPositions }
+                ]
+            });
 
             if (mpErr) throw mpErr;
 
@@ -370,19 +323,23 @@ export default function Profile() {
                 return;
             }
 
-            const { data: members, error: tmErr } = await supabase
-                .from("team_members")
-                .select("id, first_name, last_name, email, photo_url, active")
-                .in("id", ids)
-                .eq("active", true);
+            const { data: members, error: tmErr } = await databaseAPI.list("team_members", {
+                select: "id, first_name, last_name, email, photo_url, active",
+                filters: [
+                    { column: "id", op: "in", value: ids },
+                    { column: "active", op: "eq", value: true },
+                ],
+            });
                 
             if (tmErr) throw tmErr;
 
             // fetch and attach their positions
-            const { data: positionsData, error: posErr } = await supabase
-                .from("member_positions")
-                .select("member_id, position")
-                .in("member_id", ids);
+            const { data: positionsData, error: posErr } = await databaseAPI.list("member_positions", {
+                select: "member_id, position",
+                filters: [
+                    { column: "member_id", op: "in", value: ids }
+                ]
+            });
 
             if (!posErr && positionsData) {
                 const posMap = {};
@@ -410,7 +367,7 @@ export default function Profile() {
 
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        await databaseAPI.signOut();
         navigate("/login");
     };
 
@@ -518,7 +475,15 @@ export default function Profile() {
                                 </div>
                             </div>
                         )}
-
+                        {/* Member Notes */}
+                        {memberData.member_notes && (
+                            <div>
+                                <h2 className="text-lg font-semibold mb-2">Member Notes</h2>
+                                <div className="space-y-1 text-gray-700">
+                                    <p>{memberData.member_notes}</p>
+                                </div>
+                            </div>
+                        )}
                         {/* Church Affiliation */}
                         {(memberData.church_affiliation_name || memberData.church_affiliation_city || memberData.church_affiliation_state || memberData.church_affiliation_county) && (
                             <div>
@@ -529,12 +494,7 @@ export default function Profile() {
                                             <strong>Church Name:</strong>{" "}
                                             {affiliatedChurch ? (
                                                 <button
-                                                    onClick={() => {
-                                                        const cityParam = memberData.church_affiliation_city 
-                                                            ? `?city=${encodeURIComponent(memberData.church_affiliation_city)}`
-                                                            : '';
-                                                        navigate(`/church/${encodeURIComponent(affiliatedChurch.church_name)}${cityParam}`);
-                                                    }}
+                                                    onClick={() => navigate(`/church/${affiliatedChurch.id}`)}
                                                     className="text-blue-600 hover:underline"
                                                 >
                                                     {memberData.church_affiliation_name.replace(/_/g, " ")}
@@ -623,10 +583,10 @@ export default function Profile() {
                 </div>
             )}
 
-            {/* MY NOTES SECTION */}
+            {/* CHURCH NOTES SECTION */}
             {activeTab === "profile" && memberData && (
                 <div className="mt-6">
-                    <h2 className="text-lg font-semibold mb-2">My Notes</h2>
+                    <h2 className="text-lg font-semibold mb-2">Church Notes</h2>
                     {notesLoading ? (
                         <p>Loading notes...</p>
                     ) : myNotes.length === 0 ? (
@@ -641,8 +601,8 @@ export default function Profile() {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                 });
-                                const churchName = note.church?.church_name
-                                    ? note.church.church_name.replace(/_/g, " ")
+                                const churchName = note.church2?.church_name
+                                    ? note.church2?.church_name.replace(/_/g, " ")
                                     : "Unknown Church";
 
                                 const isEditing = editingNoteId === note.id;
@@ -652,9 +612,9 @@ export default function Profile() {
                                         <div className="flex justify-between items-start mb-1">
                                             <p className="text-sm text-gray-600">
                                                 <strong>Church:</strong>{" "}
-                                                {note.church_id && note.church?.church_name ? (
+                                                {note.church_id ? (
                                                     <button
-                                                        onClick={() => navigate(`/church/${encodeURIComponent(note.church.church_name)}`)}
+                                                        onClick={() => navigate(`/church/${note.church_id}`)}
                                                         className="text-blue-600 hover:underline"
                                                     >
                                                         {churchName}
@@ -761,7 +721,7 @@ export default function Profile() {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => navigate(`/church/${encodeURIComponent(church.church_name)}`)}
+                                        onClick={() => navigate(`/church/${church.id}`)}
                                         className="text-blue-600 hover:underline"
                                     >
                                         View Church

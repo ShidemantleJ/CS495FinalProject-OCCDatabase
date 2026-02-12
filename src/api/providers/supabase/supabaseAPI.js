@@ -1,0 +1,79 @@
+// Supabase API wrapper.
+import { supabase } from "../../../supabaseClient";
+import { applyFilters, applyOrderAndRange } from "./queryHelpers";
+
+// Supabase API export
+export const supabaseAPI = {
+   // Auth functions
+  getUser() {
+    return supabase.auth.getUser();
+  },
+  getSession() {
+    return supabase.auth.getSession();
+  },
+  onAuthStateChange(handler) {
+    return supabase.auth.onAuthStateChange(handler);
+  },
+  signInWithPassword({ email, password }, options) {
+    return supabase.auth.signInWithPassword({ email, password }, options);
+  },
+  setSession({ access_token, refresh_token }) {
+    return supabase.auth.setSession({ access_token, refresh_token });
+  },
+  resetPasswordForEmail(email, { redirectTo } = {}) {
+    return supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  },
+  updatePassword(newPassword) {
+    return supabase.auth.updateUser({ password: newPassword });
+  },
+  signOut() {
+    return supabase.auth.signOut();
+  },
+
+  
+  // Generalized table functions
+  async create(tableName, payload, { select = "*" } = {}) {
+    return supabase.from(tableName).insert([payload]).select(select).single();
+  },
+  async update(tableName, id, updates, { select = "*" } = {}) {
+    return supabase.from(tableName).update(updates).eq("id", id).select(select).single();
+  },
+  async delete(tableName, id) {
+    return supabase.from(tableName).delete().eq("id", id);
+  },
+    // Delete all rows matching a filter or filters
+  async deleteAll(tableName, filter) {
+    let query = supabase.from(tableName).delete();
+    if (Array.isArray(filter)) {
+      filter.forEach(f => {
+        if (f.op === "eq") {
+          query = query.eq(f.column, f.value);
+        }
+      });
+    } else if (filter && typeof filter === "object") {
+      Object.entries(filter).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+    }
+    return query;
+  },
+  async get(tableName, id, { select = "*" } = {}) {
+    return supabase.from(tableName).select(select).eq("id", id).single();
+  },
+  list(tableName, { select = "*", filters = [], orderBy, limit, range } = {}) {
+    let query = supabase.from(tableName).select(select);
+    query = applyFilters(query, filters);
+    query = applyOrderAndRange(query, { orderBy, limit, range });
+    return query;
+  },
+
+  // Storage functions
+  createSignedUrl(bucket, path, expiresIn) {
+    return supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
+  },
+  uploadToStorage(bucket, path, file, options) {
+    return supabase.storage.from(bucket).upload(path, file, options);
+  },
+
+  
+};

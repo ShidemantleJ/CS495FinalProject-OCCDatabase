@@ -1,8 +1,9 @@
 // src/pages/addMember.jsx
-import { useState } from "react";
-import { supabase } from "../supabaseClient";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
+import DOMPurify from "dompurify";
 
 export default function AddMember() {
   const navigate = useNavigate();
@@ -32,9 +33,61 @@ export default function AddMember() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [photoPreview, setPhotoPreview] = useState("");
+  const [churches, setChurches] = useState([]);
+  const [selectedChurchId, setSelectedChurchId] = useState("");
+
+  // Fetch churches on component mount
+  useEffect(() => {
+    const fetchChurches = async () => {
+      try {
+        const { data, error } = await databaseAPI.list("church2", {
+          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
+        });
+        if (error) {
+          console.error("Error fetching churches:", error);
+        } else {
+          setChurches(data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching churches:", err);
+      }
+    };
+    fetchChurches();
+  }, []);
+
+  const handleChurchChange = (e) => {
+    const churchId = e.target.value;
+    setSelectedChurchId(churchId);
+    console.log("Selected church ID:", churchId);
+    
+    if (churchId) {
+      const selectedChurch = churches.find(c => c.id === churchId);
+      console.log("Churches list:", churches);
+      console.log("Selected church data:", selectedChurch);
+      if (selectedChurch) {
+        setForm(prev => ({
+          ...prev,
+          church_affiliation_name: selectedChurch.church_name || "",
+          church_affiliation_city: selectedChurch.church_physical_city || "",
+          church_affiliation_state: selectedChurch.church_physical_state || "",
+          church_affiliation_county: selectedChurch.church_physical_county || ""
+        }));
+      }
+    } else {
+      // Clear church affiliation fields if no church selected
+      setForm(prev => ({
+        ...prev,
+        church_affiliation_name: "",
+        church_affiliation_city: "",
+        church_affiliation_state: "",
+        church_affiliation_county: ""
+      }));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const sanitizedValue = DOMPurify.sanitize(value);
     // Apply character limits based on field type
     const maxLengths = {
       first_name: 50,
@@ -53,8 +106,10 @@ export default function AddMember() {
       church_affiliation_county: 100,
       member_notes: 1000,
     };
-    
-    const processedValue = maxLengths[name] ? value.slice(0, maxLengths[name]) : value;
+
+    const processedValue = maxLengths[name]
+      ? sanitizedValue.slice(0, maxLengths[name])
+      : sanitizedValue;
     setForm({ ...form, [name]: processedValue });
   };
 
@@ -91,9 +146,7 @@ export default function AddMember() {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       // Upload to supabase - using member-images bucket
-      const { error: uploadError } = await supabase.storage
-        .from('member-images')
-        .upload(fileName, file);
+      const { error: uploadError } = await databaseAPI.uploadToStorage('member-images', fileName, file);
 
       if (uploadError) {
         throw new Error(uploadError.message || 'Upload failed. Please try again.');
@@ -117,14 +170,35 @@ export default function AddMember() {
     setError("");
 
     // Validate phone numbers
+
     if (form.phone_number && !validatePhoneNumber(form.phone_number)) {
       setError("Please enter a valid phone number (10 digits).");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setLoading(false);
       return;
     }
     
     if (form.alt_phone_number && !validatePhoneNumber(form.alt_phone_number)) {
       setError("Please enter a valid alternate phone number (10 digits).");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setLoading(false);
+      return;
+    }
+
+    if (form.email && !/\S+@\S+\.\S+/.test(form.email)) {
+      setError("Please enter a valid email address.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setLoading(false);
+      return;
+    }
+
+    const existingEmails = await databaseAPI.list("team_members", {
+      select: "email",
+    });
+
+    if (existingEmails.data.some(member => member.email === form.email)) {
+      setError("A member with this email address already exists.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setLoading(false);
       return;
     }
@@ -135,12 +209,11 @@ export default function AddMember() {
       formData.shirt_size = null;
     }
 
-    const { error } = await supabase.from("team_members").insert([
-      formData,
-    ]);
+    const { error } = await databaseAPI.create("team_members", formData);
 
     if (error) {
       setError(error.message);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       navigate("/team-members");
     }
@@ -148,9 +221,14 @@ export default function AddMember() {
     setLoading(false);
   };
 
-  // Filter out "active" and "photo_url" so they don't appear in the regular form fields
+  // Filter out "active", "photo_url", and church affiliation fields so they don't appear in the regular form fields
   const formFields = Object.keys(form).filter((field) => 
-    field !== "active" && field !== "photo_url"
+    field !== "active" && 
+    field !== "photo_url" &&
+    field !== "church_affiliation_name" &&
+    field !== "church_affiliation_city" &&
+    field !== "church_affiliation_state" &&
+    field !== "church_affiliation_county"
   );
 
   return (
@@ -188,6 +266,27 @@ export default function AddMember() {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {/* Church Affiliation Dropdown */}
+        <div className="mb-6 p-4 border rounded-lg">
+          <label htmlFor="church-affiliation" className="block text-lg font-medium mb-2">Church Affiliation</label>
+          <select
+            id="church-affiliation"
+            value={selectedChurchId}
+            onChange={handleChurchChange}
+            className="w-full border rounded-md px-3 py-2"
+          >
+            <option value="">Select a church (optional)</option>
+            {churches.map((church) => (
+              <option key={church.id} value={church.id}>
+                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
+              </option>
+            ))}
+          </select>
+          <p className="text-sm text-gray-500 mt-1">
+            Select the church the member is affiliated with
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {formFields.map((field) => (
             <div key={field} className="col-span-1">

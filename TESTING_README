@@ -1,0 +1,13 @@
+To run the test suite, you must first add the following variables into your .env file (must be .env, .env.local or any other variant will not work):
+
+PLAYWRIGHT_SUPABASE_SECRET_KEY
+ADMIN_USERNAME
+ADMIN_PASSWORD
+
+The first variable will be the supabase secret key. You can find this in the supabase project settings under "API Keys".
+The second variable, ADMIN_USERNAME, will be the username you use to log into the website.
+The third variable, ADMIN_PASSWORD, will be the password you use to log into the website.
+
+Once you have added these environment variables, you can run 'npx playwright test' in the root directory of the project to run the tests.
+
+You can also use 'npx playwright test --ui' to view the tests in UI mode (see https://playwright.dev/docs/test-ui-mode for more information).

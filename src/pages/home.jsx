@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { databaseAPI } from "../api";
+import { useUser } from "../contexts/UserContext";
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
 
@@ -19,9 +21,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // signed URL for Church Images bucket
-            const { data } = await supabase.storage
-                .from('Church Images')
-                .createSignedUrl(filePath, 3600);
+            const { data } = await databaseAPI.createSignedUrl('Church Images', filePath, 3600);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
@@ -82,10 +82,7 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
             if (newValue !== oldValue) {
                 const updatePayload = { [shoeboxFieldName]: newValue };
                 updatesToRun.push(
-                    supabase
-                        .from("church2")
-                        .update(updatePayload)
-                        .eq("church_name", church.church_name)
+                    databaseAPI.update("church2", church.id, updatePayload)
                 );
             }
         });
@@ -149,12 +146,18 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
     );
 }
 
+
 export default function Home() {
     // Get current year dynamically
     const currentYear = new Date().getFullYear();
     
+    const {user} = useUser();
+
     const [churches, setChurches] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [churchToDelete, setChurchToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [filters, setFilters] = useState({
@@ -170,11 +173,29 @@ export default function Home() {
     const shoeboxFieldName = `shoebox_${filters.selectedYear}`;
     const modalShoeboxField = `shoebox_${filters.selectedYear}`;
 
+    const handleDeleteChurch = async () => {
+        if (!churchToDelete) return;
+        setDeleting(true);
+        try {
+            if (databaseAPI.deleteAll) {
+                await databaseAPI.deleteAll("notes", { church_id: churchToDelete.id });
+            }
+            await databaseAPI.delete("church2", churchToDelete.id);
+            setChurches((prev) => prev.filter((c) => c.id !== churchToDelete.id));
+        } catch (err) {
+            alert("Failed to delete church: " + (err.message || "Unknown error"));
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setChurchToDelete(null);
+        }
+    };
+
     // Fetch churches with optional filters
     async function getChurches(filterValues = filters) {
         setLoading(true);
         // Explicitly select all fields including relations member fields
-        let query = supabase.from("church2").select("*");
+        let query = databaseAPI.list("church2");
 
         if (filterValues.churchName) {
             // Search for both spaces and underscores
@@ -227,10 +248,10 @@ export default function Home() {
                     });
                     
                     if (validUuidArray.length > 0) {
-                        const { data: teamMembersData, error: teamError } = await supabase
-                            .from("team_members")
-                            .select("id, first_name, last_name")
-                            .in("id", validUuidArray);
+                        const { data: teamMembersData, error: teamError } = await databaseAPI.list("team_members", {
+                            select: "id, first_name, last_name",
+                            filters: [{ column: "id", op: "in", value: validUuidArray }],
+                        });
                         
                         if (teamError) {
                             console.error("Error fetching team members:", teamError, "IDs queried:", validUuidArray);
@@ -245,7 +266,7 @@ export default function Home() {
                                 const memberIdLower = memberIdStr.toLowerCase();
                                 
                                 // Store with various formats to ensure we can find it
-                                teamMembersMap[memberIdStr] = memberName;
+                                Map[memberIdStr] = memberName;
                                 teamMembersMap[String(memberId)] = memberName;
                                 teamMembersMap[memberIdLower] = memberName;
                                 // Also store the UUID object if it exists
@@ -342,19 +363,19 @@ export default function Home() {
 
     useEffect(() => {
         const checkAdminStatus = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const { data: memberData } = await supabase
-                    .from("team_members")
-                    .select("admin_flag")
-                    .eq("email", user.email)
+                const { data: memberData } = await databaseAPI
+                    .list("team_members", {
+                        select: "admin_flag",
+                        filters: [{ column: "email", op: "eq", value: user.email }],
+                    })
                     .single();
                 
                 setIsAdmin(memberData?.admin_flag === true || memberData?.admin_flag === "true");
             }
         };
         checkAdminStatus();
-    }, []);
+    }, [user]);
 
     useEffect(() => {
         getChurches();
@@ -509,7 +530,17 @@ export default function Home() {
             {/* Church Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {churches.map((church, index) => (
-                    <div key={church.id || church.church_name || `church-card-${index}`} className="bg-white shadow-md rounded-lg p-6 flex flex-col justify-between">
+                    <div key={church.id || church.church_name || `church-card-${index}`} className="bg-white shadow-md rounded-lg p-6 flex flex-col justify-between relative">
+                        {/* Trashcan icon for admin */}
+                        {isAdmin && (
+                            <button
+                                className="absolute top-3 right-3 text-red-500 hover:text-red-700"
+                                title="Delete Church"
+                                onClick={() => { setShowDeleteModal(true); setChurchToDelete(church); }}
+                            >
+                                <FaTrash size={20} />
+                            </button>
+                        )}
                         <div>
                             <h2 className="text-xl font-bold mb-2">{church.church_name.replace(/_/g, " ")}</h2>
                             <p className="text-gray-700">{church["church_physical_city"]}, {church["church_physical_state"]} - <strong>{church["church_physical_county"]} County</strong></p>
@@ -533,20 +564,37 @@ export default function Home() {
                         )}
                         <button
                             className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                            onClick={() => {
-                                // Use the actual church name from database (may have spaces or underscores)
-                                const actualChurchName = church.church_name;
-                                const cityParam = church["church_physical_city"] 
-                                    ? `?city=${encodeURIComponent(church["church_physical_city"])}`
-                                    : '';
-                                // Encode the church name as-is from the database
-                                navigate(`/church/${encodeURIComponent(actualChurchName)}${cityParam}`);
-                            }}
+                            onClick={() => navigate(`/church/${church.id}`)}
                         >
                             Church Information
                         </button>
                     </div>
                 ))}
+                        {/* Delete Confirmation Modal for Church */}
+                        {showDeleteModal && churchToDelete && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                                    <h2 className="text-xl font-bold mb-4 text-red-600">Delete Church</h2>
+                                    <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{churchToDelete.church_name.replace(/_/g, " ")}</span>? This action cannot be undone.</p>
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                            onClick={() => { setShowDeleteModal(false); setChurchToDelete(null); }}
+                                            disabled={deleting}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                                            onClick={handleDeleteChurch}
+                                            disabled={deleting}
+                                        >
+                                            {deleting ? "Deleting..." : "Delete"}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
             </div>
         </div>
     );

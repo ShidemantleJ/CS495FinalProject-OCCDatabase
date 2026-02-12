@@ -33,6 +33,7 @@ Create a file named `.env` in the root of the project:
 ```
 REACT_APP_SUPABASE_URL=your_supabase_url
 REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
+REACT_APP_DATA_PROVIDER=supabase
 ```
 
 ### Step 4 — Run the Web App Locally
