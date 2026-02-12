@@ -18,7 +18,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // signed URL for Team Images bucket
-            const { data } = await databaseAPI.createSignedUrl('Team Images', filePath, 3600);
+            const { data } = await databaseAPI.createSignedUrl('Team Images', filePath, 31536000);
 
             if (data) {
                 setSignedUrl(data.signedUrl);

@@ -34,7 +34,7 @@ export default function Navbar() {
                 <Link to="/login" className="hover:text-gray-300">Login</Link>
               ) : (
                 <>
-                  <Link to="/" className="hover:text-gray-300">Home</Link>
+                  <Link to="/" className="hover:text-gray-300">Churches</Link>
                   <Link to="/team-members" className="hover:text-gray-300">Team Members</Link>
                   <Link to="/individuals" className="hover:text-gray-300">Individuals</Link>
                   <Link to="/about" className="hover:text-gray-300">About</Link>

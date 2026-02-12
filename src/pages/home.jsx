@@ -21,7 +21,7 @@ function PrivateBucketImage({ filePath, className }) {
             }
 
             // signed URL for Church Images bucket
-            const { data } = await databaseAPI.createSignedUrl('Church Images', filePath, 3600);
+            const { data } = await databaseAPI.createSignedUrl('Church Images', filePath, 31536000);
 
             if (data) {
                 setSignedUrl(data.signedUrl);
