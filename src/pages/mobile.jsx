@@ -242,6 +242,15 @@ export default function Mobile() {
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
             </button>
+
+            {/* Exit Button To Leave The Selection Screen & To Return To The Admin Login */}
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="w-full py-4 text-lg text-slate-400 font-bold hover:text-red-500 transition-colors"
+            >
+              Reset Terminal and Exit
+            </button>
           </div>
         </div>
       )}
@@ -249,28 +258,61 @@ export default function Mobile() {
       {/* 3. REGISTRATION FORM (Shown after a selection is made) */}
       {isVerified && view !== "selection" && (
         <div className="w-full max-w-3xl mt-10">
-          <header className="flex flex-col md:flex-row justify-between items-center mb-10 px-2 space-y-4 md:space-y-0">
-            <div className="text-left">
-              <p className="text-blue-600 font-bold text-sm uppercase tracking-[0.2em] mb-1">Registration Portal</p>
-              <h1 className="text-4xl font-black text-slate-900">
-                {view === "individual" && "Individual"}
-                {view === "church" && "Church/Group"}
-                {view === "ncw" && "NCW"}
-                {view === "plw" && "PLW"}
-                {" Form"}
-              </h1>
-            </div>
-            <button 
-              onClick={() => {
-                resetForm();
-                setView("selection")
-              }}
-              className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
-            >
-              ← Switch Form
-            </button>
-          </header>
+          {view !== "submission" && (
+            <header className="flex flex-col md:flex-row justify-between items-center mb-10 px-2 space-y-4 md:space-y-0">
+              <div className="text-left">
+                <p className="text-blue-600 font-bold text-sm uppercase tracking-[0.2em] mb-1">Registration Portal</p>
+                <h1 className="text-4xl font-black text-slate-900">
+                  {view === "individual" && "Individual"}
+                  {view === "church" && "Church/Group"}
+                  {view === "ncw" && "NCW"}
+                  {view === "plw" && "PLW"}
+                  {" Form"}
+                </h1>
+              </div>
+              <button 
+                onClick={() => {
+                  resetForm();
+                  setView("selection")
+                }}
+                className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                ← Switch Form
+              </button>
+            </header>
+          )}
 
+          {/* 4. SUBMISSION SCREEN */}
+          {view === "submission" && (
+            <div className="w-full max-w-2xl mt-20 mx-auto animate-in zoom-in duration-500">
+              <div className="bg-white p-12 rounded-[3rem] shadow-2xl shadow-slate-200/60 border border-slate-100 text-center space-y-8">
+                <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-4xl font-black text-slate-900 tracking-tight">Submission Received</h2>
+                  <p className="text-xl text-slate-500">Thank you for supporting West Alabama OCC</p>
+                </div>
+
+                <div className="pt-8">
+                  <button
+                    onClick={() => {
+                      resetForm(); // Ensure state is wiped for the next user
+                      setView("selection"); //Goes back to the selection screen
+                    }}
+                    className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white text-2xl font-bold rounded-2xl shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all"
+                  >
+                    Return To Selection Screen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {view !== "submission" && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -287,6 +329,7 @@ export default function Mobile() {
               }
 
               console.log(`Saving ${view} data:`, formData);
+              setView("submission"); // Goes to the submission screen
             }}
             className="w-full space-y-6"
           >
@@ -402,16 +445,16 @@ export default function Mobile() {
                       </div>
                     </div>
 
-                    {/* 3. AGE CATEGORY SELECTION (Manual Buttons) */}
+                    {/* 3. AGE GROUP SELECTION (Manual Buttons) */}
                     <div className="space-y-4">
-                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Age Category</label>
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Age Group</label>
                       <div className="flex gap-4">
-                        <button type="button" onClick={() => setFormData({ ...formData, ageCategory: '13-17' })}
-                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.ageCategory === '13-17' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                        <button type="button" onClick={() => setFormData({ ...formData, ageGroup: '13-17' })}
+                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.ageGroup === '13-17' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
                           13-17
                         </button>
-                        <button type="button" onClick={() => setFormData({ ...formData, ageCategory: '18+' })}
-                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.ageCategory === '18+' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
+                        <button type="button" onClick={() => setFormData({ ...formData, ageGroup: '18+' })}
+                          className={`flex-1 py-4 text-xl font-bold rounded-2xl border-2 transition-all ${formData.ageGroup === '18+' ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner" : "border-slate-100 bg-slate-50 text-slate-400"}`}>
                           18+
                         </button>
                       </div>
@@ -801,15 +844,8 @@ export default function Mobile() {
                 Complete Registration
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="w-full py-4 text-lg text-slate-400 font-bold hover:text-red-500 transition-colors"
-            >
-              Reset Terminal and Exit
-            </button>
           </form>
+        )}
         </div>
       )}
     </div>
