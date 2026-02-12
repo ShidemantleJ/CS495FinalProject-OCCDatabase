@@ -49,6 +49,29 @@ export default function EditMember() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [availablePositions, setAvailablePositions] = useState([]);
     const [selectedPositions, setSelectedPositions] = useState([]);
+    const [churches, setChurches] = useState([]);
+    const [selectedChurchId, setSelectedChurchId] = useState("");
+
+    // Fetch churches on component mount
+    useEffect(() => {
+        const fetchChurches = async () => {
+            try {
+                const { data, error } = await databaseAPI.list("church2", {
+                    select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
+                });
+                if (error) {
+                    console.error("Error fetching churches:", error);
+                } else {
+                    setChurches(data || []);
+                }
+            } catch (err) {
+                console.error("Error fetching churches:", err);
+            }
+        };
+        fetchChurches();
+    }, []);
+    const [expiredPositions, setExpiredPositions] = useState([]);
+    const [expiredLoading, setExpiredLoading] = useState(false);
 
     // Check if current user is admin
     useEffect(() => {
@@ -107,6 +130,29 @@ export default function EditMember() {
         loadMemberPositions();
     }, [id, isAdmin]);
 
+    // Fetch expired member positions
+    useEffect(() => {
+        const loadExpiredPositions = async () => {
+            if (!id || !isAdmin) return;
+            setExpiredLoading(true);
+
+            const { data, error } = await supabase
+                .from("member_positions")
+                .select("id, position, start_date, end_date")
+                .eq("member_id", id)
+                .not("end_date", "is", null)
+                .order("end_date", { ascending: false });
+
+            if (!error && data) {
+                setExpiredPositions(data);
+            } else {
+                setExpiredPositions([]);
+            }
+            setExpiredLoading(false);
+        };
+        loadExpiredPositions();
+    }, [id, isAdmin]);
+
     useEffect(() => {
         const loadMember = async () => {
             const { data, error } = await databaseAPI.list("team_members", {
@@ -114,11 +160,51 @@ export default function EditMember() {
             }).single();
 
             if (error) setError(error.message);
-            else setForm(data);
+            else {
+                setForm(data);
+                // Find matching church if affiliation exists
+                if (data.church_affiliation_name && churches.length > 0) {
+                    const matchingChurch = churches.find(c => 
+                        c.church_name === data.church_affiliation_name &&
+                        c.church_physical_city === data.church_affiliation_city &&
+                        c.church_physical_state === data.church_affiliation_state
+                    );
+                    if (matchingChurch) {
+                        setSelectedChurchId(matchingChurch.id);
+                    }
+                }
+            }
             setLoading(false);
         };
         loadMember();
-    }, [id]);
+    }, [id, churches]);
+
+    const handleChurchChange = (e) => {
+        const churchId = e.target.value;
+        setSelectedChurchId(churchId);
+        
+        if (churchId) {
+            const selectedChurch = churches.find(c => c.id === churchId);
+            if (selectedChurch) {
+                setForm(prev => ({
+                    ...prev,
+                    church_affiliation_name: selectedChurch.church_name || "",
+                    church_affiliation_city: selectedChurch.church_physical_city || "",
+                    church_affiliation_state: selectedChurch.church_physical_state || "",
+                    church_affiliation_county: selectedChurch.church_physical_county || ""
+                }));
+            }
+        } else {
+            // Clear church affiliation fields if no church selected
+            setForm(prev => ({
+                ...prev,
+                church_affiliation_name: "",
+                church_affiliation_city: "",
+                church_affiliation_state: "",
+                church_affiliation_county: ""
+            }));
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -212,7 +298,7 @@ export default function EditMember() {
             const currentPositionCodes = (currentPositions || []).map(p => p.position);
             const selectedSet = new Set(selectedPositions);
             const currentSet = new Set(currentPositionCodes);
-            
+
             // Check if positions actually changed
             const positionsChanged = 
                 selectedPositions.length !== currentPositionCodes.length ||
@@ -220,59 +306,43 @@ export default function EditMember() {
                 !currentPositionCodes.every(pos => selectedSet.has(pos));
             
             if (positionsChanged) {
-                // End all current active positions
-                const { error: endError } = await supabase
-                    .from("member_positions")
-                    .update({ end_date: today })
-                    .eq("member_id", id)
-                    .is("end_date", null);
+                const uniqueSelectedPositions = [...new Set(selectedPositions.filter(pos => pos))];
+                const selectedUniqueSet = new Set(uniqueSelectedPositions);
 
-                if (endError) {
-                    setError(endError.message);
-                    setLoading(false);
-                    return;
+                const positionsToEnd = currentPositionCodes.filter(pos => !selectedUniqueSet.has(pos));
+                const positionsToAdd = uniqueSelectedPositions.filter(pos => !currentSet.has(pos));
+
+                if (positionsToEnd.length > 0) {
+                    const { error: endError } = await supabase
+                        .from("member_positions")
+                        .update({ end_date: today })
+                        .eq("member_id", id)
+                        .is("end_date", null)
+                        .in("position", positionsToEnd);
+
+                    if (endError) {
+                        setError(endError.message);
+                        setLoading(false);
+                        return;
+                    }
                 }
 
-                // Add new positions for selected ones
-                if (selectedPositions.length > 0) {
-                    // Remove duplicates from selectedPositions
-                    const uniqueSelectedPositions = [...new Set(selectedPositions.filter(pos => pos))];
-                    
-                    // Check for existing positions with the same start_date to avoid duplicates
-                    const { data: existingToday } = await databaseAPI.list("member_positions", {
-                        filters: [
-                            { column: "member_id", op: "eq", value: id },
-                            { column: "start_date", op: "eq", value: today },
-                            { column: "end_date", op: "is", value: null }
-                        ]
-                    });
-                    
-                    const existingPositionCodes = new Set(
-                        (existingToday || [])
-                            .filter((p) => p.start_date === today && !p.end_date)
-                            .map(p => p.position)
-                    );
-                    
-                    // Only insert positions that don't already exist for today
-                    const positionsToInsert = uniqueSelectedPositions
-                        .filter(position => !existingPositionCodes.has(position))
-                        .map(position => ({
-                            member_id: id,
-                            position: position,
-                            start_date: today,
-                            end_date: null
-                        }));
+                if (positionsToAdd.length > 0) {
+                    const positionsToInsert = positionsToAdd.map(position => ({
+                        member_id: id,
+                        position: position,
+                        start_date: today,
+                        end_date: null
+                    }));
 
-                    if (positionsToInsert.length > 0) {
-                        const { error: insertError } = await supabase
-                            .from("member_positions")
-                            .insert(positionsToInsert);
+                    const { error: insertError } = await supabase
+                        .from("member_positions")
+                        .insert(positionsToInsert);
 
-                        if (insertError) {
-                            setError(insertError.message);
-                            setLoading(false);
-                            return;
-                        }
+                    if (insertError) {
+                        setError(insertError.message);
+                        setLoading(false);
+                        return;
                     }
                 }
             }
@@ -290,6 +360,21 @@ export default function EditMember() {
                 return [...prev, positionCode];
             }
         });
+    };
+
+    const handleDeleteExpiredPosition = async (positionId) => {
+        setError("");
+        const { error: deleteError } = await databaseAPI.delete("member_positions", positionId);
+        if (deleteError) {
+            setError(deleteError.message);
+            return;
+        }
+        setExpiredPositions(prev => prev.filter(pos => pos.id !== positionId));
+    };
+
+    const getPositionLabel = (positionCode) => {
+        const match = availablePositions.find((pos) => (pos.code || "") === positionCode);
+        return match?.name || match?.description || positionCode || "Unknown";
     };
 
     if (loading || !form) return <p className="text-center mt-10">Loading...</p>;
@@ -319,6 +404,26 @@ export default function EditMember() {
             </div>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Church Affiliation Dropdown */}
+                <div className="col-span-2 mb-4 p-4 border rounded-lg">
+                    <label className="block text-lg font-medium mb-2">Church Affiliation</label>
+                    <select
+                        value={selectedChurchId}
+                        onChange={handleChurchChange}
+                        className="w-full border rounded-md px-3 py-2"
+                    >
+                        <option value="">Select a church (optional)</option>
+                        {churches.map((church) => (
+                            <option key={church.id} value={church.id}>
+                                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Select the church the member is affiliated with
+                    </p>
+                </div>
+
                 {/* Primary Fields - At the Top */}
                 {["first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address"].map((field) => (
                     <div key={field} className="col-span-1">
@@ -337,7 +442,7 @@ export default function EditMember() {
 
                 {/* Remaining Fields */}
                 {Object.keys(form).map((field) =>
-                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address"].includes(field)
+                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address", "church_affiliation_name", "church_affiliation_city", "church_affiliation_state", "church_affiliation_county"].includes(field)
                         ? null
                         : field === "active" ? (
                             <label key={field} className="col-span-2 flex items-center gap-2">
@@ -388,7 +493,7 @@ export default function EditMember() {
 
                 {/* Position Selection - Admin Only */}
                 <div className="col-span-2">
-                    <label className="block text-sm font-medium mb-2">Position(s)</label>
+                    <label className="block text-sm font-medium mb-2">Current Position(s)</label>
                     {!isAdmin ? (
                         <p className="text-sm text-gray-500">Only admins can edit positions.</p>
                     ) : availablePositions.length === 0 ? (
@@ -429,6 +534,40 @@ export default function EditMember() {
                         </div>
                     )}
                 </div>
+
+                {/* Expired Positions - Admin Only */}
+                {isAdmin && (
+                    <div className="col-span-2">
+                        <label className="block text-sm font-medium mb-2">Expired Position(s)</label>
+                        {expiredLoading ? (
+                            <p className="text-sm text-gray-500">Loading expired positions...</p>
+                        ) : expiredPositions.length === 0 ? (
+                            <p className="text-sm text-gray-500">No expired positions found.</p>
+                        ) : (
+                            <div className="border rounded-md bg-gray-50">
+                                {expiredPositions.map((pos) => (
+                                    <div key={pos.id} className="flex items-center justify-between px-3 py-2 border-b last:border-b-0">
+                                        <div className="text-sm text-gray-700">
+                                            <span className="font-medium text-gray-900">{getPositionLabel(pos.position)}</span>
+                                            {pos.end_date && (
+                                                <span className="ml-2 text-xs text-gray-500">
+                                                    (ended {pos.end_date})
+                                                </span>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteExpiredPosition(pos.id)}
+                                            className="text-red-600 hover:text-red-700 text-sm font-medium"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="col-span-2 flex justify-end gap-2 mt-4">
                     <button

@@ -170,17 +170,21 @@ export default function TeamMemberPage() {
                             <p>
                                 <strong>Church Affiliation:</strong>{" "}
                                 {member.church_affiliation_name ? (
-                                    <button
-                                        onClick={() => {
-                                            if (church?.id) {
-                                                navigate(`/church/${church.id}`);
-                                            }
-                                        }}
-                                        className="text-blue-600 hover:underline"
-                                        disabled={!church?.id}
-                                    >
-                                        {member.church_affiliation_name.replace(/_/g, " ")}
-                                    </button>
+                                    church?.id ? (
+                                        <button
+                                            onClick={() => navigate(`/church/${church.id}`)}
+                                            className="text-blue-600 hover:underline"
+                                        >
+                                            {member.church_affiliation_name.replace(/_/g, " ")}
+                                        </button>
+                                    ) : (
+                                        <span
+                                            className="text-gray-400 cursor-help"
+                                            title="Church not in database"
+                                        >
+                                            {member.church_affiliation_name.replace(/_/g, " ")}
+                                        </span>
+                                    )
                                 ) : (
                                     "N/A"
                                 )}
