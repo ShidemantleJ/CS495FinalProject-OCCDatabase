@@ -23,6 +23,7 @@ export default function Individuals() {
     // Filter states
     const [filters, setFilters] = useState({
         churchName: "",
+        name: "",
         activeToEmails: null, // null = all, true = active, false = inactive
         craftIdeas: false,
         packingPartyIdeas: false,
@@ -100,6 +101,17 @@ export default function Individuals() {
                 const churchNameLower = ind.church_name.toLowerCase();
                 return churchNameLower.includes(searchWithSpaces) || 
                        churchNameLower.includes(searchWithUnderscores);
+            });
+        }
+
+        // Filter by individual name (first, last, or full)
+        if (filters.name) {
+            const nameSearch = filters.name.toLowerCase().trim();
+            filtered = filtered.filter(ind => {
+                const first = (ind.first_name || "").toLowerCase();
+                const last = (ind.last_name || "").toLowerCase();
+                const full = `${first} ${last}`.trim();
+                return first.includes(nameSearch) || last.includes(nameSearch) || full.includes(nameSearch);
             });
         }
 
@@ -287,7 +299,7 @@ export default function Individuals() {
             <div className="bg-gray-100 p-4 rounded-lg mb-6">
                 <h2 className="text-lg font-semibold mb-4">Filters</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Church Name</label>
                         <input
@@ -299,6 +311,19 @@ export default function Individuals() {
                         />
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Individual Name</label>
+                        <input
+                            type="text"
+                            placeholder="Search by name..."
+                            value={filters.name}
+                            onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                            className="w-full border rounded-md p-2"
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Active to Emails</label>
                         <select
@@ -327,15 +352,6 @@ export default function Individuals() {
                             <option value="church_asc">Church (A → Z)</option>
                             <option value="church_desc">Church (Z → A)</option>
                         </select>
-                    </div>
-
-                    <div className="flex items-end">
-                        <button
-                            onClick={copyAllEmails}
-                            className="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-                        >
-                            {copyStatus === "success" ? "✓ Copied!" : copyStatus === "error" ? "No Emails" : "Copy All Emails"}
-                        </button>
                     </div>
                 </div>
 
@@ -409,25 +425,34 @@ export default function Individuals() {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => {
-                        setFilters({
-                            churchName: "",
-                            activeToEmails: null,
-                            craftIdeas: false,
-                            packingPartyIdeas: false,
-                            fundraisingIdeas: false,
-                            gettingMorePeopleInvolved: false,
-                            presentationAtChurch: false,
-                            resources: false,
-                            other: false,
-                        });
-                        setSortBy("name_asc");
-                    }}
-                    className="mt-4 bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
-                >
-                    Clear All Filters
-                </button>
+                <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
+                    <button
+                        onClick={copyAllEmails}
+                        className="w-full md:w-auto bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                    >
+                        {copyStatus === "success" ? "Copied!" : copyStatus === "error" ? "No Emails" : "Copy All Emails"}
+                    </button>
+                    <button
+                        onClick={() => {
+                            setFilters({
+                                churchName: "",
+                                name: "",
+                                activeToEmails: null,
+                                craftIdeas: false,
+                                packingPartyIdeas: false,
+                                fundraisingIdeas: false,
+                                gettingMorePeopleInvolved: false,
+                                presentationAtChurch: false,
+                                resources: false,
+                                other: false,
+                            });
+                            setSortBy("name_asc");
+                        }}
+                        className="w-full md:w-auto bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
+                    >
+                        Clear All Filters
+                    </button>
+                </div>
             </div>
 
             {/* Results Count */}
@@ -723,4 +748,6 @@ export default function Individuals() {
         </div>
     );
 }
+
+
 
