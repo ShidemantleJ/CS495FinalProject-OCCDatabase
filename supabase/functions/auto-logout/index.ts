@@ -32,10 +32,10 @@ serve(async (req) => {
     const userIds = inactiveUsers.map((u) => u.id);
 
     // Delete sessions for all inactive users
-    const { data: deletedSessions, error: sessionError } = await supabase
-      .from("auth.sessions")
-      .delete()
-      .in("user_id", userIds);
+    const { data: deletedSessions, error: sessionError } = await supabase.rpc(
+      "delete_user_sessions",
+      { uids: userIds }
+    );
 
     if (sessionError) throw sessionError;
 
