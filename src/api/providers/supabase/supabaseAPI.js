@@ -73,7 +73,7 @@ export const supabaseAPI = {
       .insert([{
         form_template_id: formTemplateId,
         form_template_name: formTemplateName,
-        content: formContent
+        form_content: formContent
       }])
       .select(select)
       .single();

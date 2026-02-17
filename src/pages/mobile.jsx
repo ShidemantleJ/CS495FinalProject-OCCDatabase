@@ -336,6 +336,9 @@ export default function Mobile() {
                   filters: [{ column: "name", op: "eq", value: view }]
                 });
                 
+                console.log("Looking for form template with name:", view);
+                console.log("Retrieved templates:", templates);
+                
                 if (lookupError) {
                   console.error("Error looking up form template:", lookupError);
                   alert("Failed to find form template. Please try again.");
@@ -344,6 +347,9 @@ export default function Mobile() {
                 
                 if (!templates || templates.length === 0) {
                   console.error("Form template not found for:", view);
+                  // Fetch all available templates for debugging
+                  const { data: allTemplates } = await databaseAPI.list("form_templates", {});
+                  console.log("Available form templates:", allTemplates);
                   alert("Form template not found. Please contact administrator.");
                   return;
                 }
