@@ -379,7 +379,7 @@ export default function Mobile() {
                 {/* Location Code not in PLW*/}
                 {view !== "plw" && (
                   <div className="space-y-2 animate-in fade-in duration-300">
-                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Location Code</label>
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">Location Code<span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       placeholder="|_|_|_|_|_|_|"
@@ -394,7 +394,7 @@ export default function Mobile() {
                 {/* Date for Individual and Church */}
                 {(view === "individual" || view === "church") && (
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">DATE</label>
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">DATE<span className="text-red-500">*</span></label>
                     <input
                       type="date"
                       placeholder="MM/DD/YY"
@@ -409,7 +409,7 @@ export default function Mobile() {
                 {/* Shoebox Number for Individual and Church */}
                 {(view === "individual" || view === "church") && (
                     <div className="space-y-2 md:col-span-2 animate-in fade-in duration-300">
-                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">NUMBER OF SHOEBOXES YOU ARE DROPPING OFF / <span className="text-slate-300">CANTIDAD DE CAJAS DE REGALOS QUE ESTÁS ENTREGANDO</span></label>
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">NUMBER OF SHOEBOXES YOU ARE DROPPING OFF / <span className="text-slate-300">CANTIDAD DE CAJAS DE REGALOS QUE ESTÁS ENTREGANDO</span><span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -505,7 +505,7 @@ export default function Mobile() {
               {/*PRIMARY IDENTITY (NAME & EMAIL) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">FIRST NAME / <span className="text-slate-300">NOMBRE</span></label>
+                  <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">FIRST NAME / <span className="text-slate-300">NOMBRE</span><span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     placeholder="e.g. John"
@@ -517,7 +517,7 @@ export default function Mobile() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">LAST NAME / <span className="text-slate-300">APELLIDO</span></label>
+                  <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">LAST NAME / <span className="text-slate-300">APELLIDO</span><span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     placeholder="e.g. Smith"
@@ -538,7 +538,6 @@ export default function Mobile() {
                   className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  required
                 />
               </div>
 
@@ -550,7 +549,6 @@ export default function Mobile() {
                   className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
                 />
               </div>
 
@@ -566,7 +564,6 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      required
                     />
                   </div>
                 )}
@@ -582,7 +579,6 @@ export default function Mobile() {
                         className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
                         value={formData.mailingAddress}
                         onChange={(e) => setFormData({ ...formData, mailingAddress: e.target.value })}
-                        required
                       />
                     </div>
                   </div>
@@ -592,7 +588,7 @@ export default function Mobile() {
                 {(view === "church") && (
                   <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
                     <div className="space-y-2">
-                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1"> CHURCH/GROUP NAME / <span className="text-slate-300">NOMBRE DE LA IGLESIA O GRUPO</span></label>
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1"> CHURCH/GROUP NAME / <span className="text-slate-300">NOMBRE DE LA IGLESIA O GRUPO</span><span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         placeholder="e.g. 1st Baptist"
@@ -612,7 +608,6 @@ export default function Mobile() {
                         className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                         value={formData.churchOrGroupPhone}
                         onChange={(e) => setFormData({ ...formData, churchOrGroupPhone: e.target.value })}
-                        required
                       />
                     </div>
 
@@ -624,7 +619,6 @@ export default function Mobile() {
                         className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
                         value={formData.churchOrGroupMailingAddress}
                         onChange={(e) => setFormData({ ...formData, churchOrGroupMailingAddress: e.target.value })}
-                        required
                       />
                     </div>
                   </div>
@@ -639,7 +633,6 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      required
                     />
                   </div>
 
@@ -652,7 +645,6 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all uppercase"
                       value={formData.state}
                       onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      required
                     />
                   </div>
 
@@ -667,7 +659,6 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                       value={formData.zip}
                       onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                      required
                     />
                   </div>
                 </div>
@@ -678,7 +669,7 @@ export default function Mobile() {
               {(view === "plw") && (
                 <div className="space-y-8 border-t border-slate-100 pt-8 mb-8">
                   <div className="space-y-2">
-                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP NAME</label>
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP NAME<span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       placeholder="e.g. 1st Baptist"
@@ -691,7 +682,7 @@ export default function Mobile() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP CITY</label>
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP CITY<span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         placeholder="e.g. Tuscaloosa"
@@ -703,7 +694,7 @@ export default function Mobile() {
                     </div>
                 
                     <div className="space-y-2">
-                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP STATE</label>
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">CHURCH/GROUP STATE<span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         maxLength={2}
@@ -841,7 +832,6 @@ export default function Mobile() {
                       className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all resize-none"
                       value={formData.supportNeeds}
                       onChange={(e) => setFormData({ ...formData, supportNeeds: e.target.value })}
-                      required
                     />
                   </div>
 
