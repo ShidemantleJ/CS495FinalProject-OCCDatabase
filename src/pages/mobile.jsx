@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 // import { supabase } from "../supabaseClient";
-// import { databaseAPI } from "../api";
+import { databaseAPI } from "../api";
 // import { useNavigate } from "react-router-dom";
 
 export default function Mobile() {
@@ -314,7 +314,7 @@ export default function Mobile() {
 
         {view !== "submission" && (
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
 
               //Checks if buttons were clicked for specific views
@@ -329,7 +329,46 @@ export default function Mobile() {
               }
 
               console.log(`Saving ${view} data:`, formData);
-              setView("submission"); // Goes to the submission screen
+              
+              try {
+                // Look up form template ID from form_templates table using the form name
+                const { data: templates, error: lookupError } = await databaseAPI.list("form_templates", {
+                  filters: [{ column: "name", op: "eq", value: view }]
+                });
+                
+                if (lookupError) {
+                  console.error("Error looking up form template:", lookupError);
+                  alert("Failed to find form template. Please try again.");
+                  return;
+                }
+                
+                if (!templates || templates.length === 0) {
+                  console.error("Form template not found for:", view);
+                  alert("Form template not found. Please contact administrator.");
+                  return;
+                }
+                
+                const formTemplateId = templates[0].id;
+                
+                // Submit the form with template info and form data as JSONB
+                const { data, error: submitError } = await databaseAPI.submitForm(
+                  formTemplateId,
+                  view, // formTemplateName
+                  formData // formContent as JSONB
+                );
+                
+                if (submitError) {
+                  console.error("Error submitting form:", submitError);
+                  alert("Failed to submit form. Please try again.");
+                  return;
+                }
+                
+                console.log("Form submitted successfully:", data);
+                setView("submission"); // Goes to the submission screen
+              } catch (error) {
+                console.error("Unexpected error during form submission:", error);
+                alert("An unexpected error occurred. Please try again.");
+              }
             }}
             className="w-full space-y-6"
           >
