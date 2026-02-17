@@ -1,0 +1,72 @@
+name: Supabase Secure Backup
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install PostgreSQL client
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget ca-certificates lsb-release postgresql-client gnupg
+
+          SERVER_VERSION=$(psql "$DATABASE_URL" -tAc "SHOW server_version_num;" | cut -c1-2)
+          echo "SERVER_VERSION=$SERVER_VERSION" >> $GITHUB_ENV
+
+          wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-$SERVER_VERSION
+
+      - name: Create encrypted compressed backup
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          mkdir -p backups
+
+          FILENAME="supabase_$(date +%F_%H-%M).dump.gz.gpg"
+
+          /usr/lib/postgresql/$SERVER_VERSION/bin/pg_dump "$DATABASE_URL" \
+            --format=custom \
+            --no-owner \
+            --no-privileges \
+          | gzip -9 \
+          | gpg --batch --yes \
+                --passphrase "$BACKUP_PASSWORD" \
+                --symmetric \
+                --cipher-algo AES256 \
+                -o backups/$FILENAME
+
+      - name: Prune old backups (keep last 14)
+        run: |
+          cd backups
+          ls -t | tail -n +15 | xargs -r rm --
+
+      - name: Commit to dedicated backup branch
+        run: |
+          git config user.name "supabase-backup-bot"
+          git config user.email "backup@github.com"
+
+          git checkout -B backup-storage
+
+          git add backups
+          git commit -m "Automated encrypted Supabase backup" || echo "No changes"
+
+          # Rewrite branch history to avoid growth
+          git reset --soft $(git commit-tree HEAD^{tree} -m "Latest backup snapshot")
+
+          git push origin backup-storage --force
