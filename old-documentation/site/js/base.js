@@ -45,10 +45,11 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Populate keyboard modal with proper Keys
-    document.querySelector('.help.shortcut kbd').innerHTML = keyCodes[shortcuts.help];
-    document.querySelector('.prev.shortcut kbd').innerHTML = keyCodes[shortcuts.previous];
-    document.querySelector('.next.shortcut kbd').innerHTML = keyCodes[shortcuts.next];
-    document.querySelector('.search.shortcut kbd').innerHTML = keyCodes[shortcuts.search];
+    document.querySelector('.help.shortcut kbd').textContent = keyCodes[shortcuts.help];
+    document.querySelector('.prev.shortcut kbd').textContent = keyCodes[shortcuts.previous];
+    document.querySelector('.next.shortcut kbd').textContent = keyCodes[shortcuts.next];
+    document.querySelector('.search.shortcut kbd').textContent = keyCodes[shortcuts.search];
+
 
     // Keyboard navigation
     document.addEventListener("keydown", function(e) {

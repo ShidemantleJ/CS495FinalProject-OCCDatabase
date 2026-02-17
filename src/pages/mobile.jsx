@@ -328,7 +328,7 @@ export default function Mobile() {
                 return;
               }
 
-              console.log(`Saving ${view} data:`, formData);
+              // console.log(`Saving ${view} data:`, formData);
               setView("submission"); // Goes to the submission screen
             }}
             className="w-full space-y-6"
