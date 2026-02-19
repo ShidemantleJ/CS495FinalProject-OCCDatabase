@@ -67,6 +67,18 @@ export const supabaseAPI = {
     return query;
   },
 
+  async submitForm(formTemplateId, formTemplateName, formContent, { select = "*" } = {}) {
+    return supabase
+      .from("form_submissions")
+      .insert([{
+        form_template_id: formTemplateId,
+        form_template_name: formTemplateName,
+        form_content: formContent
+      }])
+      .select(select)
+      .single();
+  },
+
   // Storage functions
   createSignedUrl(bucket, path, expiresIn) {
     return supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
