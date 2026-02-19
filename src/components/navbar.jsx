@@ -19,7 +19,7 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 w-full z-50 bg-gray-800 text-white shadow-md">
       <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
         <div className="flex items-center min-w-0 flex-1">
-          <img src={logo} alt="App Logo" className="h-8 md:h-10 w-auto mr-2 md:mr-3 flex-shrink-0" />
+          <img src={logo} alt="App Logo" className="h-8 md:h-12 w-auto mr-2 md:mr-3 flex-shrink-0" />
           <span className="text-base md:text-xl lg:text-2xl font-bold truncate">
             <span className="hidden sm:inline">Operation Christmas Child - </span>
             <span>West Alabama</span>
