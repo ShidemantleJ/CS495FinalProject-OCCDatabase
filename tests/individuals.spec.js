@@ -196,7 +196,7 @@ test.describe.serial("Individuals Management", () => {
     await page.goto("/individuals");
     await page.getByPlaceholder("Search by church...").fill(churchName);
     await page.getByRole("button", { name: /copy all emails/i }).click();
-    await expect(page.getByText("✓ Copied!")).toBeVisible();
+    await expect(page.getByText("Copied!")).toBeVisible();
   });
 
   test("Delete Individual", async ({ page }) => {
