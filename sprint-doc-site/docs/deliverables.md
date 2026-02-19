@@ -5,13 +5,14 @@
 
 [Project Planning Document]()
 
-Project Backlog:
-<br/>
-<img src="" width="500" alt="Backlog Snapshot">
+[Sprint Backlog](assets/Sprint%201.csv)
 
-Sprint Backlog:
+Project Backlog Snapshot (Sprints 2 and 3):
 <br/>
-<img src="" width="500" alt="Sprint Backlog">
+<img src="/assets/sprint-2-3-backlog.png"  alt="Backlog Snapshot (sprints 2 and 3)">
+Unsorted Backlog Items:
+<br/>
+<img src="/assets/unsorted-backlog.png"  alt="Unsorted Backlog Snapshot">
 
 <hr/>
 ## Preliminary
