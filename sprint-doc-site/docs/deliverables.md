@@ -7,7 +7,7 @@
 
 [Sprint Backlog](assets/Sprint%201.csv)
 
-Project Backlog Snapshot (Sprints 2 and 3):
+Project Backlog Snapshot:
 <br/>
 <img src="/assets/sprint-2-3-backlog.png"  alt="Backlog Snapshot (sprints 2 and 3)">
 Unsorted Backlog Items:
