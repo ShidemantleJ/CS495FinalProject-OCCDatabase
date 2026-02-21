@@ -1,18 +1,13 @@
 # Deliverables
 
 ## Sprint 1
-[Presentation (PowerPoint File)](https://bama365.sharepoint.com/:p:/t/CS495SeniorDesign-STUDENT/IQDHC7ZESSkKTJLzaqPMUMC2AblKhVu_fuJcq5A3yrkfG6A?e=28dVHw)
+[Project Planning Document](https://bama365.sharepoint.com/:w:/t/CS495SeniorDesign-STUDENT/IQBK7a8qWqsaQorabe50jmUxAfIfV_mxx1u4L405zVl1ytE?e=VhPcW4)
 
-[Project Planning Document]()
+[Project Backlog](https://docs.google.com/spreadsheets/d/1tsv-4GV_N8Yjz4eX_U89253I9LcpHF4c/edit?usp=sharing&ouid=100414629164411213212&rtpof=true&sd=true)
 
-[Sprint Backlog](assets/Sprint%201.csv)
+[Sprint Backlog](https://docs.google.com/spreadsheets/d/1cZlk6q7sN2oS_7rYDpevcE13g3FqYuog/edit?usp=sharing&ouid=100414629164411213212&rtpof=true&sd=true)
 
-Project Backlog Snapshot:
-<br/>
-<img src="/assets/sprint-2-3-backlog.png"  alt="Backlog Snapshot (sprints 2 and 3)">
-Unsorted Backlog Items:
-<br/>
-<img src="/assets/unsorted-backlog.png"  alt="Unsorted Backlog Snapshot">
+[Sprint Presentation (PowerPoint File)](https://bama365.sharepoint.com/:p:/t/CS495SeniorDesign-STUDENT/IQDHC7ZESSkKTJLzaqPMUMC2AblKhVu_fuJcq5A3yrkfG6A?e=28dVHw)
 
 <hr/>
 ## Preliminary
