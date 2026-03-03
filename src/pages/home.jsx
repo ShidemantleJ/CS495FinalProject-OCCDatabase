@@ -361,6 +361,13 @@ export default function Home() {
         getChurches(newFilters);
     };
 
+    const handleFilterInputKeyDown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            getChurches();
+        }
+    };
+
     useEffect(() => {
         const checkAdminStatus = async () => {
             if (user) {
@@ -445,6 +452,7 @@ export default function Home() {
                         placeholder="Search by church name"
                         value={filters.churchName}
                         onChange={(e) => setFilters({ ...filters, churchName: e.target.value })}
+                        onKeyDown={handleFilterInputKeyDown}
                         className="border p-2 rounded w-full md:w-1/3"
                     />
                     <input
@@ -452,6 +460,7 @@ export default function Home() {
                         placeholder="Filter by zipcode"
                         value={filters.zipcode}
                         onChange={(e) => setFilters({ ...filters, zipcode: e.target.value })}
+                        onKeyDown={handleFilterInputKeyDown}
                         className="border p-2 rounded w-full md:w-1/3"
                     />
                     <input
@@ -459,6 +468,7 @@ export default function Home() {
                         placeholder={`Minimum shoebox ${filters.selectedYear}`}
                         value={filters.shoeboxMin}
                         onChange={(e) => setFilters({ ...filters, shoeboxMin: e.target.value })}
+                        onKeyDown={handleFilterInputKeyDown}
                         className="border p-2 rounded w-full md:w-1/3"
                     />
                 </div>
