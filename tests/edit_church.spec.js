@@ -170,8 +170,12 @@ test.describe("Church Management & Editing", () => {
     // Save
     await page.getByRole("button", { name: "Save All Changes" }).click();
 
+    // Wait for the modal to close to ensure the save action completed
+    await expect(page.getByRole("button", { name: "Save All Changes" })).toBeHidden();
+
     // Verify update on card
-    await expect(page.getByText(`Shoebox ${currentYear}: 50`)).toBeVisible();
+    const card = page.locator("div.bg-white.shadow-md").filter({ hasText: churchName });
+    await expect(card.getByText(`Shoebox ${currentYear}: 50`)).toBeVisible();
   });
 
   test("Church Relations Team Member (Display Verification)", async ({
