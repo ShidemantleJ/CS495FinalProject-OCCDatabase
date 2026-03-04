@@ -78,9 +78,12 @@ test.describe("Home Page Filters & Sorting", () => {
 
   test.beforeEach(async ({ page }) => {
     await authenticate(page);
-    await page.goto("/");
-    // Ensure page is loaded
-    await expect(page.getByText("Filter by County")).toBeVisible();
+    // After authentication, we land on the /profile page. Navigate to the
+    // home page by clicking the "Churches" link. This is more robust than
+    // page.goto() for single-page apps as it leverages Playwright's actionability waits.
+    await page.getByRole("link", { name: "Churches" }).click();
+    // Ensure page is loaded by waiting for a key element. Using getByRole is more specific.
+    await expect(page.getByRole("heading", { name: "Filter by County" })).toBeVisible();
   });
 
   test("Filter by county", async ({ page }) => {
@@ -150,7 +153,10 @@ test.describe("Home Page Filters & Sorting", () => {
     await yearSelect.selectOption(String(prevYear));
 
     // Verify shoebox counts update. Alpha prevYear: 50
-    await expect(page.getByText(`Shoebox ${prevYear}: 50`)).toBeVisible();
+    const alphaCard = page
+      .locator("div.bg-white.shadow-md")
+      .filter({ hasText: testChurches[0].church_name });
+    await expect(alphaCard.getByText(`Shoebox ${prevYear}: 50`)).toBeVisible();
   });
 
   test("Sort by: Shoebox Count (High → Low)", async ({ page }) => {
@@ -167,7 +173,9 @@ test.describe("Home Page Filters & Sorting", () => {
     await sortSelect.selectOption("shoebox_desc");
 
     // Expected Order: Beta (200), Alpha (100), Gamma (50)
-    const cards = page.locator(".bg-white.shadow-md");
+    // Filter to only cards from this test run using the unique timestamp
+    const runTimestamp = testChurches[0].church_name.split(" ").pop();
+    const cards = page.locator(".bg-white.shadow-md").filter({ hasText: runTimestamp });
     await expect(cards.nth(0)).toContainText(testChurches[1].church_name);
     await expect(cards.nth(1)).toContainText(testChurches[0].church_name);
     await expect(cards.nth(2)).toContainText(testChurches[2].church_name);

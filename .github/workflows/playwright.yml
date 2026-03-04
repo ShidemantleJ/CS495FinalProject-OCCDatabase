@@ -1,9 +1,19 @@
 name: Playwright Tests
+env:
+    # Map the secrets to environment variables
+    ADMIN_USERNAME: ${{ secrets.ADMIN_USERNAME }}
+    ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+    REACT_APP_SUPABASE_URL: ${{ secrets.REACT_APP_SUPABASE_URL }}
+    PLAYWRIGHT_SUPABASE_SECRET_KEY: ${{ secrets.PLAYWRIGHT_SUPABASE_SECRET_KEY }}
+    REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY }}
+
+    # This tells Playwright it's running in a CI environment
+    CI: true
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, develop ]
 jobs:
   test:
     timeout-minutes: 60
