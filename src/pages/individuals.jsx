@@ -301,6 +301,16 @@ export default function Individuals() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
+                        <label className="block text-sm font-medium mb-1">Name</label>
+                        <input
+                            type="text"
+                            placeholder="Search by name..."
+                            value={filters.name}
+                            onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                            className="w-full border rounded-md p-2"
+                        />
+                    </div>
+                    <div>
                         <label className="block text-sm font-medium mb-1">Church Name</label>
                         <input
                             type="text"
@@ -311,16 +321,7 @@ export default function Individuals() {
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Individual Name</label>
-                        <input
-                            type="text"
-                            placeholder="Search by name..."
-                            value={filters.name}
-                            onChange={(e) => setFilters({ ...filters, name: e.target.value })}
-                            className="w-full border rounded-md p-2"
-                        />
-                    </div>
+                    
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
