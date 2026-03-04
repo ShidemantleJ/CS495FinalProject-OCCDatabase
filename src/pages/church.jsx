@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { useParams, useNavigate } from "react-router-dom";
+import { databaseAPI } from "../api";
+import { useUser } from "../contexts/UserContext";
 
 export default function ChurchPage() {
-  const { churchName } = useParams();
-  const [searchParams] = useSearchParams();
+  const {user} = useUser();
+  const { churchId } = useParams();
   const [church, setChurch] = useState(null);
   const [individuals, setIndividuals] = useState([]);
   const [notes, setNotes] = useState([]);
@@ -29,78 +30,48 @@ export default function ChurchPage() {
   const [savingNote, setSavingNote] = useState(false);
   const navigate = useNavigate();
   
+  const fetchNotesForChurch = async (churchId) => {
+    const { data, error } = await databaseAPI.list("notes", {
+      select: `
+        *,
+        added_by:added_by_team_member_id(first_name, last_name)
+      `,
+      filters: [{ column: "church_id", op: "eq", value: churchId }],
+      orderBy: { column: "created_at", ascending: false },
+    });
+
+    if (!error) {
+      setNotes(data || []);
+    }
+
+    return { data, error };
+  };
+
   // Get current year dynamically - automatically switches to 2026 when the year changes
   const SHOEBOX_YEAR = new Date().getFullYear();
   const relationsFieldName = `church_relations_member_${SHOEBOX_YEAR}`; 
 
   useEffect(() => {
     async function getChurch() {
-      // Decode the church name from URL (may have spaces or underscores)
-      const decodedChurchName = decodeURIComponent(churchName);
-      const city = searchParams.get("city");
+      const { data: churchData, error } = await databaseAPI.get("church2", churchId);
       
-      // Try multiple formats: exact match, with spaces, with underscores
-      const churchNameVariants = [
-        decodedChurchName, // Original from URL
-        decodedChurchName.replace(/ /g, "_"), // With underscores
-        decodedChurchName.replace(/_/g, " ") // With spaces
-      ];
-      
-      let churchData = null;
-      
-      // Try each variant
-      for (const nameVariant of churchNameVariants) {
-        let query = supabase
-          .from("church2")
-          .select("*")
-          .eq("church_name", nameVariant);
-        
-        // If city is provided in query params, filter by city to get the exact match
-        if (city) {
-          query = query.ilike("church_physical_city", `%${city}%`);
-        }
-        
-        const { data, error } = await query.maybeSingle();
-        
-        if (!error && data) {
-          churchData = data;
-          break; // Found it, stop searching
-        }
-      }
-      
-      // If still not found and we have city, try without city filter
-      if (!churchData && city) {
-        for (const nameVariant of churchNameVariants) {
-          const { data, error } = await supabase
-            .from("church2")
-            .select("*")
-            .eq("church_name", nameVariant)
-            .maybeSingle();
-          
-          if (!error && data) {
-            churchData = data;
-            break;
-          }
-        }
-      }
-      
-      if (churchData) {
+      if (error || !churchData) {
+        setChurch(null);
+      } else {
         setChurch(churchData);
       }
+      
       setLoading(false);
     }
     getChurch();
-  }, [churchName, searchParams]);
+  }, [churchId]);
 
   // Fetch current team member
   useEffect(() => {
     async function getCurrentTeamMember() {
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: memberData, error } = await supabase
-          .from("team_members")
-          .select("*")
-          .eq("email", user.email)
+        const { data: memberData, error } = await databaseAPI
+          .list("team_members", { filters: [{ column: "email", op: "eq", value: user.email }] })
           .single();
         if (error) {
           // Error fetching current team member
@@ -112,18 +83,18 @@ export default function ChurchPage() {
       }
     }
     getCurrentTeamMember();
-  }, []);
+  }, [user]);
 
   // Fetch all team members for admin dropdown
   useEffect(() => {
     async function getAllTeamMembers() {
       if (!isAdmin) return;
       
-      const { data, error } = await supabase
-        .from("team_members")
-        .select("id, first_name, last_name, active")
-        .eq("active", true)
-        .order("last_name", { ascending: true });
+      const { data, error } = await databaseAPI.list("team_members", {
+        select: "id, first_name, last_name, active",
+        filters: [{ column: "active", op: "eq", value: true }],
+        orderBy: { column: "last_name", ascending: true },
+      });
       
       if (error) {
         // Error fetching team members
@@ -138,21 +109,8 @@ export default function ChurchPage() {
   useEffect(() => {
     async function getNotes() {
       if (!church) return;
-      
-      const { data: notesData, error } = await supabase
-        .from("notes")
-        .select(`
-          *,
-          team_members!added_by_team_member_id(first_name, last_name)
-        `)
-        .eq("church_id", church.id)
-        .order("created_at", { ascending: false });
-      
-      if (error) {
-        // Error fetching notes
-      } else {
-        setNotes(notesData || []);
-      }
+      setNotesLoading(true);
+      await fetchNotesForChurch(church.id);
       setNotesLoading(false);
     }
     getNotes();
@@ -174,10 +132,9 @@ export default function ChurchPage() {
       
       // Try each variant and collect all individuals
       for (const nameVariant of churchNameVariants) {
-        const { data, error } = await supabase
-          .from("individuals")
-          .select("*")
-          .eq("church_name", nameVariant);
+        const { data, error } = await databaseAPI.list("individuals", {
+          filters: [{ column: "church_name", op: "eq", value: nameVariant }],
+        });
         
         if (!error && data) {
           allIndividuals = [...allIndividuals, ...data];
@@ -242,10 +199,11 @@ export default function ChurchPage() {
     }
 
     // Use the actual church name from the database (already loaded correctly)
-    const { error } = await supabase
-      .from("church2")
-      .update(updateData)
-      .eq("church_name", church.church_name);
+    const { error } = await databaseAPI.update(
+      "church2",
+      church.id,
+      updateData
+    );
 
     if (error) {
       alert("Failed to update shoebox counts. Please try again.");
@@ -261,32 +219,19 @@ export default function ChurchPage() {
   const handleAddNote = async () => {
     if (!newNote.trim() || !church || !currentTeamMember) return;
 
-    const { error } = await supabase
-      .from("notes")
-      .insert({
-        church_id: church.id,
-        team_member_id: currentTeamMember.id,
-        content: newNote.trim(),
-        added_by_team_member_id: currentTeamMember.id,
-      });
+    const { error } = await databaseAPI.create("notes", {
+      church_id: church.id,
+      team_member_id: currentTeamMember.id,
+      content: newNote.trim(),
+      added_by_team_member_id: currentTeamMember.id,
+    });
 
     if (error) {
       alert("Failed to add note. Please try again.");
     } else {
       setNewNote("");
       // Refresh notes
-      const { data: notesData, error: fetchError } = await supabase
-        .from("notes")
-        .select(`
-          *,
-          team_members!added_by_team_member_id(first_name, last_name)
-        `)
-        .eq("church_id", church.id)
-        .order("created_at", { ascending: false });
-      
-      if (!fetchError && notesData) {
-        setNotes(notesData);
-      }
+      await fetchNotesForChurch(church.id);
     }
   };
 
@@ -313,34 +258,15 @@ export default function ChurchPage() {
 
     setSavingNote(true);
 
-    const { data, error } = await supabase
-      .from("notes")
-      .update({ content: editingNoteContent.trim() })
-      .eq("id", noteId)
-      .select();
+    const { error } = await databaseAPI.update("notes", noteId, { content: editingNoteContent.trim() });
 
     if (error) {
       alert(`Failed to update note: ${error.message}`);
     } else {
-      if (data && data.length > 0) {
-        // Refresh notes
-        const { data: notesData, error: fetchError } = await supabase
-          .from("notes")
-          .select(`
-            *,
-            team_members!added_by_team_member_id(first_name, last_name)
-          `)
-          .eq("church_id", church.id)
-          .order("created_at", { ascending: false });
-        
-        if (!fetchError && notesData) {
-          setNotes(notesData);
-        }
-        setEditingNoteId(null);
-        setEditingNoteContent("");
-      } else {
-        alert("Failed to update note: The update was blocked. Please check your RLS policies.");
-      }
+      // Update succeeded - refresh notes
+      await fetchNotesForChurch(church.id);
+      setEditingNoteId(null);
+      setEditingNoteContent("");
     }
     setSavingNote(false);
   };
@@ -350,27 +276,13 @@ export default function ChurchPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from("notes")
-      .delete()
-      .eq("id", noteId);
+    const { error } = await databaseAPI.delete("notes", noteId);
 
     if (error) {
       alert(`Failed to delete note: ${error.message}`);
     } else {
       // Refresh notes
-      const { data: notesData, error: fetchError } = await supabase
-        .from("notes")
-        .select(`
-          *,
-          team_members!added_by_team_member_id(first_name, last_name)
-        `)
-        .eq("church_id", church.id)
-        .order("created_at", { ascending: false });
-      
-      if (!fetchError && notesData) {
-        setNotes(notesData);
-      }
+      await fetchNotesForChurch(church.id);
     }
   };
 
@@ -392,10 +304,11 @@ export default function ChurchPage() {
     setSavingProjectLeader(true);
     
     // Use the actual church name from the database (already loaded correctly)
-    const { error } = await supabase
-      .from("church2")
-      .update({ project_leader: selectedProjectLeader })
-      .eq("church_name", church.church_name);
+    const { error } = await databaseAPI.update(
+      "church2",
+      church.id,
+      { project_leader: selectedProjectLeader }
+    );
 
     if (error) {
       alert("Failed to update project leader. Please try again.");
@@ -432,10 +345,11 @@ export default function ChurchPage() {
     // Use the actual church name from the database (already loaded correctly)
     const updateData = { [relationsFieldName]: selectedRelationsMember || null };
     
-    const { error } = await supabase
-      .from("church2")
-      .update(updateData)
-      .eq("church_name", church.church_name);
+    const { error } = await databaseAPI.update(
+      "church2",
+      church.id,
+      updateData
+    );
 
     if (error) {
       alert("Failed to update church relations team member. Please try again.");
@@ -756,9 +670,9 @@ export default function ChurchPage() {
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {notes.map((note) => {
-                const addedBy = note.team_members;
-                const addedByName = addedBy 
-                  ? `${addedBy.first_name} ${addedBy.last_name}`
+                const addedByMember = Array.isArray(note.added_by) ? note.added_by[0] : note.added_by;
+                const addedByName = addedByMember
+                  ? `${addedByMember.first_name || ""} ${addedByMember.last_name || ""}`.trim() || "Unknown"
                   : "Unknown";
                 const noteDate = new Date(note.created_at).toLocaleDateString("en-US", {
                   year: "numeric",
@@ -863,7 +777,7 @@ export default function ChurchPage() {
         {isAdmin && (
           <button
             className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-            onClick={() => navigate(`/edit-church/${encodeURIComponent(church.church_name)}`)}
+            onClick={() => navigate(`/edit-church/${church.id}`)}
           >
             Edit Church
           </button>

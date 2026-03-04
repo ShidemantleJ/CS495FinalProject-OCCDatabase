@@ -1,37 +1,25 @@
 import { Link, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { useState } from "react";
+import { databaseAPI } from "../api";
+import { useUser } from "../contexts/UserContext";
 import logo from "../assets/OCClogo.png";
 
+const handleLogout = async () => {
+  await databaseAPI.signOut();
+};
+
 export default function Navbar() {
-  const [user, setUser] = useState(null);
+  const {user} = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    getUser();
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user || null;
-      setUser(currentUser);
-    });
-
-    return () => {
-      subscription.subscription.unsubscribe();
-    };
-  }, []);
-
-  const hideLinks = ["/login", "/reset-password"].includes(location.pathname);
+  const hideLinks = ["/login", "/reset-password", "/mobile"].includes(location.pathname);
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-gray-800 text-white shadow-md">
       <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
         <div className="flex items-center min-w-0 flex-1">
-          <img src={logo} alt="App Logo" className="h-8 md:h-10 w-auto mr-2 md:mr-3 flex-shrink-0" />
+          <img src={logo} alt="App Logo" className="h-8 md:h-12 w-auto mr-2 md:mr-3 flex-shrink-0" />
           <span className="text-base md:text-xl lg:text-2xl font-bold truncate">
             <span className="hidden sm:inline">Operation Christmas Child - </span>
             <span>West Alabama</span>
@@ -41,16 +29,18 @@ export default function Navbar() {
         {!hideLinks && (
           <>
             {/* Desktop Navigation */}
-            <div className="hidden md:flex space-x-6">
+            <div className="hidden md:flex space-x-6 items-center">
               {!user ? (
                 <Link to="/login" className="hover:text-gray-300">Login</Link>
               ) : (
                 <>
-                  <Link to="/" className="hover:text-gray-300">Home</Link>
+                  <Link to="/" className="hover:text-gray-300">Churches</Link>
                   <Link to="/team-members" className="hover:text-gray-300">Team Members</Link>
                   <Link to="/individuals" className="hover:text-gray-300">Individuals</Link>
                   <Link to="/about" className="hover:text-gray-300">About</Link>
                   <Link to="/profile" className="hover:text-gray-300">Profile</Link>
+                  <Link to="/mobile" replace={true} className="hover:text-gray-300">Mobile</Link>
+                  <Link to="/login" onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-4 py-1 rounded">Logout</Link>
                 </>
               )}
             </div>
@@ -86,6 +76,8 @@ export default function Navbar() {
                 <Link to="/individuals" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Individuals</Link>
                 <Link to="/about" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>About</Link>
                 <Link to="/profile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Profile</Link>
+                <Link to="/mobile" replace={true} className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Mobile</Link>
+                <Link to="/login" onClick={handleLogout} className="bg-red-600 hover:bg-red-700 px-4 py-1 rounded">Logout</Link>
               </>
             )}
           </div>

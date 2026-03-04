@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
+import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { databaseAPI } from "../api";
+import { useUser } from "../contexts/UserContext";
 
 export default function Individuals() {
+    const {user} = useUser();
+
     const [individuals, setIndividuals] = useState([]);
     const [filteredIndividuals, setFilteredIndividuals] = useState([]);
     const [loading, setLoading] = useState(true);
     const [copyStatus, setCopyStatus] = useState(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [expandedRow, setExpandedRow] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [individualToDelete, setIndividualToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     const [editingIndividual, setEditingIndividual] = useState(null);
     const [savingIndividual, setSavingIndividual] = useState(false);
     const navigate = useNavigate();
@@ -16,6 +23,7 @@ export default function Individuals() {
     // Filter states
     const [filters, setFilters] = useState({
         churchName: "",
+        name: "",
         activeToEmails: null, // null = all, true = active, false = inactive
         craftIdeas: false,
         packingPartyIdeas: false,
@@ -29,12 +37,27 @@ export default function Individuals() {
     // Sort state
     const [sortBy, setSortBy] = useState("name_asc"); // name_asc, name_desc, church_asc, church_desc
 
+    const handleDeleteIndividual = async () => {
+        if (!individualToDelete) return;
+        setDeleting(true);
+        try {
+            await databaseAPI.delete("individuals", individualToDelete.id);
+            setIndividuals((prev) => prev.filter((i) => i.id !== individualToDelete.id));
+            setFilteredIndividuals((prev) => prev.filter((i) => i.id !== individualToDelete.id));
+        } catch (err) {
+            alert("Failed to delete individual: " + (err.message || "Unknown error"));
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setIndividualToDelete(null);
+        }
+    };
+
     useEffect(() => {
         async function getIndividuals() {
-            const { data, error } = await supabase
-                .from("individuals")
-                .select("*")
-                .order("first_name", { ascending: true });
+            const { data, error } = await databaseAPI.list("individuals", {
+                orderBy: { column: "first_name", ascending: true },
+            });
             
             if (error) {
                 setIndividuals([]);
@@ -49,13 +72,10 @@ export default function Individuals() {
     // Fetch current team member and check admin status
     useEffect(() => {
         async function getCurrentTeamMember() {
-            const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                const { data: memberData, error } = await supabase
-                    .from("team_members")
-                    .select("*")
-                    .eq("email", user.email)
-                    .single();
+                const { data: memberData, error } = await databaseAPI.list("team_members", {
+                    filters: [{ column: "email", op: "eq", value: user.email }],
+                }).single();
                 if (error) {
                     // Error fetching current team member
                 } else {
@@ -65,7 +85,7 @@ export default function Individuals() {
             }
         }
         getCurrentTeamMember();
-    }, []);
+    }, [user]);
 
     // Apply filters and sorting
     useEffect(() => {
@@ -81,6 +101,17 @@ export default function Individuals() {
                 const churchNameLower = ind.church_name.toLowerCase();
                 return churchNameLower.includes(searchWithSpaces) || 
                        churchNameLower.includes(searchWithUnderscores);
+            });
+        }
+
+        // Filter by individual name (first, last, or full)
+        if (filters.name) {
+            const nameSearch = filters.name.toLowerCase().trim();
+            filtered = filtered.filter(ind => {
+                const first = (ind.first_name || "").toLowerCase();
+                const last = (ind.last_name || "").toLowerCase();
+                const full = `${first} ${last}`.trim();
+                return first.includes(nameSearch) || last.includes(nameSearch) || full.includes(nameSearch);
             });
         }
 
@@ -169,10 +200,7 @@ export default function Individuals() {
 
         const newStatus = !individual.active_to_emails;
         
-        const { error } = await supabase
-            .from("individuals")
-            .update({ active_to_emails: newStatus })
-            .eq("id", individual.id);
+        const { error } = await databaseAPI.update("individuals", individual.id, { active_to_emails: newStatus });
 
         if (error) {
             alert("Failed to update status. Please try again.");
@@ -227,10 +255,7 @@ export default function Individuals() {
             notes: editingIndividual.notes,
         };
 
-        const { error } = await supabase
-            .from("individuals")
-            .update(updateData)
-            .eq("id", individualId);
+        const { error } = await databaseAPI.update("individuals", individualId, updateData);
 
         if (error) {
             alert("Failed to update individual. Please try again.");
@@ -274,7 +299,7 @@ export default function Individuals() {
             <div className="bg-gray-100 p-4 rounded-lg mb-6">
                 <h2 className="text-lg font-semibold mb-4">Filters</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Church Name</label>
                         <input
@@ -286,6 +311,19 @@ export default function Individuals() {
                         />
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Individual Name</label>
+                        <input
+                            type="text"
+                            placeholder="Search by name..."
+                            value={filters.name}
+                            onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                            className="w-full border rounded-md p-2"
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Active to Emails</label>
                         <select
@@ -314,15 +352,6 @@ export default function Individuals() {
                             <option value="church_asc">Church (A → Z)</option>
                             <option value="church_desc">Church (Z → A)</option>
                         </select>
-                    </div>
-
-                    <div className="flex items-end">
-                        <button
-                            onClick={copyAllEmails}
-                            className="w-full bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-                        >
-                            {copyStatus === "success" ? "✓ Copied!" : copyStatus === "error" ? "No Emails" : "Copy All Emails"}
-                        </button>
                     </div>
                 </div>
 
@@ -396,25 +425,34 @@ export default function Individuals() {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => {
-                        setFilters({
-                            churchName: "",
-                            activeToEmails: null,
-                            craftIdeas: false,
-                            packingPartyIdeas: false,
-                            fundraisingIdeas: false,
-                            gettingMorePeopleInvolved: false,
-                            presentationAtChurch: false,
-                            resources: false,
-                            other: false,
-                        });
-                        setSortBy("name_asc");
-                    }}
-                    className="mt-4 bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
-                >
-                    Clear All Filters
-                </button>
+                <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
+                    <button
+                        onClick={copyAllEmails}
+                        className="w-full md:w-auto bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                    >
+                        {copyStatus === "success" ? "Copied!" : copyStatus === "error" ? "No Emails" : "Copy All Emails"}
+                    </button>
+                    <button
+                        onClick={() => {
+                            setFilters({
+                                churchName: "",
+                                name: "",
+                                activeToEmails: null,
+                                craftIdeas: false,
+                                packingPartyIdeas: false,
+                                fundraisingIdeas: false,
+                                gettingMorePeopleInvolved: false,
+                                presentationAtChurch: false,
+                                resources: false,
+                                other: false,
+                            });
+                            setSortBy("name_asc");
+                        }}
+                        className="w-full md:w-auto bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
+                    >
+                        Clear All Filters
+                    </button>
+                </div>
             </div>
 
             {/* Results Count */}
@@ -440,7 +478,7 @@ export default function Individuals() {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {filteredIndividuals.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                                    <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                                         No individuals found matching the filters.
                                     </td>
                                 </tr>
@@ -514,7 +552,44 @@ export default function Individuals() {
                                                     )}
                                                 </div>
                                             </td>
+                                            {/* Trashcan icon for admin */}
+                                            {isAdmin && (
+                                                <td className="px-6 py-4 text-right align-middle">
+                                                    <button
+                                                        className="text-red-500 hover:text-red-700"
+                                                        title="Delete Individual"
+                                                        onClick={e => { e.stopPropagation(); setShowDeleteModal(true); setIndividualToDelete(ind); }}
+                                                    >
+                                                        <FaTrash size={18} />
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
+                                                                    {/* Delete Confirmation Modal for Individual */}
+                                                                    {showDeleteModal && individualToDelete && (
+                                                                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                                                                            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                                                                                <h2 className="text-xl font-bold mb-4 text-red-600">Delete Individual</h2>
+                                                                                <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{individualToDelete.first_name} {individualToDelete.last_name}</span>? This action cannot be undone.</p>
+                                                                                <div className="flex justify-end gap-2">
+                                                                                    <button
+                                                                                        className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                                                                        onClick={() => { setShowDeleteModal(false); setIndividualToDelete(null); }}
+                                                                                        disabled={deleting}
+                                                                                    >
+                                                                                        Cancel
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                                                                                        onClick={handleDeleteIndividual}
+                                                                                        disabled={deleting}
+                                                                                    >
+                                                                                        {deleting ? "Deleting..." : "Delete"}
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                         {expandedRow === ind.id && isAdmin && editingIndividual && (
                                             <tr key={`${ind.id}-expand`}>
                                                 <td colSpan="5" className="px-6 py-4 bg-gray-50">
@@ -673,4 +748,6 @@ export default function Individuals() {
         </div>
     );
 }
+
+
 

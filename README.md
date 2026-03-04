@@ -4,7 +4,13 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 ## Available Scripts
 
-In the project directory, you can run:
+If you have docker desktop installed, navigate to the project directory and run
+
+### `docker compose up --build`
+
+This runs the project in a container
+
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 ### `npm start`
 
