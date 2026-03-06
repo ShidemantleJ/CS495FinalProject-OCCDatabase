@@ -15,7 +15,6 @@ import AddChurch from "./pages/addChurch";
 import EditChurch from "./pages/editChurch";
 import TeamMember from "./pages/teamMember";
 import Individuals from "./pages/individuals";
-import FormSubmissions from "./pages/formSubmissions";
 import AddIndividual from "./pages/addIndividual";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/resetPassword";
@@ -55,7 +54,6 @@ function App() {
                     <Route path="/team-members" element={<TeamMembers />} />
                     <Route path="/team-member/:id" element={<TeamMember />} />
                     <Route path="/individuals" element={<Individuals />} />
-                    <Route path="/form-submissions" element={<FormSubmissions />} />
                    
 
                     {/* Add/Edit routes */}
