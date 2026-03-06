@@ -4,7 +4,7 @@ import { applyFilters, applyOrderAndRange } from "./queryHelpers";
 
 // Supabase API export
 export const supabaseAPI = {
-   // Auth functions
+  //region Auth functions
   getUser() {
     return supabase.auth.getUser();
   },
@@ -31,7 +31,7 @@ export const supabaseAPI = {
   },
 
   
-  // Generalized table functions
+  //region General functions
   async create(tableName, payload, { select = "*" } = {}) {
     return supabase.from(tableName).insert([payload]).select(select).single();
   },
@@ -67,6 +67,8 @@ export const supabaseAPI = {
     return query;
   },
 
+
+  //region Form Functions
   async submitForm(formTemplateId, formTemplateName, formContent, { select = "*" } = {}) {
     return supabase
       .from("form_submissions")
@@ -77,6 +79,31 @@ export const supabaseAPI = {
       }])
       .select(select)
       .single();
+  },
+
+  async saveTemplate(templateName, startDate, endDate, type, fields, { select = "*" } = {}) {
+    return supabase
+      .from("form_templates")
+      .insert([{
+        template_name: templateName,
+        start_date: startDate,
+        end_date: endDate,
+        type: type,
+        fields: fields
+      }])
+      .select(select)
+      .single();
+  },
+
+  async deleteTemplate(templateId) {
+    return supabase
+      .from("form_templates")
+      .delete()
+      .eq("id", templateId);
+  },
+
+  async getTemplates({ select = "*" } = {}) {
+    return supabase.from("form_templates").select(select);
   },
 
   // Storage functions

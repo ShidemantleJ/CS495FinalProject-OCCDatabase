@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 
 export default function FormSubmissions() {
+  const navigate = useNavigate();
   const MAX_CONTENT_HEIGHT_REM = 7;
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -99,6 +101,7 @@ export default function FormSubmissions() {
 
       <div className="bg-gray-100 p-4 rounded-lg mb-6">
         <label className="block text-sm font-medium mb-2">Form Template</label>
+        <div className="flex items-center gap-3">
         <select
           value={selectedTemplateId}
           onChange={(e) => setSelectedTemplateId(e.target.value)}
@@ -114,6 +117,14 @@ export default function FormSubmissions() {
               </option>
             ))}
         </select>
+        <button
+          type="button"
+          onClick={() => navigate("/edit-templates")}
+          className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
+        >
+          Edit Templates
+        </button>
+        </div>
       </div>
 
       {errorMessage && <p className="text-red-600 mb-4">{errorMessage}</p>}
