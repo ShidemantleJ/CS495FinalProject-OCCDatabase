@@ -40,15 +40,17 @@ function displayResults (results) {
   if (results.length > 0){
     for (var i=0; i < results.length; i++){
       var result = results[i];
-      var html = formatResult(result.location, result.title, result.summary);
-      search_results.insertAdjacentHTML('beforeend', html);
+      var resultElement = formatResult(result.location, result.title, result.summary);
+      search_results.appendChild(resultElement);
     }
   } else {
     var noResultsText = search_results.getAttribute('data-no-results-text');
     if (!noResultsText) {
       noResultsText = "No results found";
     }
-    search_results.insertAdjacentHTML('beforeend', '<p>' + noResultsText + '</p>');
+    var p = document.createElement('p');
+    p.textContent = noResultsText;
+    search_results.appendChild(p);
   }
 }
 
