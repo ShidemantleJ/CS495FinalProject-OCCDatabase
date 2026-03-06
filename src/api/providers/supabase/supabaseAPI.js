@@ -95,6 +95,15 @@ export const supabaseAPI = {
       .single();
   },
 
+  async updateTemplate(templateId, updates, { select = "*" } = {}) {
+    return supabase
+      .from("form_templates")
+      .update(updates)
+      .eq("id", templateId)
+      .select(select)
+      .single();
+  },
+
   async deleteTemplate(templateId) {
     return supabase
       .from("form_templates")
@@ -103,7 +112,7 @@ export const supabaseAPI = {
   },
 
   async getTemplates({ select = "*" } = {}) {
-    return supabase.from("form_templates").select(select);
+    return supabase.from("form_templates").select(select).order("template_name", { ascending: true });
   },
 
   // Storage functions
