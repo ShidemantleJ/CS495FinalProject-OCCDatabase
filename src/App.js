@@ -25,18 +25,29 @@ import Mobile from "./pages/mobile";
 import { useState, useEffect } from 'react';
 
 function App() {
-  //Checks if it is in PWA mode
-  const [isPWA, setIsPWA] = useState(false);
+  const [isPWA, setIsPWA] = useState(() => {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  });
 
   useEffect(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (isStandalone) {
-      setIsPWA(true);
+    if (isPWA && window.location.pathname !== '/mobile') {
+      window.location.replace('/mobile');
     }
-  }, []);
+  }, [isPWA]);
 
   // Ping server periodically when user interacts with the site, allowing automatic logout.
   useLastActivity();
+
+  // If we are in the PWA, only show the Mobile page
+  if (isPWA) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="*" element={<Mobile />} />
+        </Routes>
+      </Router>
+    );
+  }
 
   return (
     <Router>

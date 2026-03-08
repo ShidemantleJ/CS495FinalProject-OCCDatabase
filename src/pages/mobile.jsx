@@ -45,6 +45,25 @@ export default function Mobile() {
     referralSource: "", // "How did you hear about this event?"
     supportNeeds: ""    // "How can the West Alabama OCC team support you..."
   }); //Fields of the 3 forms we got sent by the sponsor
+
+  //The ability to download the PWA is only on the mobile page
+  useEffect(() => {
+    const manifest = document.createElement('link');
+    manifest.rel = 'manifest';
+    manifest.href = '/manifest.json';
+    document.head.appendChild(manifest);
+  
+    const icon = document.createElement('link');
+    icon.rel = 'apple-touch-icon';
+    icon.href = '/OCClogo-192.png';
+    document.head.appendChild(icon);
+  
+    // Remove them when the user leaves this page
+    return () => {
+      document.head.removeChild(manifest);
+      document.head.removeChild(icon);
+    };
+  }, []);
   
 
   //Prevent Back Navigation & URL changes
@@ -61,6 +80,7 @@ export default function Mobile() {
       window.removeEventListener("popstate", handleBackButton);
     };
   }, []);
+  
 
   //Handle Admin Login, and so hitting enter doesn't refresh the page
   const handleNextStep = (e) => {
