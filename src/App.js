@@ -22,7 +22,19 @@ import ResetPassword from "./pages/resetPassword";
 import useLastActivity from "./hooks/useLastActivity";
 import Mobile from "./pages/mobile";
 
+import { useState, useEffect } from 'react';
+
 function App() {
+  //Checks if it is in PWA mode
+  const [isPWA, setIsPWA] = useState(false);
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if (isStandalone) {
+      setIsPWA(true);
+    }
+  }, []);
+
   // Ping server periodically when user interacts with the site, allowing automatic logout.
   useLastActivity();
 
