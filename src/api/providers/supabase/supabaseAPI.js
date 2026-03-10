@@ -29,6 +29,16 @@ export const supabaseAPI = {
   signOut() {
     return supabase.auth.signOut();
   },
+  async checkAdmin() {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return false;
+    const { data: memberData } = await supabase
+      .from("team_members")
+      .select("admin_flag")
+      .eq("email", user.email)
+      .single();
+    return memberData?.admin_flag === true || memberData?.admin_flag === "true";
+  },
 
   
   // Generalized table functions
