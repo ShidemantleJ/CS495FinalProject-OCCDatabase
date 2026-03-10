@@ -202,13 +202,6 @@ export default function AddChurch() {
       notes: formData.notes || null,
       photo_url: formData.photo_url || null,
       created_at: new Date().toISOString(),
-      // Hidden defaults for optional fields:
-      shoebox_2023: null,
-      shoebox_2024: null,
-      shoebox_2025: null,
-      "church_relations_member_2023": null,
-      "church_relations_member_2024": null,
-      "church_relations_member_2025": null,
     });
 
     setLoading(false);

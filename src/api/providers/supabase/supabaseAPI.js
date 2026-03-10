@@ -38,6 +38,9 @@ export const supabaseAPI = {
   async update(tableName, id, updates, { select = "*" } = {}) {
     return supabase.from(tableName).update(updates).eq("id", id).select(select).single();
   },
+  async upsert(tableName, payload, { select = "*", ...options } = {}) {
+    return supabase.from(tableName).upsert(payload, options).select(select);
+  },
   async delete(tableName, id) {
     return supabase.from(tableName).delete().eq("id", id);
   },

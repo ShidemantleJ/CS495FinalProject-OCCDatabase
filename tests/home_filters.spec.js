@@ -13,6 +13,8 @@ test.describe("Home Page Filters & Sorting", () => {
   let supabase;
   /** @type {any[]} */
   let testChurches = [];
+  /** @type {any[]} */
+  let testAttributes = [];
   const currentYear = new Date().getFullYear();
   // Ensure we have a previous year that is valid in the dropdown (2023+)
   const prevYear = currentYear > 2023 ? currentYear - 1 : currentYear;
@@ -34,8 +36,6 @@ test.describe("Home Page Filters & Sorting", () => {
         church_physical_state: "SC",
         church_physical_zip: "10001",
         church_physical_county: "Pickens",
-        [`shoebox_${currentYear}`]: 100,
-        [`shoebox_${prevYear}`]: 50,
       },
       {
         church_name: `FilterTest Beta ${timestamp}`,
@@ -43,8 +43,6 @@ test.describe("Home Page Filters & Sorting", () => {
         church_physical_state: "SC",
         church_physical_zip: "20002",
         church_physical_county: "Fayette",
-        [`shoebox_${currentYear}`]: 200,
-        [`shoebox_${prevYear}`]: 20,
       },
       {
         church_name: `FilterTest Gamma ${timestamp}`,
@@ -52,26 +50,49 @@ test.describe("Home Page Filters & Sorting", () => {
         church_physical_state: "SC",
         church_physical_zip: "10001",
         church_physical_county: "Lamar",
-        [`shoebox_${currentYear}`]: 50,
-        [`shoebox_${prevYear}`]: 100,
       },
     ];
 
-    const { data: inserted, error } = await supabase
+    const { data: insertedChurches, error: churchError } = await supabase
       .from("church2")
       .insert(data)
       .select();
 
-    if (error) {
-      console.error("Error seeding data:", error);
+    if (churchError) {
+      console.error("Error seeding churches:", churchError);
     } else {
-      testChurches = inserted;
+      testChurches = insertedChurches;
+
+      // Now, seed the corresponding annual attributes
+      const attributesData = [
+        // Alpha
+        { church_id: testChurches[0].id, year: currentYear, shoebox_count: 100 },
+        { church_id: testChurches[0].id, year: prevYear, shoebox_count: 50 },
+        // Beta
+        { church_id: testChurches[1].id, year: currentYear, shoebox_count: 200 },
+        { church_id: testChurches[1].id, year: prevYear, shoebox_count: 20 },
+        // Gamma
+        { church_id: testChurches[2].id, year: currentYear, shoebox_count: 50 },
+        { church_id: testChurches[2].id, year: prevYear, shoebox_count: 100 },
+      ];
+
+      const { data: insertedAttrs, error: attrError } = await supabase
+        .from("church_annual_attributes")
+        .insert(attributesData)
+        .select();
+
+      if (attrError) {
+        console.error("Error seeding attributes:", attrError);
+      } else {
+        testAttributes = insertedAttrs;
+      }
     }
   });
 
   test.afterAll(async () => {
     if (supabase && testChurches.length > 0) {
       const ids = testChurches.map((c) => c.id);
+      await supabase.from("church_annual_attributes").delete().in("church_id", ids);
       await supabase.from("church2").delete().in("id", ids);
     }
   });
