@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
+import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
 
 export default function ChurchPage() {
   const {user} = useUser();
@@ -119,6 +120,11 @@ export default function ChurchPage() {
   useEffect(() => {
     async function getIndividuals() {
       if (!church) return;
+      if (!church.church_name) {
+        setIndividuals([]);
+        setIndividualsLoading(false);
+        return;
+      }
       
       // Use the actual church name from the database (already loaded correctly)
       // Try multiple variants to handle both spaces and underscores
@@ -365,13 +371,21 @@ export default function ChurchPage() {
   if (loading) return <p>Loading church...</p>;
   if (!church) return <p>Church not found.</p>;
 
+  const missingRequiredFields = getMissingChurchRequiredFields(church);
+  const churchDisplayName = church.church_name?.replace(/_/g, " ") || "Unnamed Church";
+
   return (
     <div className="max-w-6xl mx-auto mt-10 px-4 md:px-0">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Left side - Church Info */}
         <div className="space-y-4">
           <div>
-            <h1 className="text-3xl font-bold mb-4">{church.church_name.replace(/_/g, " ")}</h1>
+            <h1 className="text-3xl font-bold mb-4">{churchDisplayName}</h1>
+            {missingRequiredFields.length > 0 && (
+              <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+                <strong>Flagged for insufficient info:</strong> missing {missingRequiredFields.join(", ")}.
+              </div>
+            )}
             
             {/* Basic Contact Information */}
             <div className="space-y-2 text-gray-700 mb-4">

@@ -4,6 +4,7 @@ import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
 
 // Helper component for private bucket images - CHURCH VERSION
 function PrivateBucketImage({ filePath, className }) {
@@ -177,6 +178,12 @@ export default function EditChurch() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const missingRequiredFields = getMissingChurchRequiredFields(formData);
+    if (missingRequiredFields.length > 0) {
+      setError(`Missing required fields: ${missingRequiredFields.join(", ")}.`);
+      return;
+    }
     
     // Validate phone numbers
     if (formData["church_phone_number"] && !validatePhoneNumber(formData["church_phone_number"])) {
@@ -230,11 +237,18 @@ export default function EditChurch() {
     if (checkingAdmin || !isAdmin) return <p className="text-center mt-10">Loading...</p>;
     if (!formData) return <p className="text-center mt-10">Loading...</p>;
 
+    const missingRequiredFields = getMissingChurchRequiredFields(formData);
+
     return (
         <div className="max-w-2xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-4 md:p-6">
             <h1 className="text-2xl font-bold mb-6">Edit Church</h1>
             
             {error && <p className="text-red-600 mb-3 p-3 bg-red-50 rounded">{error}</p>}
+            {missingRequiredFields.length > 0 && (
+                <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                    This church is flagged for insufficient info. Missing: {missingRequiredFields.join(", ")}.
+                </p>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Photo Upload Section */}
@@ -376,6 +390,7 @@ export default function EditChurch() {
                                     value={formData["church_physical_county"] || ""}
                                     onChange={handleChange}
                                     className="w-full border rounded-md px-3 py-2"
+                                    required
                                     maxLength={100}
                                 />
                             </div>

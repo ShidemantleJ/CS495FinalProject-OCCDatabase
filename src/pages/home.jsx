@@ -3,6 +3,7 @@ import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
+import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
 
@@ -164,6 +165,7 @@ export default function Home() {
         churchName: "",
         zipcode: "",
         shoeboxMin: "",
+        flaggedOnly: false,
         sortBy: "name_asc", // Default to alphabetical
         selectedCounties: [],
         selectedYear: currentYear,
@@ -331,20 +333,26 @@ export default function Home() {
                     ...church,
                     relationsMemberName: relationsMemberName,
                     projectLeaderName: projectLeaderName,
-                    pocName: pocName
+                    pocName: pocName,
+                    missingRequiredFields: getMissingChurchRequiredFields(church),
                 };
             });
             
+            let filteredData = [...churchesWithTeamMembers];
+            if (filterValues.flaggedOnly) {
+                filteredData = filteredData.filter((church) => church.missingRequiredFields.length > 0);
+            }
+
             // Sort by church name alphabetically by default
-            let sortedData = [...churchesWithTeamMembers];
+            let sortedData = [...filteredData];
             const shoeboxField = `shoebox_${filterValues.selectedYear}`;
             if (filterValues.sortBy === "shoebox_desc") {
                 sortedData.sort((a, b) => (b[shoeboxField] || 0) - (a[shoeboxField] || 0));
             } else if (filterValues.sortBy === "name_desc") {
-                sortedData.sort((a, b) => b.church_name.localeCompare(a.church_name));
+                sortedData.sort((a, b) => (b.church_name || "").localeCompare(a.church_name || ""));
             } else {
                 // Default: alphabetical by name (name_asc or no sort specified)
-                sortedData.sort((a, b) => a.church_name.localeCompare(b.church_name));
+                sortedData.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || ""));
             }
             setChurches(sortedData);
         }
@@ -471,6 +479,20 @@ export default function Home() {
                         onKeyDown={handleFilterInputKeyDown}
                         className="border p-2 rounded w-full md:w-1/3"
                     />
+                    <label className="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm text-gray-700">
+                        <input
+                            type="checkbox"
+                            checked={filters.flaggedOnly}
+                            onChange={
+                                (e) => {
+                                    const newFilters = { ...filters, flaggedOnly: e.target.checked };
+                                    setFilters(newFilters);
+                                    getChurches(newFilters);                                }
+                            }
+                            className="h-4 w-4"
+                        />
+                        Only Flagged Churches
+                    </label>
                 </div>
 
                 <div className="mt-4 flex flex-col">
@@ -485,7 +507,7 @@ export default function Home() {
                         <button
                             className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
                             onClick={() => {
-                                const clearedFilters = { churchName: "", zipcode: "", shoeboxMin: "", sortBy: "", selectedCounties: [], selectedYear: currentYear };
+                                const clearedFilters = { churchName: "", zipcode: "", shoeboxMin: "", flaggedOnly: false, sortBy: "", selectedCounties: [], selectedYear: currentYear };
                                 setFilters(clearedFilters);
                                 getChurches(clearedFilters);
                             }}
@@ -552,8 +574,16 @@ export default function Home() {
                             </button>
                         )}
                         <div>
-                            <h2 className="text-xl font-bold mb-2">{church.church_name.replace(/_/g, " ")}</h2>
-                            <p className="text-gray-700">{church["church_physical_city"]}, {church["church_physical_state"]} - <strong>{church["church_physical_county"]} County</strong></p>
+                            <h2 className="text-xl font-bold mb-2">{church.church_name?.replace(/_/g, " ") || "Unnamed Church"}</h2>
+                            {church.missingRequiredFields.length > 0 && (
+                                <div className="mb-3 inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
+                                    Insufficient info: missing {church.missingRequiredFields.join(", ")}
+                                </div>
+                            )}
+                            <p className="text-gray-700">
+                                {[church["church_physical_city"], church["church_physical_state"]].filter(Boolean).join(", ") || "Location not provided"}
+                                {church["church_physical_county"] ? <> - <strong>{church["church_physical_county"]} County</strong></> : null}
+                            </p>
                             {church[shoeboxFieldName] !== undefined && <p className="text-gray-700"><strong>Shoebox {filters.selectedYear}:</strong> {church[shoeboxFieldName]}</p>}
                             {church.pocName && (
                                 <p className="text-gray-700"><strong>Point of Contact:</strong> {church.pocName}</p>
@@ -585,7 +615,7 @@ export default function Home() {
                             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
                                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
                                     <h2 className="text-xl font-bold mb-4 text-red-600">Delete Church</h2>
-                                    <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{churchToDelete.church_name.replace(/_/g, " ")}</span>? This action cannot be undone.</p>
+                                    <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{churchToDelete.church_name?.replace(/_/g, " ") || "Unnamed Church"}</span>? This action cannot be undone.</p>
                                     <div className="flex justify-end gap-2">
                                         <button
                                             className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
