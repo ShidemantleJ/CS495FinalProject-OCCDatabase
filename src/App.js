@@ -22,9 +22,32 @@ import ResetPassword from "./pages/resetPassword";
 import useLastActivity from "./hooks/useLastActivity";
 import Mobile from "./pages/mobile";
 
+import { useState, useEffect } from 'react';
+
 function App() {
+  const [isPWA, setIsPWA] = useState(() => {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  });
+
+  useEffect(() => {
+    if (isPWA && window.location.pathname !== '/mobile') {
+      window.location.replace('/mobile');
+    }
+  }, [isPWA]);
+
   // Ping server periodically when user interacts with the site, allowing automatic logout.
   useLastActivity();
+
+  // If we are in the PWA, only show the Mobile page
+  if (isPWA) {
+    return (
+      <Router>
+        <Routes>
+          <Route path="*" element={<Mobile />} />
+        </Routes>
+      </Router>
+    );
+  }
 
   return (
     <Router>
