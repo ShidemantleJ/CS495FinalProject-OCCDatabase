@@ -9,6 +9,7 @@ export default function EditTemplates() {
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [validTables, setValidTables] = useState([]);
 
   // Editing state
   const [editingId, setEditingId] = useState(null);
@@ -18,13 +19,71 @@ export default function EditTemplates() {
 
   // Creating state
   const [isCreating, setIsCreating] = useState(false);
-  const [newForm, setNewForm] = useState({ template_name: "", type: "", start_date: "", end_date: "" });
+  const [newForm, setNewForm] = useState({ template_name: "", type: "", destination_table: "", start_date: "", end_date: "" });
   const [newFieldsList, setNewFieldsList] = useState([]);
   const [newFieldsError, setNewFieldsError] = useState("");
+
+  // Table column fields state
+  const [tableColumnsCache, setTableColumnsCache] = useState({});
+  const [editTableColumns, setEditTableColumns] = useState([]);
+  const [newTableColumns, setNewTableColumns] = useState([]);
 
   // Field builder modal
   const [fieldModalOpen, setFieldModalOpen] = useState(false);
   const [fieldModalMode, setFieldModalMode] = useState("edit"); // "edit" | "create"
+
+  const SQL_TYPE_MAP = {
+    text: "text", "character varying": "text", varchar: "text", char: "text", character: "text", citext: "text",
+    integer: "number", bigint: "number", smallint: "number", numeric: "number", decimal: "number", real: "number", "double precision": "number",
+    date: "date", timestamp: "date", "timestamp with time zone": "date", "timestamp without time zone": "date",
+    boolean: "select",
+    jsonb: "textarea", json: "textarea",
+  };
+
+  const mapSqlType = (sqlType) => SQL_TYPE_MAP[sqlType?.toLowerCase()] || "text";
+
+  const fetchTableColumns = async (tableName) => {
+    if (!tableName) return [];
+    if (tableColumnsCache[tableName]) return tableColumnsCache[tableName];
+    const { data } = await databaseAPI.getTableColumns(tableName);
+    if (!data) return [];
+    const cols = Object.entries(data).map(([name, sqlType]) => ({
+      name,
+      type: mapSqlType(sqlType),
+      enabled: true,
+      fromTable: true,
+      options: sqlType === "boolean" ? "true, false" : "",
+    }));
+    console.log("Fetched columns for table", tableName, cols);
+    setTableColumnsCache((prev) => ({ ...prev, [tableName]: cols }));
+    return cols;
+  };
+
+  const handleNewDestinationChange = async (tableName) => {
+    setNewForm((prev) => ({ ...prev, destination_table: tableName }));
+    if (!tableName) { setNewTableColumns([]); return; }
+    const cols = await fetchTableColumns(tableName);
+    setNewTableColumns(cols.map((c) => {
+      const existing = newTableColumns.find((tc) => tc.name === c.name);
+      return existing ? { ...c, enabled: existing.enabled } : c;
+    }));
+  };
+
+  const handleEditDestinationChange = async (tableName) => {
+    setEditForm((prev) => ({ ...prev, destination_table: tableName }));
+    if (!tableName) { setEditTableColumns([]); return; }
+    const cols = await fetchTableColumns(tableName);
+    setEditTableColumns(cols.map((c) => {
+      const existing = editTableColumns.find((tc) => tc.name === c.name);
+      return existing ? { ...c, enabled: existing.enabled } : c;
+    }));
+  };
+
+  const toggleEditTableColumn = (i) =>
+    setEditTableColumns((prev) => prev.map((c, idx) => idx === i ? { ...c, enabled: !c.enabled } : c));
+
+  const toggleNewTableColumn = (i) =>
+    setNewTableColumns((prev) => prev.map((c, idx) => idx === i ? { ...c, enabled: !c.enabled } : c));
 
   const FIELD_TYPES = [
     { value: "text",         label: "Text Box" },
@@ -133,6 +192,9 @@ export default function EditTemplates() {
 
   useEffect(() => {
     loadTemplates();
+    databaseAPI.getValidTablesForSubmissions().then(({ data }) => {
+      if (data) setValidTables(data);
+    });
   }, []);
 
   const loadTemplates = async () => {
@@ -153,8 +215,9 @@ export default function EditTemplates() {
 
   const handleCreateCancel = () => {
     setIsCreating(false);
-    setNewForm({ template_name: "", type: "", start_date: "", end_date: "" });
+    setNewForm({ template_name: "", type: "", destination_table: "", start_date: "", end_date: "" });
     setNewFieldsList([]);
+    setNewTableColumns([]);
     setNewFieldsError("");
   };
 
@@ -174,12 +237,22 @@ export default function EditTemplates() {
       return field;
     });
 
+    const enabledTableFields = newTableColumns
+      .filter((c) => c.enabled)
+      .map((c) => {
+        const field = { name: c.name, type: c.type, required: true, fromTable: true };
+        if (c.type === "select") field.options = c.options.split(",").map((o) => o.trim()).filter(Boolean);
+        return field;
+      });
+    const allFields = [...enabledTableFields, ...parsedFields];
+
     const { error } = await databaseAPI.saveTemplate(
       newForm.template_name,
       newForm.start_date || null,
       newForm.end_date || null,
       newForm.type || null,
-      parsedFields.length > 0 ? parsedFields : null
+      newForm.destination_table || null,
+      allFields.length > 0 ? allFields : null
     );
     if (error) {
       setErrorMessage("Failed to create template.");
@@ -195,24 +268,39 @@ export default function EditTemplates() {
     setEditForm({
       template_name: template.template_name || "",
       type: template.type || "",
+      destination_table: template.destination_table || "",
       start_date: template.start_date || "",
       end_date: template.end_date || "",
     });
     const rawList = Array.isArray(template.fields) ? template.fields : [];
+    const customFields = rawList.filter((f) => !f.fromTable);
     setEditFieldsList(
-      rawList.map((f) => ({
+      customFields.map((f) => ({
         name: f.name || "",
         type: f.type || "text",
         required: !!f.required,
         options: Array.isArray(f.options) ? f.options.join(", ") : (f.options || ""),
       }))
     );
+    // Load table columns and restore enabled state from saved fields
+    if (template.destination_table) {
+      fetchTableColumns(template.destination_table).then((cols) => {
+        const savedTableFieldNames = new Set(rawList.filter((f) => f.fromTable).map((f) => f.name));
+        setEditTableColumns(cols.map((c) => ({
+          ...c,
+          enabled: savedTableFieldNames.size > 0 ? savedTableFieldNames.has(c.name) : true,
+        })));
+      });
+    } else {
+      setEditTableColumns([]);
+    }
   };
 
   const handleEditCancel = () => {
     setEditingId(null);
     setEditForm({});
     setEditFieldsList([]);
+    setEditTableColumns([]);
   };
 
   const handleEditSave = async (templateId) => {
@@ -232,9 +320,18 @@ export default function EditTemplates() {
       return field;
     });
 
+    const enabledTableFields = editTableColumns
+      .filter((c) => c.enabled)
+      .map((c) => {
+        const field = { name: c.name, type: c.type, required: true, fromTable: true };
+        if (c.type === "select") field.options = c.options?.split(",").map((o) => o.trim()).filter(Boolean) || [];
+        return field;
+      });
+    const allFields = [...enabledTableFields, ...parsedFields];
+
     const { error } = await databaseAPI.updateTemplate(templateId, {
       ...editForm,
-      fields: parsedFields.length > 0 ? parsedFields : null,
+      fields: allFields.length > 0 ? allFields : null,
     });
     if (error) {
       setErrorMessage("Failed to update template.");
@@ -243,6 +340,7 @@ export default function EditTemplates() {
     setEditingId(null);
     setEditForm({});
     setEditFieldsList([]);
+    setEditTableColumns([]);
     await loadTemplates();
   };
 
@@ -296,6 +394,7 @@ export default function EditTemplates() {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Template Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination Table</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fields</th>
@@ -325,6 +424,18 @@ export default function EditTemplates() {
                     />
                   </td>
                   <td className="px-4 py-3 align-top">
+                    <select
+                      value={newForm.destination_table}
+                      onChange={(e) => handleNewDestinationChange(e.target.value)}
+                      className="border rounded-md px-2 py-1 w-full text-sm"
+                    >
+                      <option value="">— Select table —</option>
+                      {validTables.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 align-top">
                     <input
                       type="date"
                       value={newForm.start_date}
@@ -348,7 +459,7 @@ export default function EditTemplates() {
                         onClick={() => { setFieldModalMode("create"); setFieldModalOpen(true); }}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 hover:border-blue-400 hover:text-blue-600 shadow-sm transition-colors"
                       >
-                        Edit Fields ({newFieldsList.length})
+                        Edit Fields ({newTableColumns.filter(c => c.enabled).length + newFieldsList.length})
                         <FaCog size={11} />
                       </button>
                       {newFieldsError && (
@@ -407,6 +518,24 @@ export default function EditTemplates() {
                       )}
                     </td>
 
+                    {/* Table */}
+                    <td className="px-4 py-3 align-middle">
+                      {isEditing ? (
+                        <select
+                          value={editForm.destination_table}
+                          onChange={(e) => handleEditDestinationChange(e.target.value)}
+                          className="border rounded-md px-2 py-1 w-full text-sm"
+                        >
+                          <option value="">— Select table —</option>
+                          {validTables.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-sm text-gray-700">{template.destination_table || "—"}</span>
+                      )}
+                    </td>
+
                     {/* Start Date */}
                     <td className="px-4 py-3 align-middle">
                       {isEditing ? (
@@ -445,7 +574,7 @@ export default function EditTemplates() {
                             onClick={() => { setFieldModalMode("edit"); setFieldModalOpen(true); }}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 hover:border-blue-400 hover:text-blue-600 shadow-sm transition-colors"
                           >
-                            Edit Fields ({editFieldsList.length})
+                            Edit Fields ({editTableColumns.filter(c => c.enabled).length + editFieldsList.length})
                             <FaCog size={11} />
                           </button>
                           {editFieldsError && (
@@ -545,6 +674,8 @@ export default function EditTemplates() {
       {fieldModalOpen && (() => {
         const isEditMode = fieldModalMode === "edit";
         const list = isEditMode ? editFieldsList : newFieldsList;
+        const tableCols = isEditMode ? editTableColumns : newTableColumns;
+        const toggleTableCol = isEditMode ? toggleEditTableColumn : toggleNewTableColumn;
         const addFn = isEditMode ? addField : addNewField;
         const updateFn = isEditMode ? updateField : updateNewField;
         const moveFn = isEditMode ? moveField : moveNewField;
@@ -565,59 +696,100 @@ export default function EditTemplates() {
               </div>
 
               {/* Modal body */}
-              <div className="overflow-y-auto px-6 py-4 space-y-2 flex-1">
-                {list.map((field, i) => (
-                  <div key={i} className="border rounded-md p-2 bg-gray-50 space-y-1">
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="text"
-                        placeholder="Field name"
-                        value={field.name}
-                        onChange={(e) => updateFn(i, "name", e.target.value)}
-                        className="border rounded px-2 py-1 text-xs flex-1 min-w-0"
-                      />
-                      <select
-                        value={field.type}
-                        onChange={(e) => updateFn(i, "type", e.target.value)}
-                        className="border rounded px-1 py-1 text-xs"
-                      >
-                        {FIELD_TYPES.map((t) => (
-                          <option key={t.value} value={t.value}>{t.label}</option>
-                        ))}
-                      </select>
-                      <label className="flex items-center gap-1 text-xs text-gray-600 shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={field.required}
-                          onChange={(e) => updateFn(i, "required", e.target.checked)}
-                        />
-                        Req
-                      </label>
-                      <button type="button" onClick={() => moveFn(i, -1)} disabled={i === 0}
-                        className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs px-0.5">↑</button>
-                      <button type="button" onClick={() => moveFn(i, 1)} disabled={i === list.length - 1}
-                        className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs px-0.5">↓</button>
-                      <button type="button" onClick={() => removeFn(i)}
-                        className="text-red-400 hover:text-red-600 text-xs px-0.5">&times;</button>
+              <div className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
+                {/* Table columns section */}
+                {tableCols.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Table Columns</h3>
+                    <div className="space-y-1">
+                      {tableCols.map((col, i) => {
+                        const icon = FIELD_TYPE_ICON[col.type] || { symbol: "?", title: col.type };
+                        return (
+                          <label key={col.name}
+                            className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer transition-colors ${
+                              col.enabled ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200 opacity-60"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={col.enabled}
+                              onChange={() => toggleTableCol(i)}
+                              className="shrink-0"
+                            />
+                            <span title={icon.title}
+                              className="inline-flex items-center justify-center w-5 h-5 rounded bg-gray-100 text-gray-500 font-mono font-bold text-xs shrink-0">
+                              {icon.symbol}
+                            </span>
+                            <span className="text-xs text-gray-700 truncate">{col.name}</span>
+                            <span className="text-[10px] text-gray-400 ml-auto shrink-0">{col.type}</span>
+                          </label>
+                        );
+                      })}
                     </div>
-                    {OPTIONS_TYPES.includes(field.type) && (
-                      <input
-                        type="text"
-                        placeholder="Options (comma-separated)"
-                        value={field.options}
-                        onChange={(e) => updateFn(i, "options", e.target.value)}
-                        className="border rounded px-2 py-1 text-xs w-full"
-                      />
-                    )}
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addFn}
-                  className="w-full text-xs border border-dashed border-gray-300 rounded-md py-1.5 text-gray-500 hover:border-blue-400 hover:text-blue-600"
-                >
-                  + Add Field
-                </button>
+                )}
+
+                {/* Custom fields section */}
+                <div>
+                  {tableCols.length > 0 && (
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Custom Fields</h3>
+                  )}
+                  <div className="space-y-2">
+                    {list.map((field, i) => (
+                      <div key={i} className="border rounded-md p-2 bg-gray-50 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            placeholder="Field name"
+                            value={field.name}
+                            onChange={(e) => updateFn(i, "name", e.target.value)}
+                            className="border rounded px-2 py-1 text-xs flex-1 min-w-0"
+                          />
+                          <select
+                            value={field.type}
+                            onChange={(e) => updateFn(i, "type", e.target.value)}
+                            className="border rounded px-1 py-1 text-xs"
+                          >
+                            {FIELD_TYPES.map((t) => (
+                              <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
+                          </select>
+                          <label className="flex items-center gap-1 text-xs text-gray-600 shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={field.required}
+                              onChange={(e) => updateFn(i, "required", e.target.checked)}
+                            />
+                            Req
+                          </label>
+                          <button type="button" onClick={() => moveFn(i, -1)} disabled={i === 0}
+                            className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs px-0.5">↑</button>
+                          <button type="button" onClick={() => moveFn(i, 1)} disabled={i === list.length - 1}
+                            className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs px-0.5">↓</button>
+                          <button type="button" onClick={() => removeFn(i)}
+                            className="text-red-400 hover:text-red-600 text-xs px-0.5">&times;</button>
+                        </div>
+                        {OPTIONS_TYPES.includes(field.type) && (
+                          <input
+                            type="text"
+                            placeholder="Options (comma-separated)"
+                            value={field.options}
+                            onChange={(e) => updateFn(i, "options", e.target.value)}
+                            className="border rounded px-2 py-1 text-xs w-full"
+                          />
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addFn}
+                      className="w-full text-xs border border-dashed border-gray-300 rounded-md py-1.5 text-gray-500 hover:border-blue-400 hover:text-blue-600"
+                    >
+                      + Add Custom Field
+                    </button>
+                  </div>
+                </div>
+
                 {fieldError && (
                   <p className="text-red-500 text-xs">{fieldError}</p>
                 )}

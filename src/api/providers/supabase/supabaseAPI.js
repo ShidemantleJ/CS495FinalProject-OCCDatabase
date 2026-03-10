@@ -69,6 +69,31 @@ export const supabaseAPI = {
 
 
   //region Form Functions
+  async getValidTablesForSubmissions() {
+    const { data, error } = await supabase.rpc('get_enum_values', {
+      enum_schema: 'public',
+      enum_name: 'tables_names_for_form_submission',
+    });
+    if (error) console.error("Error fetching enum values:", error);
+    return { data: data || [], error };
+  },
+
+  async getTableColumns(tableName) {
+    const { data, error } = await supabase.rpc('get_table_columns', {
+      p_table_name: tableName,
+    });
+    if (error) console.error("Error fetching table columns:", error);
+    const dict = {};
+    if (data) {
+      data.forEach(({ column_name, data_type }) => {
+        if (!column_name.endsWith("_id") && column_name !== "id") {
+          dict[column_name] = data_type;
+        }
+      });
+    }
+    return { data: dict, error };
+  },
+
   async submitForm(formTemplateId, formTemplateName, formContent, { select = "*" } = {}) {
     return supabase
       .from("form_submissions")
@@ -81,7 +106,7 @@ export const supabaseAPI = {
       .single();
   },
 
-  async saveTemplate(templateName, startDate, endDate, type, fields, { select = "*" } = {}) {
+  async saveTemplate(templateName, startDate, endDate, type, destinationTable, fields, { select = "*" } = {}) {
     return supabase
       .from("form_templates")
       .insert([{
@@ -89,6 +114,7 @@ export const supabaseAPI = {
         start_date: startDate,
         end_date: endDate,
         type: type,
+        destination_table: destinationTable,
         fields: fields
       }])
       .select(select)

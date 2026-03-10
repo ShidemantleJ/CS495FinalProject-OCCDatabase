@@ -333,7 +333,7 @@ export default function Mobile() {
               try {
                 // Look up form template ID from form_templates table using the form name
                 const { data: templates, error: lookupError } = await databaseAPI.list("form_templates", {
-                  filters: [{ column: "name", op: "eq", value: view }]
+                  filters: [{ column: "template_name", op: "eq", value: view }]
                 });
                 
                 console.log("Looking for form template with name:", view);
