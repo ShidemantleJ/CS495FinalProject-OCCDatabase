@@ -453,7 +453,7 @@ export default function EditTemplates() {
                   </td>
                   <td className="px-4 py-3 align-top max-w-xs">
                     <div className="space-y-2">
-                      {renderFieldsSummary(newFieldsList)}
+                      {renderFieldsSummary([...newTableColumns.filter(c => c.enabled), ...newFieldsList])}
                       <button
                         type="button"
                         onClick={() => { setFieldModalMode("create"); setFieldModalOpen(true); }}
@@ -568,7 +568,7 @@ export default function EditTemplates() {
                     <td className="px-4 py-3 align-top max-w-xs">
                       {isEditing ? (
                         <div className="space-y-2">
-                          {renderFieldsSummary(editFieldsList, template.id)}
+                          {renderFieldsSummary([...editTableColumns.filter(c => c.enabled), ...editFieldsList], template.id)}
                           <button
                             type="button"
                             onClick={() => { setFieldModalMode("edit"); setFieldModalOpen(true); }}
