@@ -122,7 +122,7 @@ export default function FormSubmissions() {
           onClick={() => navigate("/edit-templates")}
           className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 whitespace-nowrap"
         >
-          Edit Templates
+          Manage Templates
         </button>
         </div>
       </div>

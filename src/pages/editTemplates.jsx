@@ -229,6 +229,21 @@ export default function EditTemplates() {
     }
     setNewFieldsError("");
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (newForm.end_date) {
+      const endDate = new Date(newForm.end_date);
+      if (endDate < today) {
+        setErrorMessage("End date cannot be in the past.");
+        return;
+      }
+      if (newForm.start_date && endDate < new Date(newForm.start_date)) {
+        setErrorMessage("End date cannot be before the start date.");
+        return;
+      }
+    }
+    setErrorMessage("");
+
     const parsedFields = newFieldsList.map((f) => {
       const field = { name: f.name.trim(), type: f.type, required: f.required };
       if (OPTIONS_TYPES.includes(f.type)) {
@@ -312,6 +327,21 @@ export default function EditTemplates() {
     }
     setEditFieldsError("");
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (editForm.end_date) {
+      const endDate = new Date(editForm.end_date);
+      if (endDate < today) {
+        setErrorMessage("End date cannot be in the past.");
+        return;
+      }
+      if (editForm.start_date && endDate < new Date(editForm.start_date)) {
+        setErrorMessage("End date cannot be before the start date.");
+        return;
+      }
+    }
+    setErrorMessage("");
+
     const parsedFields = editFieldsList.map((f) => {
       const field = { name: f.name.trim(), type: f.type, required: f.required };
       if (OPTIONS_TYPES.includes(f.type)) {
@@ -331,6 +361,7 @@ export default function EditTemplates() {
 
     const { error } = await databaseAPI.updateTemplate(templateId, {
       ...editForm,
+      destination_table: editForm.destination_table || null,
       fields: allFields.length > 0 ? allFields : null,
     });
     if (error) {
@@ -429,7 +460,7 @@ export default function EditTemplates() {
                       onChange={(e) => handleNewDestinationChange(e.target.value)}
                       className="border rounded-md px-2 py-1 w-full text-sm"
                     >
-                      <option value="">— Select table —</option>
+                      <option value="">No Table</option>
                       {validTables.map((t) => (
                         <option key={t} value={t}>{t}</option>
                       ))}
@@ -526,7 +557,7 @@ export default function EditTemplates() {
                           onChange={(e) => handleEditDestinationChange(e.target.value)}
                           className="border rounded-md px-2 py-1 w-full text-sm"
                         >
-                          <option value="">— Select table —</option>
+                          <option value="">No Table</option>
                           {validTables.map((t) => (
                             <option key={t} value={t}>{t}</option>
                           ))}
@@ -700,7 +731,23 @@ export default function EditTemplates() {
                 {/* Table columns section */}
                 {tableCols.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Table Columns</h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Table Columns</h3>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allEnabled = tableCols.every((c) => c.enabled);
+                          if (isEditMode) {
+                            setEditTableColumns((prev) => prev.map((c) => ({ ...c, enabled: !allEnabled })));
+                          } else {
+                            setNewTableColumns((prev) => prev.map((c) => ({ ...c, enabled: !allEnabled })));
+                          }
+                        }}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        {tableCols.every((c) => c.enabled) ? "Uncheck All" : "Check All"}
+                      </button>
+                    </div>
                     <div className="space-y-1">
                       {tableCols.map((col, i) => {
                         const icon = FIELD_TYPE_ICON[col.type] || { symbol: "?", title: col.type };
