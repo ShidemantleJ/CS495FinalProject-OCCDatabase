@@ -6,6 +6,8 @@ import { databaseAPI } from "../api";
 export default function Mobile() {
   const [isVerified, setIsVerified] = useState(false); // false = Admin Login, true = Registration Form
   const [validAdmin, setValidAdmin] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [view, setView] = useState("selection"); // "selection", "Individuals Drop-Off", "Church/Group Drop-Off", "NCW Short-Term", "PLW"
   const [formData, setFormData] = useState({ //All the types of data that can be entered in the various forms
     // Header Info
@@ -62,19 +64,32 @@ export default function Mobile() {
     };
   }, []);
 
-  //Handle Admin Login, and so hitting enter doesn't refresh the page
-  const handleNextStep = (e) => {
+  //Handle Admin Login using real Supabase auth
+  const handleNextStep = async (e) => {
     if (e) e.preventDefault();
+    setLoading(true);
+    setErrorMessage("");
 
-    if (
-      validAdmin.email === "admin@gmail.com" &&
-      validAdmin.password === "admin123"
-    ) {
-      //Can later replace with actual auth from Supabase
-      setIsVerified(true);
+    // Clear any stale session first
+    databaseAPI.setSession({ access_token: null, refresh_token: null });
+
+    const { data, error } = await databaseAPI.signInWithPassword(
+      { email: validAdmin.email, password: validAdmin.password }
+    );
+
+    if (error) {
+      setErrorMessage(error.message);
     } else {
-      alert("Invalid credentials. Try: admin@gmail.com / admin123");
+      const isAdmin = await databaseAPI.checkAdmin();
+      if (isAdmin) {
+        setIsVerified(true);
+      } else {
+        await databaseAPI.signOut();
+        setErrorMessage("Access denied. Admin account required.");
+      }
     }
+
+    setLoading(false);
   };
 
   //If Cancel is clicked, reset everything
@@ -167,16 +182,16 @@ export default function Mobile() {
               />
             </div>
             
-            <div className="p-4 bg-blue-50 rounded-xl border border-dashed border-blue-300">
-              <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-1">Demo Credentials:</p>
-              <p className="text-slate-700 font-mono text-sm">admin@gmail.com / admin123</p>
-            </div>
-  
+            {errorMessage && (
+              <p className="text-red-500 text-sm font-medium">{errorMessage}</p>
+            )}
+
             <button
               type="submit"
-              className="w-full py-5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xl font-bold rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all"
+              disabled={loading}
+              className="w-full py-5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xl font-bold rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all disabled:opacity-50"
             >
-              Sign In
+              {loading ? "Signing In..." : "Sign In"}
             </button>
           </form>
         </div>
@@ -333,7 +348,7 @@ export default function Mobile() {
               try {
                 // Look up form template ID from form_templates table using the form name
                 const { data: templates, error: lookupError } = await databaseAPI.list("form_templates", {
-                  filters: [{ column: "name", op: "eq", value: view }]
+                  filters: [{ column: "template_name", op: "eq", value: view }]
                 });
                 
                 console.log("Looking for form template with name:", view);
