@@ -343,8 +343,6 @@ export default function Mobile() {
                 return;
               }
 
-              console.log(`Saving ${view} data:`, formData);
-              
               try {
                 // Look up form template ID from form_templates table using the form name
                 const { data: templates, error: lookupError } = await databaseAPI.list("form_templates", {
