@@ -65,7 +65,7 @@ export default function EditTemplates() {
     const cols = await fetchTableColumns(tableName);
     setNewTableColumns(cols.map((c) => {
       const existing = newTableColumns.find((tc) => tc.name === c.name);
-      return existing ? { ...c, enabled: existing.enabled } : c;
+      return existing ? { ...c, enabled: existing.enabled, form_name: existing.form_name || "" } : { ...c, form_name: "" };
     }));
   };
 
@@ -75,7 +75,7 @@ export default function EditTemplates() {
     const cols = await fetchTableColumns(tableName);
     setEditTableColumns(cols.map((c) => {
       const existing = editTableColumns.find((tc) => tc.name === c.name);
-      return existing ? { ...c, enabled: existing.enabled } : c;
+      return existing ? { ...c, enabled: existing.enabled, form_name: existing.form_name || "" } : { ...c, form_name: "" };
     }));
   };
 
@@ -84,6 +84,12 @@ export default function EditTemplates() {
 
   const toggleNewTableColumn = (i) =>
     setNewTableColumns((prev) => prev.map((c, idx) => idx === i ? { ...c, enabled: !c.enabled } : c));
+
+  const updateEditTableColumn = (i, key, value) =>
+    setEditTableColumns((prev) => prev.map((c, idx) => idx === i ? { ...c, [key]: value } : c));
+
+  const updateNewTableColumn = (i, key, value) =>
+    setNewTableColumns((prev) => prev.map((c, idx) => idx === i ? { ...c, [key]: value } : c));
 
   const FIELD_TYPES = [
     { value: "text",         label: "Text Box" },
@@ -98,10 +104,10 @@ export default function EditTemplates() {
   const OPTIONS_TYPES = ["select", "multi-select", "bubble-select"];
 
   const addField = () =>
-    setEditFieldsList((prev) => [...prev, { name: "", type: "text", required: false, options: "" }]);
+    setEditFieldsList((prev) => [...prev, { name: "", type: "text", required: false, options: "", form_name: "" }]);
 
   const addNewField = () =>
-    setNewFieldsList((prev) => [...prev, { name: "", type: "text", required: false, options: "" }]);
+    setNewFieldsList((prev) => [...prev, { name: "", type: "text", required: false, options: "", form_name: "" }]);
 
   const removeField = (i) =>
     setEditFieldsList((prev) => prev.filter((_, idx) => idx !== i));
@@ -173,7 +179,7 @@ export default function EditTemplates() {
                 className="inline-flex items-center justify-center w-5 h-5 rounded bg-gray-100 text-gray-500 font-mono font-bold cursor-default shrink-0 hover:bg-blue-100 hover:text-blue-600 transition-colors">
                 {icon.symbol}
               </span>
-              <span className="truncate max-w-[10rem]" title={f.name}>{f.name}</span>
+              <span className="truncate max-w-[10rem]" title={f.form_name || f.name}>{f.form_name || f.name}</span>
               {f.required
                 ? <span title="Required" className="text-red-500 font-bold cursor-default leading-none">*</span>
                 : <span title="Optional" className="text-gray-300 cursor-default leading-none">&mdash;</span>}
@@ -246,6 +252,7 @@ export default function EditTemplates() {
 
     const parsedFields = newFieldsList.map((f) => {
       const field = { name: f.name.trim(), type: f.type, required: f.required };
+      if (f.form_name?.trim()) field.form_name = f.form_name.trim();
       if (OPTIONS_TYPES.includes(f.type)) {
         field.options = f.options.split(",").map((o) => o.trim()).filter(Boolean);
       }
@@ -256,6 +263,7 @@ export default function EditTemplates() {
       .filter((c) => c.enabled)
       .map((c) => {
         const field = { name: c.name, type: c.type, required: true, fromTable: true };
+        if (c.form_name?.trim()) field.form_name = c.form_name.trim();
         if (c.type === "select") field.options = c.options.split(",").map((o) => o.trim()).filter(Boolean);
         return field;
       });
@@ -295,15 +303,19 @@ export default function EditTemplates() {
         type: f.type || "text",
         required: !!f.required,
         options: Array.isArray(f.options) ? f.options.join(", ") : (f.options || ""),
+        form_name: f.form_name || "",
       }))
     );
     // Load table columns and restore enabled state from saved fields
     if (template.destination_table) {
       fetchTableColumns(template.destination_table).then((cols) => {
-        const savedTableFieldNames = new Set(rawList.filter((f) => f.fromTable).map((f) => f.name));
+        const savedTableFields = rawList.filter((f) => f.fromTable);
+        const savedTableFieldNames = new Set(savedTableFields.map((f) => f.name));
+        const savedTableFieldMap = Object.fromEntries(savedTableFields.map((f) => [f.name, f]));
         setEditTableColumns(cols.map((c) => ({
           ...c,
           enabled: savedTableFieldNames.size > 0 ? savedTableFieldNames.has(c.name) : true,
+          form_name: savedTableFieldMap[c.name]?.form_name || "",
         })));
       });
     } else {
@@ -344,6 +356,7 @@ export default function EditTemplates() {
 
     const parsedFields = editFieldsList.map((f) => {
       const field = { name: f.name.trim(), type: f.type, required: f.required };
+      if (f.form_name?.trim()) field.form_name = f.form_name.trim();
       if (OPTIONS_TYPES.includes(f.type)) {
         field.options = f.options.split(",").map((o) => o.trim()).filter(Boolean);
       }
@@ -354,6 +367,7 @@ export default function EditTemplates() {
       .filter((c) => c.enabled)
       .map((c) => {
         const field = { name: c.name, type: c.type, required: true, fromTable: true };
+        if (c.form_name?.trim()) field.form_name = c.form_name.trim();
         if (c.type === "select") field.options = c.options?.split(",").map((o) => o.trim()).filter(Boolean) || [];
         return field;
       });
@@ -631,7 +645,7 @@ export default function EditTemplates() {
                                   >
                                     {icon.symbol}
                                   </span>
-                                  <span className="truncate max-w-[10rem]" title={f.name}>{f.name}</span>
+                                  <span className="truncate max-w-[10rem]" title={f.form_name || f.name}>{f.form_name || f.name}</span>
                                   {f.required ? (
                                     <span title="Required" className="text-red-500 font-bold cursor-default hover:text-red-700 leading-none">*</span>
                                   ) : (
@@ -712,6 +726,7 @@ export default function EditTemplates() {
         const moveFn = isEditMode ? moveField : moveNewField;
         const removeFn = isEditMode ? removeField : removeNewField;
         const fieldError = isEditMode ? editFieldsError : newFieldsError;
+        const updateTableColFn = isEditMode ? updateEditTableColumn : updateNewTableColumn;
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh]">
@@ -752,24 +767,35 @@ export default function EditTemplates() {
                       {tableCols.map((col, i) => {
                         const icon = FIELD_TYPE_ICON[col.type] || { symbol: "?", title: col.type };
                         return (
-                          <label key={col.name}
-                            className={`flex items-center gap-2 border rounded-md p-2 cursor-pointer transition-colors ${
+                          <div key={col.name}
+                            className={`border rounded-md p-2 transition-colors ${
                               col.enabled ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200 opacity-60"
                             }`}
                           >
-                            <input
-                              type="checkbox"
-                              checked={col.enabled}
-                              onChange={() => toggleTableCol(i)}
-                              className="shrink-0"
-                            />
-                            <span title={icon.title}
-                              className="inline-flex items-center justify-center w-5 h-5 rounded bg-gray-100 text-gray-500 font-mono font-bold text-xs shrink-0">
-                              {icon.symbol}
-                            </span>
-                            <span className="text-xs text-gray-700 truncate">{col.name}</span>
-                            <span className="text-[10px] text-gray-400 ml-auto shrink-0">{col.type}</span>
-                          </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={col.enabled}
+                                onChange={() => toggleTableCol(i)}
+                                className="shrink-0"
+                              />
+                              <span title={icon.title}
+                                className="inline-flex items-center justify-center w-5 h-5 rounded bg-gray-100 text-gray-500 font-mono font-bold text-xs shrink-0">
+                                {icon.symbol}
+                              </span>
+                              <span className="text-xs text-gray-700 truncate">{col.name}</span>
+                              <span className="text-[10px] text-gray-400 ml-auto shrink-0">{col.type}</span>
+                            </label>
+                            {col.enabled && (
+                              <input
+                                type="text"
+                                placeholder="Display name (optional)"
+                                value={col.form_name || ""}
+                                onChange={(e) => updateTableColFn(i, "form_name", e.target.value)}
+                                className="mt-1 ml-7 border rounded px-2 py-0.5 text-xs w-[calc(100%-1.75rem)]"
+                              />
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -816,6 +842,13 @@ export default function EditTemplates() {
                           <button type="button" onClick={() => removeFn(i)}
                             className="text-red-400 hover:text-red-600 text-xs px-0.5">&times;</button>
                         </div>
+                        <input
+                          type="text"
+                          placeholder="Display name (optional)"
+                          value={field.form_name || ""}
+                          onChange={(e) => updateFn(i, "form_name", e.target.value)}
+                          className="border rounded px-2 py-1 text-xs w-full"
+                        />
                         {OPTIONS_TYPES.includes(field.type) && (
                           <input
                             type="text"
