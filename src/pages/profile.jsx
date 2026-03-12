@@ -172,30 +172,29 @@ export default function Profile() {
             if (!memberData?.id) return;
 
             setChurchesLoading(true);
-            const currentYear = new Date().getFullYear(); // Automatically updates when year changes
-            const relationsField = `church_relations_member_${currentYear}`;
+            const currentYear = new Date().getFullYear();
 
-            // Fetch churches where user is the lead (church_relations_member_YEAR)
-            const { data: leadChurches, error: leadError } = await databaseAPI.list("church2", {
-                select: "id, church_name, church_physical_city, church_physical_state",
-                filters: [{ column: relationsField, op: "eq", value: memberData.id }],
+            // Fetch church_annual_attributes where user is the relations_member
+            const { data: attrs, error: attrError } = await databaseAPI.list("church_annual_attributes", {
+                select: `
+                    church_id,
+                    church2 (id, church_name, church_physical_city, church_physical_state)
+                `,
+                filters: [
+                    { column: "relations_member", op: "eq", value: memberData.id },
+                    { column: "year", op: "eq", value: currentYear }
+                ],
             });
 
-            // Note: project_leader is now a boolean, not a name field
-            // We don't fetch churches by project_leader name anymore
-            const projectLeaderChurches = [];
-
-            if (leadError) {
-                // Error fetching lead churches
+            if (attrError) {
+                setMyChurches([]);
+            } else {
+                const churches = (attrs || []).map(a => a.church2).filter(Boolean);
+                const uniqueChurches = Array.from(
+                    new Map(churches.map(church => [church.id, church])).values()
+                ).sort((a, b) => (a.church_name || "").localeCompare(b.church_name || ""));
+                setMyChurches(uniqueChurches);
             }
-
-            // Combine both results and remove duplicates
-            const allChurches = [...(leadChurches || []), ...(projectLeaderChurches || [])];
-            const uniqueChurches = Array.from(
-                new Map(allChurches.map(church => [church.id, church])).values()
-            ).sort((a, b) => (a.church_name || "").localeCompare(b.church_name || ""));
-
-            setMyChurches(uniqueChurches);
             setChurchesLoading(false);
         }
         getMyChurches();
