@@ -1,10 +1,12 @@
 // src/pages/editMember.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropUtils';
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -51,6 +53,10 @@ export default function EditMember() {
     const [selectedPositions, setSelectedPositions] = useState([]);
     const [churches, setChurches] = useState([]);
     const [selectedChurchId, setSelectedChurchId] = useState("");
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+    const [imageSrc, setImageSrc] = useState(null);
 
     // Fetch churches on component mount
     useEffect(() => {
@@ -211,7 +217,11 @@ export default function EditMember() {
         setForm({ ...form, [name]: type === "checkbox" ? checked : value });
     };
 
-    const handlePhotoUpload = async (e) => {
+    const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
+
+    const onFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -231,10 +241,21 @@ export default function EditMember() {
             return;
         }
 
-        setUploading(true);
         setError("");
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+            setImageSrc(reader.result);
+            e.target.value = '';
+        });
+        reader.readAsDataURL(file);
+    };
 
+    const handleUploadCroppedImage = async (e) => {
+        setUploading(true);
         try {
+            const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+            const file = new File([croppedBlob], "cropped.jpg", { type: "image/jpeg" });
+
             const processedFile = await processImage(file);
             // Generate unique name for the image
             const fileExt = file.name.split('.').pop();
@@ -251,6 +272,8 @@ export default function EditMember() {
 
             // Update form with file path
             setForm({ ...form, photo_url: filePath });
+            setImageSrc(null);
+            setZoom(1);
 
         } catch (error) {
             setError(error.message || 'Failed to upload photo. Please try again.');
@@ -381,6 +404,42 @@ export default function EditMember() {
 
     return (
         <div className="max-w-2xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-4 md:p-6">
+            {imageSrc && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
+                    <div className="relative w-full max-w-xl bg-white rounded-lg overflow-hidden flex flex-col h-[80vh]">
+                        <div className="relative flex-1 bg-gray-900">
+                            <Cropper
+                                image={imageSrc}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={1} // 1:1 aspect ratio for member photos (circle)
+                                onCropChange={setCrop}
+                                onCropComplete={onCropComplete}
+                                onZoomChange={setZoom}
+                                cropShape="round"
+                            />
+                        </div>
+                        <div className="p-4 bg-white flex flex-col gap-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">Zoom</span>
+                                <input
+                                    type="range"
+                                    value={zoom}
+                                    min={1}
+                                    max={3}
+                                    step={0.1}
+                                    onChange={(e) => setZoom(Number(e.target.value))}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setImageSrc(null)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                                <button type="button" onClick={handleUploadCroppedImage} disabled={uploading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{uploading ? 'Uploading...' : 'Crop & Upload'}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             <h1 className="text-2xl font-bold mb-6">Edit Member</h1>
 
             {error && <p className="text-red-600 mb-3">{error}</p>}
@@ -396,7 +455,7 @@ export default function EditMember() {
                 <input
                     type="file"
                     accept="image/*"
-                    onChange={handlePhotoUpload}
+                    onChange={onFileSelect}
                     disabled={uploading}
                     className="w-full border rounded-md px-3 py-2"
                 />

@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropUtils';
 
 // Helper component for private bucket images - CHURCH VERSION
 function PrivateBucketImage({ filePath, className }) {
@@ -47,6 +49,10 @@ export default function EditChurch() {
     const [uploading, setUploading] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [checkingAdmin, setCheckingAdmin] = useState(true);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+    const [imageSrc, setImageSrc] = useState(null);
 
     // Check admin status
     useEffect(() => {
@@ -119,7 +125,11 @@ export default function EditChurch() {
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
-    const handlePhotoUpload = async (e) => {
+    const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
+
+    const onFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -139,10 +149,21 @@ export default function EditChurch() {
             return;
         }
 
-        setUploading(true);
         setError(null);
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+            setImageSrc(reader.result);
+            e.target.value = ''; // Clear the input so same file can be selected again
+        });
+        reader.readAsDataURL(file);
+    };
 
+    const handleUploadCroppedImage = async (e) => {
+        setUploading(true);
         try {
+            const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+            const file = new File([croppedBlob], "cropped.jpg", { type: "image/jpeg" });
+
             const processedFile = await processImage(file);
             // Generate unique name for the image
             const churchNameForFile = formData?.church_name || 'church';
@@ -165,6 +186,8 @@ export default function EditChurch() {
             const filePath = fileName;
 
             // Update form with file path
+            setImageSrc(null);
+            setZoom(1);
             setFormData(prev => ({ ...prev, photo_url: filePath }));
 
         } catch (error) {
@@ -232,6 +255,41 @@ export default function EditChurch() {
 
     return (
         <div className="max-w-2xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-4 md:p-6">
+            {imageSrc && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
+                    <div className="relative w-full max-w-xl bg-white rounded-lg overflow-hidden flex flex-col h-[80vh]">
+                        <div className="relative flex-1 bg-gray-900">
+                            <Cropper
+                                image={imageSrc}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={3 / 2}
+                                onCropChange={setCrop}
+                                onCropComplete={onCropComplete}
+                                onZoomChange={setZoom}
+                            />
+                        </div>
+                        <div className="p-4 bg-white flex flex-col gap-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-700">Zoom</span>
+                                <input
+                                    type="range"
+                                    value={zoom}
+                                    min={1}
+                                    max={3}
+                                    step={0.1}
+                                    onChange={(e) => setZoom(Number(e.target.value))}
+                                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setImageSrc(null)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                                <button type="button" onClick={handleUploadCroppedImage} disabled={uploading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{uploading ? 'Uploading...' : 'Crop & Upload'}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             <h1 className="text-2xl font-bold mb-6">Edit Church</h1>
             
             {error && <p className="text-red-600 mb-3 p-3 bg-red-50 rounded">{error}</p>}
@@ -248,7 +306,7 @@ export default function EditChurch() {
                     <input
                         type="file"
                         accept="image/*"
-                        onChange={handlePhotoUpload}
+                        onChange={onFileSelect}
                         disabled={uploading}
                         className="w-full border rounded-md px-3 py-2"
                     />

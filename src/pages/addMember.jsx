@@ -1,10 +1,12 @@
 // src/pages/addMember.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import DOMPurify from "dompurify";
 import { processImage } from "../utils/imageProcessing";
+import getCroppedImg from '../utils/cropUtils';
+import Cropper from 'react-easy-crop';
 
 export default function AddMember() {
   const navigate = useNavigate();
@@ -36,6 +38,10 @@ export default function AddMember() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [churches, setChurches] = useState([]);
   const [selectedChurchId, setSelectedChurchId] = useState("");
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [imageSrc, setImageSrc] = useState(null);
 
   // Fetch churches on component mount
   useEffect(() => {
@@ -114,7 +120,11 @@ export default function AddMember() {
     setForm({ ...form, [name]: processedValue });
   };
 
-  const handlePhotoUpload = async (e) => {
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const onFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -134,14 +144,21 @@ export default function AddMember() {
       return;
     }
 
-    setUploading(true);
     setError("");
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+        setImageSrc(reader.result);
+        e.target.value = '';
+    });
+    reader.readAsDataURL(file);
+  };
 
+  const handleUploadCroppedImage = async (e) => {
+    setUploading(true);
     try {
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const file = new File([croppedBlob], "cropped.jpg", { type: "image/jpeg" });
       const processedFile = await processImage(file);
-      // Create a preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setPhotoPreview(previewUrl);
 
       // Generate unique name for the image
       const fileExt = file.name.split('.').pop();
@@ -155,7 +172,11 @@ export default function AddMember() {
       }
 
       // Update form with file path
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoPreview(previewUrl);
       setForm(prev => ({ ...prev, photo_url: fileName }));
+      setImageSrc(null);
+      setZoom(1);
 
     } catch (error) {
       setError(error.message || 'Failed to upload photo. Please try again.');
@@ -235,6 +256,42 @@ export default function AddMember() {
 
   return (
     <div className="max-w-4xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-4 md:p-6">
+      {imageSrc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
+            <div className="relative w-full max-w-xl bg-white rounded-lg overflow-hidden flex flex-col h-[80vh]">
+                <div className="relative flex-1 bg-gray-900">
+                    <Cropper
+                        image={imageSrc}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={1} // 1:1 aspect for member
+                        onCropChange={setCrop}
+                        onCropComplete={onCropComplete}
+                        onZoomChange={setZoom}
+                        cropShape="round"
+                    />
+                </div>
+                <div className="p-4 bg-white flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">Zoom</span>
+                        <input
+                            type="range"
+                            value={zoom}
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            onChange={(e) => setZoom(Number(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setImageSrc(null)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button type="button" onClick={handleUploadCroppedImage} disabled={uploading} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">{uploading ? 'Uploading...' : 'Crop & Upload'}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
       <h1 className="text-2xl font-bold mb-6">Add New Member</h1>
 
       {error && <p className="text-red-600 mb-3">{error}</p>}
@@ -256,7 +313,7 @@ export default function AddMember() {
         <input
           type="file"
           accept="image/*"
-          onChange={handlePhotoUpload}
+          onChange={onFileSelect}
           disabled={uploading}
           className="w-full border rounded-md px-3 py-2"
         />

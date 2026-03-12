@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropUtils';
 
 export default function AddChurch() {
   const {user} = useUser();
@@ -34,6 +36,10 @@ export default function AddChurch() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [imageSrc, setImageSrc] = useState(null);
 
   // Check admin status
   useEffect(() => {
@@ -89,7 +95,11 @@ export default function AddChurch() {
     setFormData((prev) => ({ ...prev, [name]: processedValue }));
   };
 
-  const handlePhotoUpload = async (e) => {
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const onFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -109,10 +119,21 @@ export default function AddChurch() {
       return;
     }
 
-    setUploading(true);
     setError(null);
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+        setImageSrc(reader.result);
+        e.target.value = '';
+    });
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadCroppedImage = async () => {
+    setUploading(true);
     
     try {
+      const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const file = new File([croppedBlob], "cropped.jpg", { type: "image/jpeg" });
       const processedFile = await processImage(file);
       const fileExt = file.name.split('.').pop();
       // Use church name or timestamp for unique filename
@@ -133,6 +154,8 @@ export default function AddChurch() {
 
       // Store the file path (just the filename) - same as editChurch
       setFormData((prev) => ({ ...prev, photo_url: fileName }));
+      setImageSrc(null);
+      setZoom(1);
       
     } catch (err) {
       setError(err.message || 'Failed to upload photo. Please try again.');
@@ -224,6 +247,41 @@ export default function AddChurch() {
 
   return (
     <div className="max-w-2xl mx-auto mt-10 bg-white p-4 md:p-6 rounded-2xl shadow">
+      {imageSrc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
+            <div className="relative w-full max-w-xl bg-white rounded-lg overflow-hidden flex flex-col h-[80vh]">
+                <div className="relative flex-1 bg-gray-900">
+                    <Cropper
+                        image={imageSrc}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={3 / 2}
+                        onCropChange={setCrop}
+                        onCropComplete={onCropComplete}
+                        onZoomChange={setZoom}
+                    />
+                </div>
+                <div className="p-4 bg-white flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">Zoom</span>
+                        <input
+                            type="range"
+                            value={zoom}
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            onChange={(e) => setZoom(Number(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setImageSrc(null)} className="px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                        <button type="button" onClick={handleUploadCroppedImage} disabled={uploading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{uploading ? 'Uploading...' : 'Crop & Upload'}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
       <h1 className="text-2xl font-bold mb-4 text-center">Add Church</h1>
       {error && <p className="text-red-500 text-center mb-3">{error}</p>}
 
@@ -410,7 +468,7 @@ export default function AddChurch() {
           <input
             type="file"
             accept="image/*"
-            onChange={handlePhotoUpload}
+            onChange={onFileSelect}
             className="w-full border rounded-lg p-2"
             disabled={uploading}
           />
