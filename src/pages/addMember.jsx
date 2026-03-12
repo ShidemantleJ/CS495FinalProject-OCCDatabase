@@ -153,7 +153,7 @@ export default function AddMember() {
     reader.readAsDataURL(file);
   };
 
-  const handleUploadCroppedImage = async (e) => {
+  const handleUploadCroppedImage = async () => {
     setUploading(true);
     try {
       const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
@@ -181,7 +181,6 @@ export default function AddMember() {
     } catch (error) {
       setError(error.message || 'Failed to upload photo. Please try again.');
       setPhotoPreview("");
-      e.target.value = ''; // Clear the input on error
     } finally {
       setUploading(false);
     }

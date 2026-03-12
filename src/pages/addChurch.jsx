@@ -159,7 +159,6 @@ export default function AddChurch() {
       
     } catch (err) {
       setError(err.message || 'Failed to upload photo. Please try again.');
-      e.target.value = ''; // Clear the input on error
     } finally {
       setUploading(false);
     }

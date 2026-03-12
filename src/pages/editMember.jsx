@@ -6,7 +6,7 @@ import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
 import Cropper from 'react-easy-crop';
-import getCroppedImg from '../utils/cropUtils';
+import getCroppedImg, { handleRecrop } from '../utils/cropUtils';
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -250,7 +250,18 @@ export default function EditMember() {
         reader.readAsDataURL(file);
     };
 
-    const handleUploadCroppedImage = async (e) => {
+    const onRecrop = () => {
+        handleRecrop({
+            photoUrl: form?.photo_url,
+            bucketName: 'Team Images',
+            setUploading,
+            setError,
+            setImageSrc,
+            databaseAPI
+        });
+    };
+
+    const handleUploadCroppedImage = async () => {
         setUploading(true);
         try {
             const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
@@ -277,7 +288,6 @@ export default function EditMember() {
 
         } catch (error) {
             setError(error.message || 'Failed to upload photo. Please try again.');
-            e.target.value = ''; // Clear the input on error
         } finally {
             setUploading(false);
         }
@@ -448,8 +458,16 @@ export default function EditMember() {
             <div className="mb-6">
                 <label className="block text-sm font-medium mb-2">Profile Photo</label>
                 {form.photo_url && (
-                    <div className="mb-3">
+                    <div className="mb-3 flex flex-col items-center gap-2 w-32">
                         <PrivateBucketImage filePath={form.photo_url} className="w-32 h-32 object-cover rounded-full" />
+                        <button
+                            type="button"
+                            onClick={onRecrop}
+                            disabled={uploading}
+                            className="text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:cursor-not-allowed"
+                        >
+                            Re-crop Image
+                        </button>
                     </div>
                 )}
                 <input

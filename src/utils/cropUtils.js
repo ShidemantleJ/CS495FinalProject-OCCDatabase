@@ -37,3 +37,34 @@ export const createImage = (url) =>
       }, 'image/jpeg')
     })
   }
+
+export async function handleRecrop({
+    photoUrl,
+    bucketName,
+    setUploading,
+    setError,
+    setImageSrc,
+    databaseAPI
+}) {
+    if (!photoUrl) return;
+
+    setError(null);
+    setUploading(true);
+
+    try {
+        let urlToCrop = photoUrl;
+        if (!urlToCrop.startsWith('http')) {
+            const { data } = await databaseAPI.createSignedUrl(bucketName, urlToCrop, 60); // 60s URL expiry
+            if (data?.signedUrl) {
+                urlToCrop = data.signedUrl;
+            } else {
+                throw new Error("Could not get image URL for re-cropping.");
+            }
+        }
+        setImageSrc(urlToCrop);
+    } catch (err) {
+        setError(err.message || "Failed to load image for re-cropping.");
+    } finally {
+        setUploading(false);
+    }
+}

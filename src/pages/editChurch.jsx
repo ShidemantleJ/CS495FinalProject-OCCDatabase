@@ -5,7 +5,7 @@ import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
 import Cropper from 'react-easy-crop';
-import getCroppedImg from '../utils/cropUtils';
+import getCroppedImg, { handleRecrop } from '../utils/cropUtils';
 
 // Helper component for private bucket images - CHURCH VERSION
 function PrivateBucketImage({ filePath, className }) {
@@ -158,7 +158,18 @@ export default function EditChurch() {
         reader.readAsDataURL(file);
     };
 
-    const handleUploadCroppedImage = async (e) => {
+    const onRecrop = () => {
+        handleRecrop({
+            photoUrl: formData?.photo_url,
+            bucketName: 'Church Images',
+            setUploading,
+            setError,
+            setImageSrc,
+            databaseAPI
+        });
+    };
+
+    const handleUploadCroppedImage = async () => {
         setUploading(true);
         try {
             const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
@@ -192,7 +203,6 @@ export default function EditChurch() {
 
         } catch (error) {
             setError(error.message || 'Failed to upload photo. Please try again.');
-            e.target.value = ''; // Clear the input on error
         } finally {
             setUploading(false);
         }
@@ -299,8 +309,16 @@ export default function EditChurch() {
                 <div className="border-b pb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Church Photo</label>
                     {formData.photo_url && (
-                        <div className="mb-3 flex justify-center">
+                        <div className="mb-3 flex flex-col items-center gap-2">
                             <PrivateBucketImage filePath={formData.photo_url} className="w-48 h-32 object-cover rounded-lg" />
+                             <button
+                                type="button"
+                                onClick={onRecrop}
+                                disabled={uploading}
+                                className="text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:cursor-not-allowed"
+                            >
+                                Re-crop Image
+                            </button>
                         </div>
                     )}
                     <input
