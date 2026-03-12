@@ -1,6 +1,7 @@
 const REQUIRED_CHURCH_FIELDS = [
   { key: "church_name", label: "name" },
   { key: "church_physical_city", label: "city" },
+  { key: "church_mailing_address", label: "mailing address" },
   { key: "church_physical_state", label: "state" },
   { key: "church_physical_county", label: "county" },
   { key: "church_phone_number", label: "phone number" },
