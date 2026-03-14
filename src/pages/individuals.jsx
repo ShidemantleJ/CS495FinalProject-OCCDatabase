@@ -18,6 +18,7 @@ export default function Individuals() {
     const [deleting, setDeleting] = useState(false);
     const [editingIndividual, setEditingIndividual] = useState(null);
     const [savingIndividual, setSavingIndividual] = useState(false);
+    const [churches, setChurches] = useState([]);
     const navigate = useNavigate();
     
     // Filter states
@@ -33,6 +34,23 @@ export default function Individuals() {
         resources: false,
         other: false,
     });
+
+    // Fetch churches for dropdown
+    useEffect(() => {
+        async function getChurches() {
+        const { data, error } = await databaseAPI.list("church2", {
+            select: "church_name",
+            orderBy: { column: "church_name", ascending: true },
+        });
+        
+        if (error) {
+            // Error fetching churches
+        } else {
+            setChurches(data || []);
+        }
+        }
+        getChurches();
+    }, []);
     
     // Sort state
     const [sortBy, setSortBy] = useState("name_asc"); // name_asc, name_desc, church_asc, church_desc
@@ -225,6 +243,10 @@ export default function Individuals() {
         } else {
             setExpandedRow(individual.id);
             setEditingIndividual({
+                first_name: individual.first_name || "",
+                last_name: individual.last_name || "",
+                email: individual.email || "",
+                church_name: individual.church_name || "",
                 craft_ideas: individual.craft_ideas || false,
                 packing_party_ideas: individual.packing_party_ideas || false,
                 fundraising_ideas: individual.fundraising_ideas || false,
@@ -244,6 +266,10 @@ export default function Individuals() {
         setSavingIndividual(true);
 
         const updateData = {
+            first_name: editingIndividual.first_name,
+            last_name: editingIndividual.last_name,
+            email: editingIndividual.email,
+            church_name: editingIndividual.church_name,
             craft_ideas: editingIndividual.craft_ideas,
             packing_party_ideas: editingIndividual.packing_party_ideas,
             fundraising_ideas: editingIndividual.fundraising_ideas,
@@ -491,11 +517,25 @@ export default function Individuals() {
                                             className={`hover:bg-gray-50 ${isAdmin ? "cursor-pointer" : ""} ${expandedRow === ind.id ? "bg-blue-50" : ""}`}
                                             onClick={() => handleRowClick(ind)}
                                         >
+                                            {/* Pencil Icon For Editing Inividuals */}
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                {ind.first_name} {ind.last_name}
-                                                {isAdmin && expandedRow === ind.id && <span className="ml-2 text-blue-600 text-xs">(Click to collapse)</span>}
-                                                {isAdmin && expandedRow !== ind.id && <span className="ml-2 text-gray-400 text-xs">(Click to edit)</span>}
+                                                <div className="flex items-center">
+                                                    {ind.first_name} {ind.last_name}
+                                                    {isAdmin && (
+                                                        <span className="ml-2">
+                                                            {expandedRow === ind.id ? (
+                                                                <span className="text-blue-600 text-xs">(Click to collapse)</span>
+                                                            ) : (
+                                                                <span className="text-gray-400 hover:text-blue-500 transition-colors" title="Edit Individual">
+                                                                    ✎
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
+
+
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {ind.email || "N/A"}
                                             </td>
@@ -595,10 +635,60 @@ export default function Individuals() {
                                             <tr key={`${ind.id}-expand`}>
                                                 <td colSpan="5" className="px-6 py-4 bg-gray-50">
                                                     <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
-                                                        <h3 className="font-semibold text-lg mb-3">Edit Individual - {ind.first_name} {ind.last_name}</h3>
+                                                        <h3 className="font-semibold text-lg mb-3">Edit Individual Information</h3>
                                                         
-                                                        {/* Resource Checkboxes */}
+                                                        {/* Editing Individuals */}
                                                         <div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">First Name</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editingIndividual.first_name}
+                                                                        onChange={(e) => setEditingIndividual({...editingIndividual, first_name: e.target.value})}
+                                                                        disabled={savingIndividual}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Last Name</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editingIndividual.last_name}
+                                                                        onChange={(e) => setEditingIndividual({...editingIndividual, last_name: e.target.value})}
+                                                                        disabled={savingIndividual}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email Address</label>
+                                                                    <input
+                                                                        type="email"
+                                                                        value={editingIndividual.email}
+                                                                        onChange={(e) => setEditingIndividual({...editingIndividual, email: e.target.value})}
+                                                                        disabled={savingIndividual}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
+                                                                    <select
+                                                                        value={editingIndividual.church_name}
+                                                                        onChange={(e) => setEditingIndividual({ ...editingIndividual, church_name: e.target.value })}
+                                                                        disabled={savingIndividual}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                                                    >
+                                                                        <option value="">-- Select a Church --</option>
+                                                                        {churches.map((church, index) => (
+                                                                            <option key={index} value={church.church_name}>
+                                                                                {church.church_name}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Resource Checkboxes */}
                                                             <label className="block text-sm font-medium mb-2">Resources Requested:</label>
                                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                                                 <label className="flex items-center space-x-2">
