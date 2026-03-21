@@ -64,6 +64,33 @@ export default function Mobile() {
     };
   }, []);
 
+  //Allow for the PWA to be downloaded from the mobile page only
+  useEffect(() => {
+    // Checks if the PWA is already downloaded
+    if (!window.matchMedia('(display-mode: standalone)').matches && !window.navigator.standalone) {
+      //If not set up the links and logo
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = '/manifest.json';
+      link.id = 'dynamic-manifest';
+      document.head.appendChild(link);
+
+      // Apple Icon injection (for the iPad Home Screen)
+      const appleIcon = document.createElement('link');
+      appleIcon.rel = 'apple-touch-icon';
+      appleIcon.href = '/OCClogo.png'; // Using your 1024px master
+      appleIcon.id = 'dynamic-apple-icon';
+      document.head.appendChild(appleIcon);
+  
+      return () => {
+        const el = document.getElementById('dynamic-manifest');
+        const ai = document.getElementById('dynamic-apple-icon');
+        if (el) document.head.removeChild(el);
+        if (ai) document.head.removeChild(ai);
+      };
+    }
+  }, []);
+
   //Handle Admin Login using real Supabase auth
   const handleNextStep = async (e) => {
     if (e) e.preventDefault();
