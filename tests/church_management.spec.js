@@ -42,7 +42,7 @@ test.describe("Add New Church", () => {
     };
 
     /* ---------------- NAVIGATION ---------------- */
-    await page.goto("/");
+    await page.getByRole("link", { name: "Churches" }).click();
     await expect(
       page.getByRole("button", { name: /add church/i }),
     ).toBeVisible();
