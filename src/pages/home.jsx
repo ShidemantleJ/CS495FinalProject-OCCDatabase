@@ -309,7 +309,7 @@ export default function Home() {
                 };
             });
             
-            let filteredData = [...churchesWithTeamMembers];
+            filteredData = [...churchesWithData];
             if (filterValues.flaggedOnly) {
                 filteredData = filteredData.filter((church) => church.missingRequiredFields.length > 0);
             }
