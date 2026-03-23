@@ -1,5 +1,5 @@
 {
-  "rewrites": [{ "source": "/((?!api/.*).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!api/|static/|favicon.ico|manifest.json|robots.txt|service-worker.js).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/index.html",
