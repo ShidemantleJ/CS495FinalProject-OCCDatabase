@@ -16,6 +16,8 @@ test.describe("Profile & Team Management", () => {
   let adminId;
   // @ts-ignore
   let subordinateId;
+  /** @type {any} */
+  let testChurch;
   const timestamp = Date.now();
   const subordinateEmail = `sub${timestamp}@test.com`;
 
@@ -75,6 +77,29 @@ test.describe("Profile & Team Management", () => {
         position: "Church Relations Team Member",
       });
     }
+
+    // 5. Create a church for the admin to be a relations member of
+    const { data: church, error: churchError } = await supabase
+      .from("church2")
+      .insert({
+        church_name: `ProfileTest Church ${timestamp}`,
+        church_physical_city: "ProfileCity",
+        church_physical_state: "SC",
+      })
+      .select()
+      .single();
+
+    if (churchError) {
+      console.error("Error seeding church for profile test:", churchError);
+    } else {
+      testChurch = church;
+      // 6. Assign admin as relations member for this church for the current year
+      await supabase.from("church_annual_attributes").insert({
+        church_id: testChurch.id,
+        year: new Date().getFullYear(),
+        relations_member: adminId,
+      });
+    }
   });
 
   test.afterAll(async () => {
@@ -107,6 +132,12 @@ test.describe("Profile & Team Management", () => {
           .delete()
           .eq("member_id", subordinateId);
         await supabase.from("team_members").delete().eq("id", subordinateId);
+      }
+
+      // Cleanup test church and attributes
+      if (testChurch) {
+        await supabase.from("church_annual_attributes").delete().eq("church_id", testChurch.id);
+        await supabase.from("church2").delete().eq("id", testChurch.id);
       }
     }
   });
@@ -145,6 +176,17 @@ test.describe("Profile & Team Management", () => {
       .filter({ hasText: `Subordinate User${timestamp}` });
     await expect(subordinateRow).toBeVisible();
     await expect(subordinateRow).toContainText("Church Relations Team Member");
+  });
+
+  test("Profile Page: Verify My Churches", async ({ page }) => {
+    // @ts-ignore
+    if (!adminId || !testChurch) test.skip();
+
+    await page.goto("/profile");
+
+    // Verify the "My Churches" section contains the test church
+    const myChurchesSection = page.locator("div").filter({ hasText: "My Churches" }).last();
+    await expect(myChurchesSection.getByText(testChurch.church_name)).toBeVisible();
   });
 
   test("Edit Profile Information", async ({ page }) => {

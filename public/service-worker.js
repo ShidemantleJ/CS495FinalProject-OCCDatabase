@@ -31,16 +31,30 @@ self.addEventListener('fetch', (event) => {
     return; // let the browser handle it normally
   }
 
-  // For SPA navigation requests, serve the cached index.html
+  // For SPA navigation requests, use network-first so new deployments
+  // always serve the latest index.html (fall back to cache when offline)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html').then((cached) => cached || fetch(event.request))
+      fetch(event.request)
+        .then((response) => {
+          // Update the cache with the fresh index.html
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
     );
     return;
   }
 
-  // For other static assets, try cache first then network
+  // For other static assets, try network first then cache
   event.respondWith(
-    caches.match(event.request).then((response) => response || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

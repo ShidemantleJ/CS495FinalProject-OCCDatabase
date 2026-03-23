@@ -179,7 +179,7 @@ test.describe.serial("Individuals Management", () => {
     ).toBeHidden();
 
     // Wait for the row to return to collapsed state to ensure it's ready for interaction
-    await expect(row.getByText("(Click to edit)")).toBeVisible();
+    await expect(row.getByText("✎")).toBeVisible();
 
     // Re-open to check value persisted
     // Click the first cell (Name) to avoid clicking the "Active" cell which stops propagation

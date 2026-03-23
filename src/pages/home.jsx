@@ -42,7 +42,7 @@ function PrivateBucketImage({ filePath, className }) {
 function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refreshChurches, isAdmin }) {
     const [updates, setUpdates] = useState({});
     const [loading, setLoading] = useState(false);
-    const shoeboxYear = shoeboxFieldName.split('_')[1];
+    const shoeboxYear = parseInt(shoeboxFieldName.split('_')[1], 10);
 
     // If not admin, close modal immediately
     useEffect(() => {
@@ -54,17 +54,17 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
     useEffect(() => {
         if (isOpen) {
             const initialUpdates = {};
-            churches.forEach(church => {
-                initialUpdates[church.church_name] = church[shoeboxFieldName] || '';
+            churches.forEach(church => { // The shoebox count is now on the church object at `shoebox_${year}`
+                initialUpdates[church.id] = church[shoeboxFieldName] ?? '';
             });
             setUpdates(initialUpdates);
         }
-    }, [isOpen, churches, shoeboxFieldName]);
-    const handleChange = (churchName, value) => {
+    }, [isOpen, churches, shoeboxFieldName]); // The handleChange now uses church.id, so church.church_name is no longer needed
+    const handleChange = (churchId, value) => {
         const numericValue = value === '' ? null : parseInt(value, 10);
         setUpdates(prev => ({
             ...prev,
-            [churchName]: isNaN(numericValue) ? '' : value,
+            [churchId]: isNaN(numericValue) ? '' : value,
         }));
     };
 
@@ -74,23 +74,41 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
             return;
         }
         setLoading(true);
-        const updatesToRun = [];
+        const recordsToUpdate = [];
+        const recordsToInsert = [];
 
         churches.forEach(church => {
-            const oldValue = church[shoeboxFieldName] || null;
-            const newValue = updates[church.church_name] === '' ? null : parseInt(updates[church.church_name], 10);
+            const oldValue = church[shoeboxFieldName] ?? null;
+            const newValue = updates[church.id] === '' ? null : parseInt(updates[church.id], 10);
 
             if (newValue !== oldValue) {
-                const updatePayload = { [shoeboxFieldName]: newValue };
-                updatesToRun.push(
-                    databaseAPI.update("church2", church.id, updatePayload)
-                );
+                // We need to find the existing attribute record to get its ID and preserve the relations_member
+                const existingAttr = (church.church_annual_attributes || []).find(a => a.year === shoeboxYear);
+
+                const record = {
+                    church_id: church.id,
+                    year: shoeboxYear,
+                    shoebox_count: newValue,
+                    relations_member: existingAttr?.relations_member // Preserve
+                };
+
+                if (existingAttr?.id) {
+                    record.id = existingAttr.id;
+                    recordsToUpdate.push(record);
+                } else {
+                    recordsToInsert.push(record);
+                }
             }
         });
 
-        await Promise.all(updatesToRun);
+        if (recordsToUpdate.length > 0) {
+            await databaseAPI.upsert("church_annual_attributes", recordsToUpdate);
+        }
+        if (recordsToInsert.length > 0) {
+            await databaseAPI.upsert("church_annual_attributes", recordsToInsert);
+        }
+        await refreshChurches();
         setLoading(false);
-        refreshChurches();
         onClose();
     };
 
@@ -110,14 +128,14 @@ function UpdateShoeboxModal({ isOpen, onClose, churches, shoeboxFieldName, refre
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {churches.map((church, index) => (
-                                <tr key={church.id || church.church_name || `church-${index}`}>
+                                <tr key={church.id || `church-${index}`}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{church.church_name.replace(/_/g, " ")}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-28">
                                         <input
                                             type="number"
                                             min="0"
-                                            value={updates[church.church_name] === null ? '' : updates[church.church_name]}
-                                            onChange={(e) => handleChange(church.church_name, e.target.value)}
+                                            value={updates[church.id] ?? ''}
+                                            onChange={(e) => handleChange(church.id, e.target.value)}
                                             className="w-full border rounded-md p-1 text-center"
                                         />
                                     </td>
@@ -196,93 +214,68 @@ export default function Home() {
     // Fetch churches with optional filters
     async function getChurches(filterValues = filters) {
         setLoading(true);
-        // Explicitly select all fields including relations member fields
-        let query = databaseAPI.list("church2");
+        const currentYear = new Date().getFullYear();
+        const selectedYear = filterValues.selectedYear;
+
+        let query = databaseAPI.list("church2", {
+            select: `
+                *,
+                church_annual_attributes(id, year, shoebox_count, relations_member)
+            `
+        });
 
         if (filterValues.churchName) {
             // Search for both spaces and underscores
             const searchValue = filterValues.churchName.trim();
             const searchWithSpaces = searchValue;
             const searchWithUnderscores = searchValue.replace(/ /g, "_");
-            // Use OR to match either format - Supabase OR syntax
             query = query.or(`church_name.ilike.%${searchWithSpaces}%,church_name.ilike.%${searchWithUnderscores}%`);
         }
         if (filterValues.zipcode) query = query.eq("church_physical_zip", filterValues.zipcode);
-        const shoeboxField = `shoebox_${filterValues.selectedYear}`;
-        if (filterValues.shoeboxMin) query = query.gte(shoeboxField, filterValues.shoeboxMin);
         if (filterValues.selectedCounties.length > 0) query = query.in("church_physical_county", filterValues.selectedCounties);
 
         const { data, error } = await query;
         if (error) {
             setChurches([]);
         } else {
-            // Get current year relations member field
-            const currentYear = new Date().getFullYear();
-            const relationsField = `church_relations_member_${currentYear}`;
+            // Post-fetch filtering for shoebox count
+            let filteredData = data;
+            if (filterValues.shoeboxMin) {
+                filteredData = data.filter(church => {
+                    const attr = (church.church_annual_attributes || []).find(a => a.year === selectedYear);
+                    return attr && attr.shoebox_count >= filterValues.shoeboxMin;
+                });
+            }
             
             // Collect all unique team member IDs from relations member fields
-            // Note: church_relations_member_* fields are text type, storing team member IDs
             const teamMemberIds = new Set();
-            data.forEach(church => {
-                const relationsId = church[relationsField];
-                if (relationsId) {
-                    // Store as string and trim whitespace
-                    const idStr = String(relationsId).trim();
-                    if (idStr && idStr !== "null" && idStr !== "undefined") {
-                        teamMemberIds.add(idStr);
-                        // Also add original (in case of any formatting differences)
-                        teamMemberIds.add(String(relationsId));
-                    }
+            filteredData.forEach(church => {
+                const attr = (church.church_annual_attributes || []).find(a => a.year === currentYear);
+                if (attr?.relations_member) {
+                    teamMemberIds.add(attr.relations_member);
                 }
             });
             
             // Fetch team member names
             let teamMembersMap = {};
             if (teamMemberIds.size > 0) {
-                // Convert to array and filter out empty strings and invalid values
-                const idArray = Array.from(teamMemberIds).filter(id => id && id !== "null" && id !== "undefined" && id.trim() !== "");
+                const idArray = Array.from(teamMemberIds).filter(Boolean);
                 if (idArray.length > 0) {
-                    // Query team members - Supabase should handle UUID conversion from text automatically
-                    // But we'll ensure IDs are valid UUID format strings
-                    const validUuidArray = idArray.filter(id => {
-                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                        return uuidRegex.test(String(id).trim());
+                    const { data: teamMembersData, error: teamError } = await databaseAPI.list("team_members", {
+                        select: "id, first_name, last_name",
+                        filters: [{ column: "id", op: "in", value: idArray }],
                     });
                     
-                    if (validUuidArray.length > 0) {
-                        const { data: teamMembersData, error: teamError } = await databaseAPI.list("team_members", {
-                            select: "id, first_name, last_name",
-                            filters: [{ column: "id", op: "in", value: validUuidArray }],
+                    if (!teamError && teamMembersData) {
+                        teamMembersData.forEach(member => {
+                            teamMembersMap[member.id] = `${member.first_name} ${member.last_name}`;
                         });
-                        
-                        if (teamError) {
-                            console.error("Error fetching team members:", teamError, "IDs queried:", validUuidArray);
-                        }
-                        
-                        if (teamMembersData && teamMembersData.length > 0) {
-                            teamMembersData.forEach(member => {
-                                const memberName = `${member.first_name} ${member.last_name}`;
-                                // Store with multiple formats for flexible lookup
-                                const memberId = member.id;
-                                const memberIdStr = String(memberId).trim();
-                                const memberIdLower = memberIdStr.toLowerCase();
-                                
-                                // Store with various formats to ensure we can find it
-                                Map[memberIdStr] = memberName;
-                                teamMembersMap[String(memberId)] = memberName;
-                                teamMembersMap[memberIdLower] = memberName;
-                                // Also store the UUID object if it exists
-                                if (memberId) {
-                                    teamMembersMap[memberId] = memberName;
-                                }
-                            });
-                        }
                     }
                 }
             }
             
             // Map team member names to churches and determine project leader name
-            const churchesWithTeamMembers = data.map(church => {
+            const churchesWithData = filteredData.map(church => {
                 // Get POC name - use email as fallback if name is empty
                 const pocFirstName = church["church_POC_first_name"] || "";
                 const pocLastName = church["church_POC_last_name"] || "";
@@ -290,44 +283,21 @@ export default function Home() {
                 if (!pocName && church["church_POC_email"]) {
                     pocName = church["church_POC_email"];
                 }
-                
                 // Determine project leader name
                 let projectLeaderName = "N/A";
                 if (church.project_leader === true) {
-                    // POC is the project leader
                     projectLeaderName = pocName || "N/A";
                 } else if (church.project_leader === false) {
-                    // Different person
                     projectLeaderName = "Different from POC";
                 }
                 
-                // Get relations member name - check if the ID exists in our map
-                const relationsMemberId = church[relationsField];
-                let relationsMemberName = "N/A";
-                if (relationsMemberId) {
-                    // Convert to string for consistent lookup - handle both UUID and text formats
-                    const memberIdStr = String(relationsMemberId).trim();
-                    const memberIdLower = memberIdStr.toLowerCase();
-                    
-                    // Try multiple lookup strategies
-                    if (teamMembersMap[memberIdStr]) {
-                        relationsMemberName = teamMembersMap[memberIdStr];
-                    } else if (teamMembersMap[memberIdLower]) {
-                        relationsMemberName = teamMembersMap[memberIdLower];
-                    } else if (teamMembersMap[String(relationsMemberId)]) {
-                        relationsMemberName = teamMembersMap[String(relationsMemberId)];
-                    } else {
-                        // Try case-insensitive match and also check all keys
-                        const foundKey = Object.keys(teamMembersMap).find(key => 
-                            key.toLowerCase() === memberIdLower || 
-                            key.trim().toLowerCase() === memberIdLower ||
-                            String(key).toLowerCase() === memberIdLower
-                        );
-                        if (foundKey) {
-                            relationsMemberName = teamMembersMap[foundKey];
-                        }
-                    }
-                }
+                // Get relations member name for current year
+                const currentYearAttr = (church.church_annual_attributes || []).find(a => a.year === currentYear);
+                const relationsMemberName = teamMembersMap[currentYearAttr?.relations_member] || "N/A";
+
+                // Get shoebox count for selected year
+                const selectedYearAttr = (church.church_annual_attributes || []).find(a => a.year === selectedYear);
+                const shoeboxCount = selectedYearAttr?.shoebox_count;
                 
                 return {
                     ...church,
@@ -335,6 +305,7 @@ export default function Home() {
                     projectLeaderName: projectLeaderName,
                     pocName: pocName,
                     missingRequiredFields: getMissingChurchRequiredFields(church),
+                    [`shoebox_${selectedYear}`]: shoeboxCount
                 };
             });
             

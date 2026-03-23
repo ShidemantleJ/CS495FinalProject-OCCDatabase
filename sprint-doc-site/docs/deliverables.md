@@ -1,5 +1,14 @@
 # Deliverables
 
+## Sprint 2
+[Project Planning Document](https://bama365.sharepoint.com/:w:/t/CS495SeniorDesign-STUDENT/IQBK7a8qWqsaQorabe50jmUxAfIfV_mxx1u4L405zVl1ytE?e=VhPcW4)
+
+[Project Backlog](https://bama365.sharepoint.com/:x:/t/CS495SeniorDesign-STUDENT/IQDrlb9XsvHpTLzmFnAySYxXAR4bW8IPJq88d1wro89oahc?e=SaAXTx)
+
+[Sprint Backlog](https://bama365.sharepoint.com/:x:/t/CS495SeniorDesign-STUDENT/IQDrlb9XsvHpTLzmFnAySYxXAR4bW8IPJq88d1wro89oahc?e=038zye)
+
+[Sprint Presentation (PowerPoint File)](https://bama365-my.sharepoint.com/:p:/g/personal/tcgray2_crimson_ua_edu/IQD23oafZv_IT7qfHCw89vBrAfXcvWGqoFpur5yhEszmrtA?e=bxK8nP)
+
 ## Sprint 1
 [Project Planning Document](https://bama365.sharepoint.com/:w:/t/CS495SeniorDesign-STUDENT/IQBK7a8qWqsaQorabe50jmUxAfIfV_mxx1u4L405zVl1ytE?e=VhPcW4)
 

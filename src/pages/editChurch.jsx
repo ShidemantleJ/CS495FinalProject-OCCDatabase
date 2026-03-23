@@ -212,7 +212,7 @@ export default function EditChurch() {
       }
 
       // Remove fields that shouldn't be updated via this form
-      const { id, created_at, "church_relations_member_2023": rel2023, "church_relations_member_2024": rel2024, "church_relations_member_2025": rel2025, "church_relations_member_2026": rel2026, shoebox_2022, shoebox_2021, shoebox_2020, shoebox_2019, shoebox_2023, shoebox_2024, shoebox_2025, shoebox_2026, ...fieldsToUpdate } = updateData;
+      const { id, created_at, ...fieldsToUpdate } = updateData;
       
       const { error } = await databaseAPI.update(
         "church2",

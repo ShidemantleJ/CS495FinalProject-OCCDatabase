@@ -4,7 +4,7 @@ import { applyFilters, applyOrderAndRange } from "./queryHelpers";
 
 // Supabase API export
 export const supabaseAPI = {
-   // Auth functions
+  //region Auth functions
   getUser() {
     return supabase.auth.getUser();
   },
@@ -41,12 +41,15 @@ export const supabaseAPI = {
   },
 
   
-  // Generalized table functions
+  //region General functions
   async create(tableName, payload, { select = "*" } = {}) {
     return supabase.from(tableName).insert([payload]).select(select).single();
   },
   async update(tableName, id, updates, { select = "*" } = {}) {
     return supabase.from(tableName).update(updates).eq("id", id).select(select).single();
+  },
+  async upsert(tableName, payload, { select = "*", ...options } = {}) {
+    return supabase.from(tableName).upsert(payload, options).select(select);
   },
   async delete(tableName, id) {
     return supabase.from(tableName).delete().eq("id", id);
@@ -77,6 +80,33 @@ export const supabaseAPI = {
     return query;
   },
 
+
+  //region Form Functions
+  async getValidTablesForSubmissions() {
+    const { data, error } = await supabase.rpc('get_enum_values', {
+      enum_schema: 'public',
+      enum_name: 'tables_names_for_form_submission',
+    });
+    if (error) console.error("Error fetching enum values:", error);
+    return { data: data || [], error };
+  },
+
+  async getTableColumns(tableName) {
+    const { data, error } = await supabase.rpc('get_table_columns', {
+      p_table_name: tableName,
+    });
+    if (error) console.error("Error fetching table columns:", error);
+    const dict = {};
+    if (data) {
+      data.forEach(({ column_name, data_type }) => {
+        if (!column_name.endsWith("_id") && column_name !== "id") {
+          dict[column_name] = data_type;
+        }
+      });
+    }
+    return { data: dict, error };
+  },
+
   async submitForm(formTemplateId, formTemplateName, formContent, { select = "*" } = {}) {
     return supabase
       .from("form_submissions")
@@ -87,6 +117,41 @@ export const supabaseAPI = {
       }])
       .select(select)
       .single();
+  },
+
+  async saveTemplate(templateName, startDate, endDate, type, destinationTable, fields, { select = "*" } = {}) {
+    return supabase
+      .from("form_templates")
+      .insert([{
+        template_name: templateName,
+        start_date: startDate,
+        end_date: endDate,
+        type: type,
+        destination_table: destinationTable,
+        fields: fields
+      }])
+      .select(select)
+      .single();
+  },
+
+  async updateTemplate(templateId, updates, { select = "*" } = {}) {
+    return supabase
+      .from("form_templates")
+      .update(updates)
+      .eq("id", templateId)
+      .select(select)
+      .single();
+  },
+
+  async deleteTemplate(templateId) {
+    return supabase
+      .from("form_templates")
+      .delete()
+      .eq("id", templateId);
+  },
+
+  async getTemplates({ select = "*" } = {}) {
+    return supabase.from("form_templates").select(select).order("template_name", { ascending: true });
   },
 
   // Storage functions

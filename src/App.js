@@ -16,6 +16,7 @@ import EditChurch from "./pages/editChurch";
 import TeamMember from "./pages/teamMember";
 import Individuals from "./pages/individuals";
 import FormSubmissions from "./pages/formSubmissions";
+import EditTemplates from "./pages/editTemplates";
 import AddIndividual from "./pages/addIndividual";
 import ForgotPassword from "./pages/forgotPassword";
 import ResetPassword from "./pages/resetPassword";
@@ -25,9 +26,10 @@ import Mobile from "./pages/mobile";
 import { useState, useEffect } from 'react';
 
 function App() {
-  const [isPWA, setIsPWA] = useState(() => {
-    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  });
+  //So the PWA starts in the Mobile Interface
+  const [isPWA] = useState(() => 
+    window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+  );
 
   useEffect(() => {
     if (isPWA && window.location.pathname !== '/mobile') {
@@ -35,26 +37,20 @@ function App() {
     }
   }, [isPWA]);
 
-  // Ping server periodically when user interacts with the site, allowing automatic logout.
   useLastActivity();
 
-  // If we are in the PWA, only show the Mobile page
-  if (isPWA) {
-    return (
-      <Router>
-        <Routes>
+  return (
+    <Router> {/* Keep the same session regardless of PWA */}
+      {isPWA ? (
+        <Routes>{/* In PWA mode */}
           <Route path="*" element={<Mobile />} />
         </Routes>
-      </Router>
-    );
-  }
+      ) : (
+        // Website
+        <div className="min-h-screen bg-gray-100">
+          <Navbar />
+          <div className="pt-16 md:pt-20">
 
-  return (
-    <Router>
-      <div className="min-h-screen bg-gray-100">
-        <Navbar />
-
-        <div className="pt-16 md:pt-20">
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
@@ -79,6 +75,7 @@ function App() {
                     <Route path="/team-member/:id" element={<TeamMember />} />
                     <Route path="/individuals" element={<Individuals />} />
                     <Route path="/form-submissions" element={<FormSubmissions />} />
+                    <Route path="/edit-templates" element={<EditTemplates />} />
                    
 
                     {/* Add/Edit routes */}
@@ -97,6 +94,7 @@ function App() {
           </Routes>
         </div>
       </div>
+      )}
     </Router>
   );
 }
