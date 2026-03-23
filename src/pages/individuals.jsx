@@ -247,6 +247,8 @@ export default function Individuals() {
                 last_name: individual.last_name || "",
                 email: individual.email || "",
                 church_name: individual.church_name || "",
+                birth_date: individual.birth_date || "",
+                role: individual.role || "",
                 craft_ideas: individual.craft_ideas || false,
                 packing_party_ideas: individual.packing_party_ideas || false,
                 fundraising_ideas: individual.fundraising_ideas || false,
@@ -270,6 +272,8 @@ export default function Individuals() {
             last_name: editingIndividual.last_name,
             email: editingIndividual.email,
             church_name: editingIndividual.church_name,
+            birth_date: editingIndividual.birth_date || null,
+            role: editingIndividual.role || null,
             craft_ideas: editingIndividual.craft_ideas,
             packing_party_ideas: editingIndividual.packing_party_ideas,
             fundraising_ideas: editingIndividual.fundraising_ideas,
@@ -639,7 +643,7 @@ export default function Individuals() {
                                                         
                                                         {/* Editing Individuals */}
                                                         <div>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">First Name</label>
                                                                     <input
@@ -685,6 +689,30 @@ export default function Individuals() {
                                                                             </option>
                                                                         ))}
                                                                     </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>
+                                                                    <select
+                                                                        value={editingIndividual.role}
+                                                                        onChange={(e) => setEditingIndividual({ ...editingIndividual, role: e.target.value })}
+                                                                        disabled={savingIndividual}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                                                    >
+                                                                        <option value="">-- Select a Role --</option>
+                                                                        <option value="Volunteer">Volunteer</option>
+                                                                        <option value="Organizer">Organizer</option>
+                                                                        <option value="Coordinator">Coordinator</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Birth Date</label>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={editingIndividual.birth_date}
+                                                                        onChange={(e) => setEditingIndividual({...editingIndividual, birth_date: e.target.value})}
+                                                                        disabled={savingIndividual}
+                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                                                    />
                                                                 </div>
                                                             </div>
 
@@ -839,6 +867,3 @@ export default function Individuals() {
         </div>
     );
 }
-
-
-
