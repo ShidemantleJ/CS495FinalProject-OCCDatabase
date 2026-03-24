@@ -8,7 +8,10 @@ export default function Mobile() {
   const [validAdmin, setValidAdmin] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [view, setView] = useState("selection"); // "selection", "Individuals Drop-Off", "Church/Group Drop-Off", "NCW Short-Term", "PLW"
+  const [view, setView] = useState("selection"); // "selection", "Individuals Drop-Off", "Church/Group Drop-Off", "NCW Short-Term", "PLW", "custom"
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [customFormData, setCustomFormData] = useState({});
   const [formData, setFormData] = useState({ //All the types of data that can be entered in the various forms
     // Header Info
     locationCode: "",
@@ -48,6 +51,26 @@ export default function Mobile() {
     supportNeeds: ""    // "How can the West Alabama OCC team support you..."
   }); //Fields of the 3 forms we got sent by the sponsor
   
+
+  // Fetch active custom templates once verified
+  useEffect(() => {
+    if (!isVerified) return;
+    const fetchCustomTemplates = async () => {
+      const { data, error } = await databaseAPI.getTemplates();
+      if (error || !data) return;
+      const hardcoded = ["individual", "church", "ncw", "plw"];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const active = data.filter((t) => {
+        if (hardcoded.includes(t.template_name?.toLowerCase())) return false;
+        if (t.start_date && new Date(t.start_date) > today) return false;
+        if (t.end_date && new Date(t.end_date) < today) return false;
+        return true;
+      });
+      setCustomTemplates(active);
+    };
+    fetchCustomTemplates();
+  }, [isVerified]);
 
   //Prevent Back Navigation & URL changes
   useEffect(() => {
@@ -130,6 +153,17 @@ export default function Mobile() {
       setFormData({ name: "", email: "" });
       setValidAdmin({ email: "", password: "" });
     }
+  };
+
+  const handleSelectCustomTemplate = (template) => {
+    setSelectedTemplate(template);
+    const initial = {};
+    const fields = Array.isArray(template.fields) ? template.fields : [];
+    fields.forEach((f) => {
+      initial[f.name] = f.type === "multi-select" ? [] : "";
+    });
+    setCustomFormData(initial);
+    setView("custom");
   };
 
   //When Switch Form is selected wipes the data previously entered in the form (Can be removed if we decide that we don't want the switch form option)
@@ -285,6 +319,22 @@ export default function Mobile() {
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
             </button>
 
+            {/* Custom Templates */}
+            {customTemplates.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleSelectCustomTemplate(template)}
+                className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+              >
+                <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-bold text-violet-600 uppercase tracking-widest mb-1">{template.type || "Custom Form"}</span>
+                  <span className="text-3xl font-black text-slate-900 tracking-tight">{template.template_name}</span>
+                </div>
+                <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
+              </button>
+            ))}
+
             {/* Exit Button To Leave The Selection Screen & To Return To The Admin Login */}
             <button
               type="button"
@@ -297,8 +347,246 @@ export default function Mobile() {
         </div>
       )}
   
+      {/* 3a. CUSTOM TEMPLATE FORM */}
+      {isVerified && view === "custom" && selectedTemplate && (
+        <div className="w-full max-w-3xl mt-10">
+          <header className="flex flex-col md:flex-row justify-between items-center mb-10 px-2 space-y-4 md:space-y-0">
+            <div className="text-left">
+              <p className="text-violet-600 font-bold text-sm uppercase tracking-[0.2em] mb-1">{selectedTemplate.type || "Custom Form"}</p>
+              <h1 className="text-4xl font-black text-slate-900">{selectedTemplate.template_name}</h1>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedTemplate(null);
+                setCustomFormData({});
+                setView("selection");
+              }}
+              className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              ← Switch Form
+            </button>
+          </header>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const fields = Array.isArray(selectedTemplate.fields) ? selectedTemplate.fields : [];
+              for (const f of fields) {
+                if (f.required) {
+                  const val = customFormData[f.name];
+                  if (val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) {
+                    alert(`Please fill in the required field: ${f.form_name || f.name}`);
+                    return;
+                  }
+                }
+              }
+              try {
+                const { error: submitError } = await databaseAPI.submitForm(
+                  selectedTemplate.id,
+                  selectedTemplate.template_name,
+                  customFormData
+                );
+                if (submitError) {
+                  console.error("Error submitting form:", submitError);
+                  alert("Failed to submit form. Please try again.");
+                  return;
+                }
+                setView("submission");
+              } catch (error) {
+                console.error("Unexpected error during form submission:", error);
+                alert("An unexpected error occurred. Please try again.");
+              }
+            }}
+            className="w-full space-y-6"
+          >
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-200/60 border border-slate-100 space-y-8">
+              {(Array.isArray(selectedTemplate.fields) ? selectedTemplate.fields : []).map((field, idx) => {
+                const label = field.form_name || field.name;
+                const value = customFormData[field.name];
+
+                if (field.type === "text") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={label}
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "textarea") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <textarea
+                        rows={4}
+                        placeholder={label}
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all resize-none"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "number") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="number"
+                        placeholder={label}
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "date") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "select") {
+                  const options = Array.isArray(field.options) ? field.options : [];
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <select
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      >
+                        <option value="">Select...</option>
+                        {options.map((opt, oi) => (
+                          <option key={oi} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+
+                if (field.type === "multi-select") {
+                  const options = Array.isArray(field.options) ? field.options : [];
+                  const selected = Array.isArray(value) ? value : [];
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {options.map((opt, oi) => (
+                          <button
+                            key={oi}
+                            type="button"
+                            onClick={() => setCustomFormData((prev) => {
+                              const cur = Array.isArray(prev[field.name]) ? prev[field.name] : [];
+                              return { ...prev, [field.name]: cur.includes(opt) ? cur.filter((v) => v !== opt) : [...cur, opt] };
+                            })}
+                            className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${
+                              selected.includes(opt)
+                                ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner"
+                                : "border-slate-100 bg-slate-50 text-slate-400"
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (field.type === "bubble-select") {
+                  const options = Array.isArray(field.options) ? field.options : [];
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {options.map((opt, oi) => (
+                          <button
+                            key={oi}
+                            type="button"
+                            onClick={() => setCustomFormData((prev) => ({ ...prev, [field.name]: opt }))}
+                            className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${
+                              value === opt
+                                ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner"
+                                : "border-slate-100 bg-slate-50 text-slate-400"
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Fallback: render as text input
+                return (
+                  <div key={idx} className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      {label}{field.required && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={label}
+                      className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                      value={value || ""}
+                      onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                      required={field.required}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* SUBMIT BUTTON */}
+              <button
+                type="submit"
+                className="w-full py-6 bg-slate-900 hover:bg-black text-white text-2xl font-bold rounded-[1.5rem] shadow-xl active:scale-[0.98] transition-all tracking-tight"
+              >
+                Complete Registration
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* 3. REGISTRATION FORM (Shown after a selection is made) */}
-      {isVerified && view !== "selection" && (
+      {isVerified && view !== "selection" && view !== "custom" && (
         <div className="w-full max-w-3xl mt-10">
           {view !== "submission" && (
             <header className="flex flex-col md:flex-row justify-between items-center mb-10 px-2 space-y-4 md:space-y-0">
@@ -315,6 +603,8 @@ export default function Mobile() {
               <button 
                 onClick={() => {
                   resetForm();
+                  setSelectedTemplate(null);
+                  setCustomFormData({});
                   setView("selection")
                 }}
                 className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
@@ -343,6 +633,8 @@ export default function Mobile() {
                   <button
                     onClick={() => {
                       resetForm(); // Ensure state is wiped for the next user
+                      setSelectedTemplate(null);
+                      setCustomFormData({});
                       setView("selection"); //Goes back to the selection screen
                     }}
                     className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white text-2xl font-bold rounded-2xl shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all"
@@ -411,6 +703,8 @@ export default function Mobile() {
                 
                 console.log("Form submitted successfully:", data);
                 setView("submission"); // Goes to the submission screen
+                setSelectedTemplate(null);
+                setCustomFormData({});
               } catch (error) {
                 console.error("Unexpected error during form submission:", error);
                 alert("An unexpected error occurred. Please try again.");
