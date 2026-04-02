@@ -14,14 +14,10 @@ export default function EditTemplates() {
   // Editing state
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [editFieldsError, setEditFieldsError] = useState("");
-  const [editFieldsList, setEditFieldsList] = useState([]);
 
   // Creating state
   const [isCreating, setIsCreating] = useState(false);
-  const [newForm, setNewForm] = useState({ template_name: "", type: "", destination_table: "", start_date: "", end_date: "" });
-  const [newFieldsList, setNewFieldsList] = useState([]);
-  const [newFieldsError, setNewFieldsError] = useState("");
+  const [newForm, setNewForm] = useState({ event_name: "", destination_table: "", start_date: "", end_date: "" });
 
   // Table column fields state
   const [tableColumnsCache, setTableColumnsCache] = useState({});
@@ -42,6 +38,26 @@ export default function EditTemplates() {
 
   const mapSqlType = (sqlType) => SQL_TYPE_MAP[sqlType?.toLowerCase()] || "text";
 
+  const TYPE_VARIANTS = {
+    text:     ["text", "textarea", "bubble-select", "multi-select"],
+    textarea: ["text", "textarea", "bubble-select", "multi-select"],
+    number:   ["number", "phone", "zip"],
+    date:     ["date"],
+    select:   ["select"],
+  };
+
+  const TYPE_LABEL = {
+    "text":          "Text",
+    "textarea":      "Text Area",
+    "bubble-select": "Bubble Select",
+    "multi-select":  "Multi Select",
+    "number":        "Number",
+    "phone":         "Phone Number",
+    "zip":           "Zip Code",
+    "date":          "Date",
+    "select":        "Select",
+  };
+
   const fetchTableColumns = async (tableName) => {
     if (!tableName) return [];
     if (tableColumnsCache[tableName]) return tableColumnsCache[tableName];
@@ -50,7 +66,9 @@ export default function EditTemplates() {
     const cols = Object.entries(data).map(([name, sqlType]) => ({
       name,
       type: mapSqlType(sqlType),
+      sqlBaseType: mapSqlType(sqlType),
       enabled: true,
+      required: true,
       fromTable: true,
       options: sqlType === "boolean" ? "true, false" : "",
     }));
@@ -65,7 +83,7 @@ export default function EditTemplates() {
     const cols = await fetchTableColumns(tableName);
     setNewTableColumns(cols.map((c) => {
       const existing = newTableColumns.find((tc) => tc.name === c.name);
-      return existing ? { ...c, enabled: existing.enabled, form_name: existing.form_name || "" } : { ...c, form_name: "" };
+      return existing ? { ...c, enabled: existing.enabled, required: existing.required !== undefined ? existing.required : true, form_name: existing.form_name || "", type: existing.type || c.type, options: existing.options ?? c.options ?? "" } : { ...c, form_name: "" };
     }));
   };
 
@@ -75,7 +93,7 @@ export default function EditTemplates() {
     const cols = await fetchTableColumns(tableName);
     setEditTableColumns(cols.map((c) => {
       const existing = editTableColumns.find((tc) => tc.name === c.name);
-      return existing ? { ...c, enabled: existing.enabled, form_name: existing.form_name || "" } : { ...c, form_name: "" };
+      return existing ? { ...c, enabled: existing.enabled, required: existing.required !== undefined ? existing.required : true, form_name: existing.form_name || "", type: existing.type || c.type, options: existing.options ?? c.options ?? "" } : { ...c, form_name: "" };
     }));
   };
 
@@ -91,55 +109,7 @@ export default function EditTemplates() {
   const updateNewTableColumn = (i, key, value) =>
     setNewTableColumns((prev) => prev.map((c, idx) => idx === i ? { ...c, [key]: value } : c));
 
-  const FIELD_TYPES = [
-    { value: "text",         label: "Text Box" },
-    { value: "textarea",     label: "Text Area" },
-    { value: "number",       label: "Number" },
-    { value: "date",         label: "Date" },
-    { value: "select",       label: "Select" },
-    { value: "multi-select", label: "Multi Select" },
-    { value: "bubble-select",label: "Bubble Select" },
-  ];
-
-  const OPTIONS_TYPES = ["select", "multi-select", "bubble-select"];
-
-  const addField = () =>
-    setEditFieldsList((prev) => [...prev, { name: "", type: "text", required: false, options: "", form_name: "" }]);
-
-  const addNewField = () =>
-    setNewFieldsList((prev) => [...prev, { name: "", type: "text", required: false, options: "", form_name: "" }]);
-
-  const removeField = (i) =>
-    setEditFieldsList((prev) => prev.filter((_, idx) => idx !== i));
-
-  const removeNewField = (i) =>
-    setNewFieldsList((prev) => prev.filter((_, idx) => idx !== i));
-
-  const updateField = (i, key, value) =>
-    setEditFieldsList((prev) => prev.map((f, idx) => idx === i ? { ...f, [key]: value } : f));
-
-  const updateNewField = (i, key, value) =>
-    setNewFieldsList((prev) => prev.map((f, idx) => idx === i ? { ...f, [key]: value } : f));
-
-  const moveField = (i, dir) => {
-    setEditFieldsList((prev) => {
-      const list = [...prev];
-      const target = i + dir;
-      if (target < 0 || target >= list.length) return list;
-      [list[i], list[target]] = [list[target], list[i]];
-      return list;
-    });
-  };
-
-  const moveNewField = (i, dir) => {
-    setNewFieldsList((prev) => {
-      const list = [...prev];
-      const target = i + dir;
-      if (target < 0 || target >= list.length) return list;
-      [list[i], list[target]] = [list[target], list[i]];
-      return list;
-    });
-  };
+  const OPTIONS_TYPES = ["select", "bubble-select", "multi-select"];
 
   // Expandable fields
   const [expandedFields, setExpandedFields] = useState({});
@@ -157,6 +127,8 @@ export default function EditTemplates() {
     "text":          { symbol: "T",  title: "Text Box" },
     "textarea":      { symbol: "¶",  title: "Text Area" },
     "number":        { symbol: "#",  title: "Number" },
+    "phone":         { symbol: "☎",  title: "Phone Number" },
+    "zip":           { symbol: "✉",  title: "Zip Code" },
     "date":          { symbol: "📅", title: "Date" },
     "select":        { symbol: "▾",  title: "Select" },
     "multi-select":  { symbol: "☰",  title: "Multi Select" },
@@ -221,20 +193,11 @@ export default function EditTemplates() {
 
   const handleCreateCancel = () => {
     setIsCreating(false);
-    setNewForm({ template_name: "", type: "", destination_table: "", start_date: "", end_date: "" });
-    setNewFieldsList([]);
+    setNewForm({ event_name: "", destination_table: "", start_date: "", end_date: "" });
     setNewTableColumns([]);
-    setNewFieldsError("");
   };
 
   const handleCreateSave = async () => {
-    const hasBlankName = newFieldsList.some((f) => !f.name.trim());
-    if (hasBlankName) {
-      setNewFieldsError("All fields must have a name.");
-      return;
-    }
-    setNewFieldsError("");
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (newForm.end_date) {
@@ -250,32 +213,22 @@ export default function EditTemplates() {
     }
     setErrorMessage("");
 
-    const parsedFields = newFieldsList.map((f) => {
-      const field = { name: f.name.trim(), type: f.type, required: f.required };
-      if (f.form_name?.trim()) field.form_name = f.form_name.trim();
-      if (OPTIONS_TYPES.includes(f.type)) {
-        field.options = f.options.split(",").map((o) => o.trim()).filter(Boolean);
-      }
-      return field;
-    });
-
     const enabledTableFields = newTableColumns
       .filter((c) => c.enabled)
       .map((c) => {
-        const field = { name: c.name, type: c.type, required: true, fromTable: true };
+        const field = { name: c.name, type: c.type, required: c.required, fromTable: true };
         if (c.form_name?.trim()) field.form_name = c.form_name.trim();
-        if (c.type === "select") field.options = c.options.split(",").map((o) => o.trim()).filter(Boolean);
+        if (["select", "bubble-select", "multi-select"].includes(c.type)) field.options = c.options.split(",").map((o) => o.trim()).filter(Boolean);
         return field;
       });
-    const allFields = [...enabledTableFields, ...parsedFields];
 
     const { error } = await databaseAPI.saveTemplate(
-      newForm.template_name,
+      newForm.event_name,
       newForm.start_date || null,
       newForm.end_date || null,
-      newForm.type || null,
+      null,
       newForm.destination_table || null,
-      allFields.length > 0 ? allFields : null
+      enabledTableFields.length > 0 ? enabledTableFields : null
     );
     if (error) {
       setErrorMessage("Failed to create template.");
@@ -287,26 +240,14 @@ export default function EditTemplates() {
 
   const handleEditClick = (template) => {
     setEditingId(template.id);
-    setEditFieldsError("");
     setEditForm({
-      template_name: template.template_name || "",
-      type: template.type || "",
+      event_name: template.event_name || "",
       destination_table: template.destination_table || "",
       start_date: template.start_date || "",
       end_date: template.end_date || "",
     });
     const rawList = Array.isArray(template.fields) ? template.fields : [];
-    const customFields = rawList.filter((f) => !f.fromTable);
-    setEditFieldsList(
-      customFields.map((f) => ({
-        name: f.name || "",
-        type: f.type || "text",
-        required: !!f.required,
-        options: Array.isArray(f.options) ? f.options.join(", ") : (f.options || ""),
-        form_name: f.form_name || "",
-      }))
-    );
-    // Load table columns and restore enabled state from saved fields
+    // Load table columns and restore enabled/required state from saved fields
     if (template.destination_table) {
       fetchTableColumns(template.destination_table).then((cols) => {
         const savedTableFields = rawList.filter((f) => f.fromTable);
@@ -315,7 +256,14 @@ export default function EditTemplates() {
         setEditTableColumns(cols.map((c) => ({
           ...c,
           enabled: savedTableFieldNames.size > 0 ? savedTableFieldNames.has(c.name) : true,
+          required: savedTableFieldNames.has(c.name) ? (savedTableFieldMap[c.name]?.required !== false) : true,
           form_name: savedTableFieldMap[c.name]?.form_name || "",
+          type: savedTableFieldNames.has(c.name) ? (savedTableFieldMap[c.name]?.type || c.type) : c.type,
+          options: savedTableFieldNames.has(c.name)
+            ? (Array.isArray(savedTableFieldMap[c.name]?.options)
+                ? savedTableFieldMap[c.name].options.join(", ")
+                : savedTableFieldMap[c.name]?.options || c.options || "")
+            : (c.options || ""),
         })));
       });
     } else {
@@ -326,19 +274,10 @@ export default function EditTemplates() {
   const handleEditCancel = () => {
     setEditingId(null);
     setEditForm({});
-    setEditFieldsList([]);
     setEditTableColumns([]);
   };
 
   const handleEditSave = async (templateId) => {
-    // Validate field names
-    const hasBlankName = editFieldsList.some((f) => !f.name.trim());
-    if (hasBlankName) {
-      setEditFieldsError("All fields must have a name.");
-      return;
-    }
-    setEditFieldsError("");
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (editForm.end_date) {
@@ -354,29 +293,19 @@ export default function EditTemplates() {
     }
     setErrorMessage("");
 
-    const parsedFields = editFieldsList.map((f) => {
-      const field = { name: f.name.trim(), type: f.type, required: f.required };
-      if (f.form_name?.trim()) field.form_name = f.form_name.trim();
-      if (OPTIONS_TYPES.includes(f.type)) {
-        field.options = f.options.split(",").map((o) => o.trim()).filter(Boolean);
-      }
-      return field;
-    });
-
     const enabledTableFields = editTableColumns
       .filter((c) => c.enabled)
       .map((c) => {
-        const field = { name: c.name, type: c.type, required: true, fromTable: true };
+        const field = { name: c.name, type: c.type, required: c.required, fromTable: true };
         if (c.form_name?.trim()) field.form_name = c.form_name.trim();
-        if (c.type === "select") field.options = c.options?.split(",").map((o) => o.trim()).filter(Boolean) || [];
+        if (["select", "bubble-select", "multi-select"].includes(c.type)) field.options = c.options?.split(",").map((o) => o.trim()).filter(Boolean) || [];
         return field;
       });
-    const allFields = [...enabledTableFields, ...parsedFields];
 
     const { error } = await databaseAPI.updateTemplate(templateId, {
       ...editForm,
       destination_table: editForm.destination_table || null,
-      fields: allFields.length > 0 ? allFields : null,
+      fields: enabledTableFields.length > 0 ? enabledTableFields : null,
     });
     if (error) {
       setErrorMessage("Failed to update template.");
@@ -384,7 +313,6 @@ export default function EditTemplates() {
     }
     setEditingId(null);
     setEditForm({});
-    setEditFieldsList([]);
     setEditTableColumns([]);
     await loadTemplates();
   };
@@ -437,8 +365,7 @@ export default function EditTemplates() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Template Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination Table</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
@@ -447,186 +374,33 @@ export default function EditTemplates() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {/* New template row */}
-              {isCreating && (
-                <tr className="bg-blue-50">
-                  <td className="px-4 py-3 align-top">
-                    <input
-                      type="text"
-                      placeholder="Template name"
-                      value={newForm.template_name}
-                      onChange={(e) => setNewForm({ ...newForm, template_name: e.target.value })}
-                      className="border rounded-md px-2 py-1 w-full text-sm"
-                    />
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <input
-                      type="text"
-                      placeholder="Type"
-                      value={newForm.type}
-                      onChange={(e) => setNewForm({ ...newForm, type: e.target.value })}
-                      className="border rounded-md px-2 py-1 w-full text-sm"
-                    />
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <select
-                      value={newForm.destination_table}
-                      onChange={(e) => handleNewDestinationChange(e.target.value)}
-                      className="border rounded-md px-2 py-1 w-full text-sm"
-                    >
-                      <option value="">No Table</option>
-                      {validTables.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <input
-                      type="date"
-                      value={newForm.start_date}
-                      onChange={(e) => setNewForm({ ...newForm, start_date: e.target.value })}
-                      className="border rounded-md px-2 py-1 text-sm"
-                    />
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <input
-                      type="date"
-                      value={newForm.end_date}
-                      onChange={(e) => setNewForm({ ...newForm, end_date: e.target.value })}
-                      className="border rounded-md px-2 py-1 text-sm"
-                    />
-                  </td>
-                  <td className="px-4 py-3 align-top max-w-xs">
-                    <div className="space-y-2">
-                      {renderFieldsSummary([...newTableColumns.filter(c => c.enabled), ...newFieldsList])}
-                      <button
-                        type="button"
-                        onClick={() => { setFieldModalMode("create"); setFieldModalOpen(true); }}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 hover:border-blue-400 hover:text-blue-600 shadow-sm transition-colors"
-                      >
-                        Edit Fields ({newTableColumns.filter(c => c.enabled).length + newFieldsList.length})
-                        <FaCog size={11} />
-                      </button>
-                      {newFieldsError && (
-                        <p className="text-red-500 text-xs">{newFieldsError}</p>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 align-top">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleCreateSave}
-                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={handleCreateCancel}
-                        className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )}
               {templates.map((template) => {
-                const isEditing = editingId === template.id;
                 return (
                   <tr key={template.id}>
 
-                    {/* Template Name */}
+                    {/* Event Name */}
                     <td className="px-4 py-3 align-middle">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editForm.template_name}
-                          onChange={(e) => setEditForm({ ...editForm, template_name: e.target.value })}
-                          className="border rounded-md px-2 py-1 w-full text-sm"
-                        />
-                      ) : (
-                        <span className="text-sm text-gray-900">{template.template_name || template.name || "—"}</span>
-                      )}
-                    </td>
-
-                    {/* Type */}
-                    <td className="px-4 py-3 align-middle">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editForm.type}
-                          onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
-                          className="border rounded-md px-2 py-1 w-full text-sm"
-                        />
-                      ) : (
-                        <span className="text-sm text-gray-700">{template.type || "—"}</span>
-                      )}
+                      <span className="text-sm text-gray-900">{template.event_name || "—"}</span>
                     </td>
 
                     {/* Table */}
                     <td className="px-4 py-3 align-middle">
-                      {isEditing ? (
-                        <select
-                          value={editForm.destination_table}
-                          onChange={(e) => handleEditDestinationChange(e.target.value)}
-                          className="border rounded-md px-2 py-1 w-full text-sm"
-                        >
-                          <option value="">No Table</option>
-                          {validTables.map((t) => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-sm text-gray-700">{template.destination_table || "—"}</span>
-                      )}
+                      <span className="text-sm text-gray-700">{template.destination_table || "—"}</span>
                     </td>
 
                     {/* Start Date */}
                     <td className="px-4 py-3 align-middle">
-                      {isEditing ? (
-                        <input
-                          type="date"
-                          value={editForm.start_date}
-                          onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                          className="border rounded-md px-2 py-1 text-sm"
-                        />
-                      ) : (
-                        <span className="text-sm text-gray-700">{template.start_date || "—"}</span>
-                      )}
+                      <span className="text-sm text-gray-700">{template.start_date || "—"}</span>
                     </td>
 
                     {/* End Date */}
                     <td className="px-4 py-3 align-middle">
-                      {isEditing ? (
-                        <input
-                          type="date"
-                          value={editForm.end_date}
-                          onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                          className="border rounded-md px-2 py-1 text-sm"
-                        />
-                      ) : (
-                        <span className="text-sm text-gray-700">{template.end_date || "—"}</span>
-                      )}
+                      <span className="text-sm text-gray-700">{template.end_date || "—"}</span>
                     </td>
 
                     {/* Fields */}
                     <td className="px-4 py-3 align-top max-w-xs">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          {renderFieldsSummary([...editTableColumns.filter(c => c.enabled), ...editFieldsList], template.id)}
-                          <button
-                            type="button"
-                            onClick={() => { setFieldModalMode("edit"); setFieldModalOpen(true); }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 hover:border-blue-400 hover:text-blue-600 shadow-sm transition-colors"
-                          >
-                            Edit Fields ({editTableColumns.filter(c => c.enabled).length + editFieldsList.length})
-                            <FaCog size={11} />
-                          </button>
-                          {editFieldsError && (
-                            <p className="text-red-500 text-xs">{editFieldsError}</p>
-                          )}
-                        </div>
-                      ) : (() => {
+                      {(() => {
                         const list = Array.isArray(template.fields) ? template.fields : [];
                         const isLong = list.length > 4;
                         const expanded = !!expandedFields[template.id];
@@ -671,40 +445,21 @@ export default function EditTemplates() {
                     {/* Actions */}
                     <td className="px-4 py-3 align-middle">
                       <div className="flex items-center gap-2">
-                        {isEditing ? (
-                          <>
-                            <button
-                              onClick={() => handleEditSave(template.id)}
-                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={handleEditCancel}
-                              className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              title="Edit template"
-                              onClick={() => handleEditClick(template)}
-                              className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                            >
-                              <FaCog size={16} />
-                            </button>
-                            <button
-                              title="Delete template"
-                              onClick={() => handleDelete(template.id)}
-                              disabled={deletingId === template.id}
-                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
-                            >
-                              <FaTrash size={14} />
-                            </button>
-                          </>
-                        )}
+                        <button
+                          title="Edit template"
+                          onClick={() => handleEditClick(template)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        >
+                          <FaCog size={16} />
+                        </button>
+                        <button
+                          title="Delete template"
+                          onClick={() => handleDelete(template.id)}
+                          disabled={deletingId === template.id}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                        >
+                          <FaTrash size={14} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -715,17 +470,219 @@ export default function EditTemplates() {
         </div>
       )}
 
+      {/* Edit template modal */}
+      {editingId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold">Edit Template</h2>
+              <button
+                onClick={handleEditCancel}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Event Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Event Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter event name"
+                  value={editForm.event_name || ""}
+                  onChange={(e) => setEditForm({ ...editForm, event_name: e.target.value })}
+                  className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Destination Table */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Destination Table</label>
+                <select
+                  value={editForm.destination_table || ""}
+                  onChange={(e) => handleEditDestinationChange(e.target.value)}
+                  className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No Table</option>
+                  {validTables.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Start & End Date */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={editForm.start_date || ""}
+                    onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                    className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={editForm.end_date || ""}
+                    onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                    className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Fields (if table selected) */}
+              {editTableColumns.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fields</label>
+                  <div className="space-y-1 mb-2">
+                    {renderFieldsSummary(editTableColumns.filter(c => c.enabled))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setFieldModalMode("edit"); setFieldModalOpen(true); }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 hover:border-blue-400 hover:text-blue-600 shadow-sm transition-colors"
+                  >
+                    Edit Fields ({editTableColumns.filter(c => c.enabled).length})
+                    <FaCog size={11} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <button
+                onClick={handleEditCancel}
+                className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleEditSave(editingId)}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create template modal */}
+      {isCreating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 flex flex-col">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b">
+              <h2 className="text-lg font-semibold">New Template</h2>
+              <button
+                onClick={handleCreateCancel}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Event Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Event Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter event name"
+                  value={newForm.event_name}
+                  onChange={(e) => setNewForm({ ...newForm, event_name: e.target.value })}
+                  className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Destination Table */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Destination Table</label>
+                <select
+                  value={newForm.destination_table}
+                  onChange={(e) => handleNewDestinationChange(e.target.value)}
+                  className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No Table</option>
+                  {validTables.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Start & End Date */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={newForm.start_date}
+                    onChange={(e) => setNewForm({ ...newForm, start_date: e.target.value })}
+                    className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={newForm.end_date}
+                    onChange={(e) => setNewForm({ ...newForm, end_date: e.target.value })}
+                    className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Fields (if table selected) */}
+              {newTableColumns.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Fields</label>
+                  <div className="space-y-1 mb-2">
+                    {renderFieldsSummary(newTableColumns.filter(c => c.enabled))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setFieldModalMode("create"); setFieldModalOpen(true); }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 hover:border-blue-400 hover:text-blue-600 shadow-sm transition-colors"
+                  >
+                    Edit Fields ({newTableColumns.filter(c => c.enabled).length})
+                    <FaCog size={11} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t flex justify-end gap-2">
+              <button
+                onClick={handleCreateCancel}
+                className="px-4 py-2 text-sm bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateSave}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Field builder modal */}
       {fieldModalOpen && (() => {
         const isEditMode = fieldModalMode === "edit";
-        const list = isEditMode ? editFieldsList : newFieldsList;
         const tableCols = isEditMode ? editTableColumns : newTableColumns;
         const toggleTableCol = isEditMode ? toggleEditTableColumn : toggleNewTableColumn;
-        const addFn = isEditMode ? addField : addNewField;
-        const updateFn = isEditMode ? updateField : updateNewField;
-        const moveFn = isEditMode ? moveField : moveNewField;
-        const removeFn = isEditMode ? removeField : removeNewField;
-        const fieldError = isEditMode ? editFieldsError : newFieldsError;
         const updateTableColFn = isEditMode ? updateEditTableColumn : updateNewTableColumn;
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -743,8 +700,9 @@ export default function EditTemplates() {
 
               {/* Modal body */}
               <div className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
-                {/* Table columns section */}
-                {tableCols.length > 0 && (
+                {tableCols.length === 0 ? (
+                  <p className="text-sm text-gray-500">No table selected. Choose a destination table to see fields.</p>
+                ) : (
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Table Columns</h3>
@@ -784,94 +742,60 @@ export default function EditTemplates() {
                                 {icon.symbol}
                               </span>
                               <span className="text-xs text-gray-700 truncate">{col.name}</span>
-                              <span className="text-[10px] text-gray-400 ml-auto shrink-0">{col.type}</span>
+                              <span className="text-[10px] text-gray-400 ml-auto shrink-0">{TYPE_LABEL[col.type] || col.type}</span>
                             </label>
                             {col.enabled && (
-                              <input
-                                type="text"
-                                placeholder="Display name (optional)"
-                                value={col.form_name || ""}
-                                onChange={(e) => updateTableColFn(i, "form_name", e.target.value)}
-                                className="mt-1 ml-7 border rounded px-2 py-0.5 text-xs w-[calc(100%-1.75rem)]"
-                              />
+                              <div className="mt-1 ml-7 space-y-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="Display name (optional)"
+                                  value={col.form_name || ""}
+                                  onChange={(e) => updateTableColFn(i, "form_name", e.target.value)}
+                                  className="border rounded px-2 py-0.5 text-xs w-full"
+                                />
+                                {TYPE_VARIANTS[col.sqlBaseType] && TYPE_VARIANTS[col.sqlBaseType].length > 1 && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-gray-500 shrink-0">Input type:</span>
+                                    <select
+                                      value={col.type}
+                                      onChange={(e) => {
+                                        updateTableColFn(i, "type", e.target.value);
+                                        if (!OPTIONS_TYPES.includes(e.target.value)) {
+                                          updateTableColFn(i, "options", "");
+                                        }
+                                      }}
+                                      className="border rounded px-1.5 py-0.5 text-xs flex-1"
+                                    >
+                                      {TYPE_VARIANTS[col.sqlBaseType].map((t) => (
+                                        <option key={t} value={t}>{TYPE_LABEL[t]}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+                                {OPTIONS_TYPES.includes(col.type) && (
+                                  <input
+                                    type="text"
+                                    placeholder="Options (comma-separated)"
+                                    value={col.options || ""}
+                                    onChange={(e) => updateTableColFn(i, "options", e.target.value)}
+                                    className="border rounded px-2 py-0.5 text-xs w-full"
+                                  />
+                                )}
+                                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={col.required !== false}
+                                    onChange={(e) => updateTableColFn(i, "required", e.target.checked)}
+                                  />
+                                  Required
+                                </label>
+                              </div>
                             )}
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                )}
-
-                {/* Custom fields section */}
-                <div>
-                  {tableCols.length > 0 && (
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Custom Fields</h3>
-                  )}
-                  <div className="space-y-2">
-                    {list.map((field, i) => (
-                      <div key={i} className="border rounded-md p-2 bg-gray-50 space-y-1">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="text"
-                            placeholder="Field name"
-                            value={field.name}
-                            onChange={(e) => updateFn(i, "name", e.target.value)}
-                            className="border rounded px-2 py-1 text-xs flex-1 min-w-0"
-                          />
-                          <select
-                            value={field.type}
-                            onChange={(e) => updateFn(i, "type", e.target.value)}
-                            className="border rounded px-1 py-1 text-xs"
-                          >
-                            {FIELD_TYPES.map((t) => (
-                              <option key={t.value} value={t.value}>{t.label}</option>
-                            ))}
-                          </select>
-                          <label className="flex items-center gap-1 text-xs text-gray-600 shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={field.required}
-                              onChange={(e) => updateFn(i, "required", e.target.checked)}
-                            />
-                            Req
-                          </label>
-                          <button type="button" onClick={() => moveFn(i, -1)} disabled={i === 0}
-                            className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs px-0.5">↑</button>
-                          <button type="button" onClick={() => moveFn(i, 1)} disabled={i === list.length - 1}
-                            className="text-gray-400 hover:text-gray-600 disabled:opacity-30 text-xs px-0.5">↓</button>
-                          <button type="button" onClick={() => removeFn(i)}
-                            className="text-red-400 hover:text-red-600 text-xs px-0.5">&times;</button>
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="Display name (optional)"
-                          value={field.form_name || ""}
-                          onChange={(e) => updateFn(i, "form_name", e.target.value)}
-                          className="border rounded px-2 py-1 text-xs w-full"
-                        />
-                        {OPTIONS_TYPES.includes(field.type) && (
-                          <input
-                            type="text"
-                            placeholder="Options (comma-separated)"
-                            value={field.options}
-                            onChange={(e) => updateFn(i, "options", e.target.value)}
-                            className="border rounded px-2 py-1 text-xs w-full"
-                          />
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={addFn}
-                      className="w-full text-xs border border-dashed border-gray-300 rounded-md py-1.5 text-gray-500 hover:border-blue-400 hover:text-blue-600"
-                    >
-                      + Add Custom Field
-                    </button>
-                  </div>
-                </div>
-
-                {fieldError && (
-                  <p className="text-red-500 text-xs">{fieldError}</p>
                 )}
               </div>
 
