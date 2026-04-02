@@ -107,13 +107,14 @@ export const supabaseAPI = {
     return { data: dict, error };
   },
 
-  async submitForm(formTemplateId, formTemplateName, formContent, { select = "*" } = {}) {
+  async submitForm(formTemplateId, formTemplateName, formContent, destinationTable, { select = "*" } = {}) {
     return supabase
       .from("form_submissions")
       .insert([{
         form_template_id: formTemplateId,
         form_template_name: formTemplateName,
-        form_content: formContent
+        form_content: formContent,
+        destination_table: destinationTable || null
       }])
       .select(select)
       .single();

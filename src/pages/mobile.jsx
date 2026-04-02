@@ -273,7 +273,6 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#2563EB]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-1">Individuals Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">Individual Shoebox Drop-Off</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-blue-600">→</span>
@@ -286,7 +285,6 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#10B981]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-1">Church/Group Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">Church/Group Shoebox Drop-Off</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-emerald-600">→</span>
@@ -299,7 +297,6 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#6366F1]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-1">National Collection Week Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">NCW Short-Term Volunteer</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
@@ -312,7 +309,6 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#F43F5E]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-rose-600 uppercase tracking-widest mb-1">Project Leader Workshop Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">PLW Registration</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
@@ -327,7 +323,6 @@ export default function Mobile() {
               >
                 <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
                 <div className="flex flex-col text-left">
-                  <span className="text-sm font-bold text-violet-600 uppercase tracking-widest mb-1">Custom Form</span>
                   <span className="text-3xl font-black text-slate-900 tracking-tight">{template.event_name}</span>
                 </div>
                 <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
@@ -383,7 +378,8 @@ export default function Mobile() {
                 const { error: submitError } = await databaseAPI.submitForm(
                   selectedTemplate.id,
                   selectedTemplate.event_name,
-                  customFormData
+                  customFormData,
+                  selectedTemplate.destination_table || null
                 );
                 if (submitError) {
                   console.error("Error submitting form:", submitError);
@@ -448,6 +444,46 @@ export default function Mobile() {
                       <input
                         type="number"
                         placeholder={label}
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "phone") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="tel"
+                        placeholder="(123) 456-7890"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "zip") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={5}
+                        placeholder="e.g. 35401"
                         className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
                         value={value || ""}
                         onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}

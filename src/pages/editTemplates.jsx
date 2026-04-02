@@ -38,6 +38,26 @@ export default function EditTemplates() {
 
   const mapSqlType = (sqlType) => SQL_TYPE_MAP[sqlType?.toLowerCase()] || "text";
 
+  const TYPE_VARIANTS = {
+    text:     ["text", "textarea", "bubble-select", "multi-select"],
+    textarea: ["text", "textarea", "bubble-select", "multi-select"],
+    number:   ["number", "phone", "zip"],
+    date:     ["date"],
+    select:   ["select"],
+  };
+
+  const TYPE_LABEL = {
+    "text":          "Text",
+    "textarea":      "Text Area",
+    "bubble-select": "Bubble Select",
+    "multi-select":  "Multi Select",
+    "number":        "Number",
+    "phone":         "Phone Number",
+    "zip":           "Zip Code",
+    "date":          "Date",
+    "select":        "Select",
+  };
+
   const fetchTableColumns = async (tableName) => {
     if (!tableName) return [];
     if (tableColumnsCache[tableName]) return tableColumnsCache[tableName];
@@ -46,6 +66,7 @@ export default function EditTemplates() {
     const cols = Object.entries(data).map(([name, sqlType]) => ({
       name,
       type: mapSqlType(sqlType),
+      sqlBaseType: mapSqlType(sqlType),
       enabled: true,
       required: true,
       fromTable: true,
@@ -62,7 +83,7 @@ export default function EditTemplates() {
     const cols = await fetchTableColumns(tableName);
     setNewTableColumns(cols.map((c) => {
       const existing = newTableColumns.find((tc) => tc.name === c.name);
-      return existing ? { ...c, enabled: existing.enabled, required: existing.required !== undefined ? existing.required : true, form_name: existing.form_name || "" } : { ...c, form_name: "" };
+      return existing ? { ...c, enabled: existing.enabled, required: existing.required !== undefined ? existing.required : true, form_name: existing.form_name || "", type: existing.type || c.type, options: existing.options ?? c.options ?? "" } : { ...c, form_name: "" };
     }));
   };
 
@@ -72,7 +93,7 @@ export default function EditTemplates() {
     const cols = await fetchTableColumns(tableName);
     setEditTableColumns(cols.map((c) => {
       const existing = editTableColumns.find((tc) => tc.name === c.name);
-      return existing ? { ...c, enabled: existing.enabled, required: existing.required !== undefined ? existing.required : true, form_name: existing.form_name || "" } : { ...c, form_name: "" };
+      return existing ? { ...c, enabled: existing.enabled, required: existing.required !== undefined ? existing.required : true, form_name: existing.form_name || "", type: existing.type || c.type, options: existing.options ?? c.options ?? "" } : { ...c, form_name: "" };
     }));
   };
 
@@ -88,7 +109,7 @@ export default function EditTemplates() {
   const updateNewTableColumn = (i, key, value) =>
     setNewTableColumns((prev) => prev.map((c, idx) => idx === i ? { ...c, [key]: value } : c));
 
-  const OPTIONS_TYPES = ["select"];
+  const OPTIONS_TYPES = ["select", "bubble-select", "multi-select"];
 
   // Expandable fields
   const [expandedFields, setExpandedFields] = useState({});
@@ -106,6 +127,8 @@ export default function EditTemplates() {
     "text":          { symbol: "T",  title: "Text Box" },
     "textarea":      { symbol: "¶",  title: "Text Area" },
     "number":        { symbol: "#",  title: "Number" },
+    "phone":         { symbol: "☎",  title: "Phone Number" },
+    "zip":           { symbol: "✉",  title: "Zip Code" },
     "date":          { symbol: "📅", title: "Date" },
     "select":        { symbol: "▾",  title: "Select" },
     "multi-select":  { symbol: "☰",  title: "Multi Select" },
@@ -195,7 +218,7 @@ export default function EditTemplates() {
       .map((c) => {
         const field = { name: c.name, type: c.type, required: c.required, fromTable: true };
         if (c.form_name?.trim()) field.form_name = c.form_name.trim();
-        if (c.type === "select") field.options = c.options.split(",").map((o) => o.trim()).filter(Boolean);
+        if (["select", "bubble-select", "multi-select"].includes(c.type)) field.options = c.options.split(",").map((o) => o.trim()).filter(Boolean);
         return field;
       });
 
@@ -235,6 +258,12 @@ export default function EditTemplates() {
           enabled: savedTableFieldNames.size > 0 ? savedTableFieldNames.has(c.name) : true,
           required: savedTableFieldNames.has(c.name) ? (savedTableFieldMap[c.name]?.required !== false) : true,
           form_name: savedTableFieldMap[c.name]?.form_name || "",
+          type: savedTableFieldNames.has(c.name) ? (savedTableFieldMap[c.name]?.type || c.type) : c.type,
+          options: savedTableFieldNames.has(c.name)
+            ? (Array.isArray(savedTableFieldMap[c.name]?.options)
+                ? savedTableFieldMap[c.name].options.join(", ")
+                : savedTableFieldMap[c.name]?.options || c.options || "")
+            : (c.options || ""),
         })));
       });
     } else {
@@ -269,7 +298,7 @@ export default function EditTemplates() {
       .map((c) => {
         const field = { name: c.name, type: c.type, required: c.required, fromTable: true };
         if (c.form_name?.trim()) field.form_name = c.form_name.trim();
-        if (c.type === "select") field.options = c.options?.split(",").map((o) => o.trim()).filter(Boolean) || [];
+        if (["select", "bubble-select", "multi-select"].includes(c.type)) field.options = c.options?.split(",").map((o) => o.trim()).filter(Boolean) || [];
         return field;
       });
 
@@ -713,10 +742,10 @@ export default function EditTemplates() {
                                 {icon.symbol}
                               </span>
                               <span className="text-xs text-gray-700 truncate">{col.name}</span>
-                              <span className="text-[10px] text-gray-400 ml-auto shrink-0">{col.type}</span>
+                              <span className="text-[10px] text-gray-400 ml-auto shrink-0">{TYPE_LABEL[col.type] || col.type}</span>
                             </label>
                             {col.enabled && (
-                              <div className="mt-1 ml-7 space-y-1">
+                              <div className="mt-1 ml-7 space-y-1.5">
                                 <input
                                   type="text"
                                   placeholder="Display name (optional)"
@@ -724,6 +753,34 @@ export default function EditTemplates() {
                                   onChange={(e) => updateTableColFn(i, "form_name", e.target.value)}
                                   className="border rounded px-2 py-0.5 text-xs w-full"
                                 />
+                                {TYPE_VARIANTS[col.sqlBaseType] && TYPE_VARIANTS[col.sqlBaseType].length > 1 && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-gray-500 shrink-0">Input type:</span>
+                                    <select
+                                      value={col.type}
+                                      onChange={(e) => {
+                                        updateTableColFn(i, "type", e.target.value);
+                                        if (!OPTIONS_TYPES.includes(e.target.value)) {
+                                          updateTableColFn(i, "options", "");
+                                        }
+                                      }}
+                                      className="border rounded px-1.5 py-0.5 text-xs flex-1"
+                                    >
+                                      {TYPE_VARIANTS[col.sqlBaseType].map((t) => (
+                                        <option key={t} value={t}>{TYPE_LABEL[t]}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+                                {OPTIONS_TYPES.includes(col.type) && (
+                                  <input
+                                    type="text"
+                                    placeholder="Options (comma-separated)"
+                                    value={col.options || ""}
+                                    onChange={(e) => updateTableColFn(i, "options", e.target.value)}
+                                    className="border rounded px-2 py-0.5 text-xs w-full"
+                                  />
+                                )}
                                 <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
                                   <input
                                     type="checkbox"
