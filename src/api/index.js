@@ -18,6 +18,15 @@ if (!providers[providerName]) {
   console.warn(`Unknown REACT_APP_DATA_PROVIDER "${providerName}", falling back to "supabase".`);
 }
 
+//Activates the service-worker.js code
+if ('serviceWorker' in navigator) { //Checks if browser can handle a PWA
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => console.log('Service Worker registered!', reg))
+      .catch(err => console.log('Service Worker registration failed:', err));
+  });
+}
+
 export const databaseAPI = selectedProvider;
 export const databaseProvider = selectedProviderName;
 

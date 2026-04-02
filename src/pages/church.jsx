@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
+import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
 
 export default function ChurchPage() {
   const {user} = useUser();
   const { churchId } = useParams();
   const [church, setChurch] = useState(null);
+  const [annualAttributes, setAnnualAttributes] = useState({});
   const [individuals, setIndividuals] = useState([]);
   const [notes, setNotes] = useState([]);
   const [currentTeamMember, setCurrentTeamMember] = useState(null);
@@ -47,9 +49,23 @@ export default function ChurchPage() {
     return { data, error };
   };
 
+  const fetchAnnualAttributes = async () => {
+    if (!churchId) return;
+    const { data, error } = await databaseAPI.list("church_annual_attributes", {
+      filters: [{ column: "church_id", op: "eq", value: churchId }],
+    });
+
+    if (!error && data) {
+      const map = {};
+      data.forEach((attr) => {
+        map[attr.year] = attr;
+      });
+      setAnnualAttributes(map);
+    }
+  };
+
   // Get current year dynamically - automatically switches to 2026 when the year changes
   const SHOEBOX_YEAR = new Date().getFullYear();
-  const relationsFieldName = `church_relations_member_${SHOEBOX_YEAR}`; 
 
   useEffect(() => {
     async function getChurch() {
@@ -60,6 +76,8 @@ export default function ChurchPage() {
       } else {
         setChurch(churchData);
       }
+      
+      await fetchAnnualAttributes();
       
       setLoading(false);
     }
@@ -119,6 +137,11 @@ export default function ChurchPage() {
   useEffect(() => {
     async function getIndividuals() {
       if (!church) return;
+      if (!church.church_name) {
+        setIndividuals([]);
+        setIndividualsLoading(false);
+        return;
+      }
       
       // Use the actual church name from the database (already loaded correctly)
       // Try multiple variants to handle both spaces and underscores
@@ -160,8 +183,8 @@ export default function ChurchPage() {
     if (!church || !isAdmin) return;
     const values = {};
     shoeboxYears.forEach(year => {
-      const fieldName = `shoebox_${year}`;
-      values[year] = church[fieldName] !== undefined && church[fieldName] !== null ? church[fieldName].toString() : "";
+      const attr = annualAttributes[year];
+      values[year] = attr?.shoebox_count !== undefined && attr?.shoebox_count !== null ? attr.shoebox_count.toString() : "";
     });
     setShoeboxEditValues(values);
     setIsEditingShoebox(true);
@@ -181,38 +204,55 @@ export default function ChurchPage() {
     
     setSavingShoebox(true);
     
-    // Validate all values
-    const updateData = {};
-    for (const year of shoeboxYears) {
-      const value = shoeboxEditValues[year];
-      if (value === "" || value === null || value === undefined) {
-        updateData[`shoebox_${year}`] = null;
-      } else {
-        const numericValue = parseInt(value, 10);
-        if (isNaN(numericValue)) {
-          alert(`Please enter a valid number for year ${year} or leave blank.`);
-          setSavingShoebox(false);
-          return;
+    try {
+      const recordsToUpdate = [];
+      const recordsToInsert = [];
+
+      shoeboxYears.forEach(year => {
+        const value = shoeboxEditValues[year];
+        const numValue = value === "" || value === null || value === undefined ? null : parseInt(value, 10);
+        
+        if (numValue !== null && isNaN(numValue)) {
+          throw new Error(`Invalid number for year ${year}`);
         }
-        updateData[`shoebox_${year}`] = numericValue;
+        
+        const existing = annualAttributes[year];
+        const hasChanged = existing ? existing.shoebox_count !== numValue : numValue !== null;
+
+        if (hasChanged) {
+          const record = {
+            church_id: church.id,
+            year: year,
+            shoebox_count: numValue,
+            relations_member: existing?.relations_member, // Preserve existing relations member
+          };
+
+          if (existing?.id) {
+            record.id = existing.id;
+            recordsToUpdate.push(record);
+          } else {
+            recordsToInsert.push(record);
+          }
+        }
+      });
+
+      if (recordsToUpdate.length > 0) {
+        const { error } = await databaseAPI.upsert("church_annual_attributes", recordsToUpdate);
+        if (error) throw error;
       }
-    }
+      
+      if (recordsToInsert.length > 0) {
+        const { error } = await databaseAPI.upsert("church_annual_attributes", recordsToInsert);
+        if (error) throw error;
+      }
 
-    // Use the actual church name from the database (already loaded correctly)
-    const { error } = await databaseAPI.update(
-      "church2",
-      church.id,
-      updateData
-    );
-
-    if (error) {
-      alert("Failed to update shoebox counts. Please try again.");
-    } else {
-      // Update local state
-      setChurch({ ...church, ...updateData });
+      await fetchAnnualAttributes();
       setIsEditingShoebox(false);
       setShoeboxEditValues({});
+    } catch (err) {
+      alert("Failed to update shoebox counts. " + (err.message || "Please try again."));
     }
+    
     setSavingShoebox(false);
   };
 
@@ -325,11 +365,8 @@ export default function ChurchPage() {
     if (!isAdmin) return;
     setIsEditingRelationsMember(true);
     // Set current relations member as selected
-    if (church[relationsFieldName]) {
-      setSelectedRelationsMember(church[relationsFieldName]);
-    } else {
-      setSelectedRelationsMember("");
-    }
+    const attr = annualAttributes[SHOEBOX_YEAR];
+    setSelectedRelationsMember(attr?.relations_member || "");
   };
 
   const handleCancelEditRelationsMember = () => {
@@ -342,20 +379,24 @@ export default function ChurchPage() {
     
     setSavingRelationsMember(true);
     
-    // Use the actual church name from the database (already loaded correctly)
-    const updateData = { [relationsFieldName]: selectedRelationsMember || null };
-    
-    const { error } = await databaseAPI.update(
-      "church2",
-      church.id,
-      updateData
-    );
+    const attr = annualAttributes[SHOEBOX_YEAR];
+    const payload = {
+        church_id: church.id,
+        year: SHOEBOX_YEAR,
+        relations_member: selectedRelationsMember || null,
+    };
+
+    if (attr?.id) {
+        payload.id = attr.id;
+        payload.shoebox_count = attr.shoebox_count; // Preserve existing shoebox count
+    }
+
+    const { error } = await databaseAPI.upsert("church_annual_attributes", [payload]);
 
     if (error) {
       alert("Failed to update church relations team member. Please try again.");
     } else {
-      // Update local state
-      setChurch({ ...church, [relationsFieldName]: selectedRelationsMember || null });
+      await fetchAnnualAttributes();
       setIsEditingRelationsMember(false);
       setSelectedRelationsMember("");
     }
@@ -365,13 +406,21 @@ export default function ChurchPage() {
   if (loading) return <p>Loading church...</p>;
   if (!church) return <p>Church not found.</p>;
 
+  const missingRequiredFields = getMissingChurchRequiredFields(church);
+  const churchDisplayName = church.church_name?.replace(/_/g, " ") || "Unnamed Church";
+
   return (
     <div className="max-w-6xl mx-auto mt-10 px-4 md:px-0">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Left side - Church Info */}
         <div className="space-y-4">
           <div>
-            <h1 className="text-3xl font-bold mb-4">{church.church_name.replace(/_/g, " ")}</h1>
+            <h1 className="text-3xl font-bold mb-4">{churchDisplayName}</h1>
+            {missingRequiredFields.length > 0 && (
+              <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-900">
+                <strong>Flagged for insufficient info:</strong> missing {missingRequiredFields.join(", ")}.
+              </div>
+            )}
             
             {/* Basic Contact Information */}
             <div className="space-y-2 text-gray-700 mb-4">
@@ -435,8 +484,8 @@ export default function ChurchPage() {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {shoeboxYears.map((year) => {
-                    const fieldName = `shoebox_${year}`;
-                    const value = church[fieldName];
+                    const attr = annualAttributes[year];
+                    const value = attr?.shoebox_count;
                     return (
                       <div key={year} className="bg-gray-50 p-2 rounded border">
                         <div className="text-xs text-gray-500 mb-1">{year}</div>
@@ -619,7 +668,8 @@ export default function ChurchPage() {
               <div className="flex items-center gap-2">
                 <span>
                   {(() => {
-                    const relationsMemberId = church[relationsFieldName];
+                    const attr = annualAttributes[SHOEBOX_YEAR];
+                    const relationsMemberId = attr?.relations_member;
                     if (relationsMemberId) {
                       const member = teamMembers.find(m => m.id === relationsMemberId);
                       return member ? `${member.first_name} ${member.last_name}` : "N/A";

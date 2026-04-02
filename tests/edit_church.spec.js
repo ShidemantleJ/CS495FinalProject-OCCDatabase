@@ -15,6 +15,8 @@ test.describe("Church Management & Editing", () => {
    * @type {any}
    */
   let testChurchId;
+  /** @type {any} */
+  let testAttributeId;
   const currentYear = new Date().getFullYear();
   const timestamp = Date.now();
   const churchName = `EditTest Church ${timestamp}`;
@@ -33,14 +35,18 @@ test.describe("Church Management & Editing", () => {
       .insert({
         church_name: churchName,
         church_phone_number: "5555555555",
+        church_physical_address: "123 Test Ave",
         church_physical_city: "TestCity",
         church_physical_state: "TS",
         church_physical_zip: "12345",
         church_physical_county: "TestCounty",
+        church_mailing_address: "PO Box 123",
+        church_mailing_city: "TestCity",
+        church_mailing_state: "TS",
+        church_mailing_zip: "12345",
         church_POC_first_name: "Original",
         church_POC_last_name: "POC",
         project_leader: false,
-        [`shoebox_${currentYear}`]: 10,
         notes: "Original Note",
       })
       .select()
@@ -51,10 +57,35 @@ test.describe("Church Management & Editing", () => {
       throw error;
     }
     testChurchId = data.id;
+
+    // Seed the corresponding annual attribute for shoebox count
+    const { data: attrData, error: attrError } = await supabase
+      .from("church_annual_attributes")
+      .insert({
+        church_id: testChurchId,
+        year: currentYear,
+        shoebox_count: 10,
+      })
+      .select()
+      .single();
+
+    if (attrError) {
+      console.error("Error seeding church attribute:", attrError);
+      // Clean up the church if attribute seeding fails
+      await supabase.from("church2").delete().eq("id", testChurchId);
+      throw attrError;
+    }
+    testAttributeId = attrData.id;
   });
 
   test.afterAll(async () => {
     if (supabase && testChurchId) {
+      if (testAttributeId) {
+        await supabase
+          .from("church_annual_attributes")
+          .delete()
+          .eq("id", testAttributeId);
+      }
       await supabase.from("church2").delete().eq("id", testChurchId);
     }
   });

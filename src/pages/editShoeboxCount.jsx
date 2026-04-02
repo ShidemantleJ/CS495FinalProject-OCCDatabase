@@ -47,21 +47,35 @@ export default function EditShoeboxCount() {
     useEffect(() => {
         if (!isAdmin || checkingAdmin) return;
 
-        const fetchChurch = async () => {
-            const { data: churchData, error } = await databaseAPI.get("church2", churchId, {
-                select: `church_name, ${shoeboxFieldName}`,
+        const fetchChurchAndCount = async () => {
+            // Fetch church name
+            const { data: churchInfo, error: churchError } = await databaseAPI.get("church2", churchId, {
+                select: `church_name`,
             });
 
-            if (error || !churchData) {
+            if (churchError || !churchInfo) {
                 setError("Error loading church details.");
+                return;
+            }
+            setChurchData(churchInfo);
+
+            // Fetch shoebox count for the year
+            const { data: attr, error: attrError } = await databaseAPI.list("church_annual_attributes", {
+                filters: [
+                    { column: "church_id", op: "eq", value: churchId },
+                    { column: "year", op: "eq", value: SHOEBOX_UPDATE_YEAR }
+                ]
+            }).maybeSingle();
+
+            if (attrError) {
+                setError("Error loading shoebox count.");
             } else {
-                setChurchData(churchData);
-                setShoeboxCount(churchData[shoeboxFieldName] || '');
+                setShoeboxCount(attr?.shoebox_count ?? '');
             }
         };
 
-        fetchChurch();
-    }, [churchId, shoeboxFieldName, isAdmin, checkingAdmin]);
+        fetchChurchAndCount();
+    }, [churchId, isAdmin, checkingAdmin, SHOEBOX_UPDATE_YEAR]);
 
     const handleChange = (e) => {
         setShoeboxCount(e.target.value);
@@ -84,16 +98,28 @@ export default function EditShoeboxCount() {
             return;
         }
 
-        const updatePayload = {
-            [shoeboxFieldName]: numericValue,
-        };
+        // We need to upsert into church_annual_attributes
+        // First, check if a record for this church/year exists to get its ID
+        const { data: existingAttr, error: fetchError } = await databaseAPI.list("church_annual_attributes", {
+            filters: [
+                { column: "church_id", op: "eq", value: churchId },
+                { column: "year", op: "eq", value: SHOEBOX_UPDATE_YEAR }
+            ]
+        }).maybeSingle();
 
-        const { error: updateError } = await databaseAPI.update(
-            "church2",
-            churchId,
-            updatePayload
-        );
+        if (fetchError) {
+            setError("Error checking for existing data.");
+            setLoading(false);
+            return;
+        }
 
+        const { error: updateError } = await databaseAPI.upsert("church_annual_attributes", [{
+            id: existingAttr?.id,
+            church_id: churchId,
+            year: SHOEBOX_UPDATE_YEAR,
+            shoebox_count: numericValue,
+            relations_member: existingAttr?.relations_member // Preserve
+        }]);
         if (updateError) {
             setError("Error updating shoebox count.");
         } else {

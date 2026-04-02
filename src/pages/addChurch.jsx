@@ -4,6 +4,7 @@ import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
 
 export default function AddChurch() {
   const {user} = useUser();
@@ -147,15 +148,9 @@ export default function AddChurch() {
     setLoading(true);
     setError(null);
 
-    // Validate required fields
-    if (!formData["church_physical_city"] || !formData["church_physical_city"].trim()) {
-      setError("City is required.");
-      setLoading(false);
-      return;
-    }
-    
-    if (!formData["church_physical_state"] || !formData["church_physical_state"].trim()) {
-      setError("State is required.");
+    const missingRequiredFields = getMissingChurchRequiredFields(formData);
+    if (missingRequiredFields.length > 0) {
+      setError(`Missing required fields: ${missingRequiredFields.join(", ")}.`);
       setLoading(false);
       return;
     }
@@ -202,13 +197,6 @@ export default function AddChurch() {
       notes: formData.notes || null,
       photo_url: formData.photo_url || null,
       created_at: new Date().toISOString(),
-      // Hidden defaults for optional fields:
-      shoebox_2023: null,
-      shoebox_2024: null,
-      shoebox_2025: null,
-      "church_relations_member_2023": null,
-      "church_relations_member_2024": null,
-      "church_relations_member_2025": null,
     });
 
     setLoading(false);
@@ -242,6 +230,7 @@ export default function AddChurch() {
           value={formData["church_phone_number"]}
           onChange={handleChange}
           placeholder="Church Phone Number"
+          required
           className="w-full border rounded-lg p-2"
           maxLength={20}
         />
@@ -287,6 +276,7 @@ export default function AddChurch() {
             value={formData["church_physical_county"]}
             onChange={handleChange}
             placeholder="County"
+            required
             className="border rounded-lg p-2"
             maxLength={100}
           />

@@ -6,7 +6,12 @@ import { databaseAPI } from "../api";
 export default function Mobile() {
   const [isVerified, setIsVerified] = useState(false); // false = Admin Login, true = Registration Form
   const [validAdmin, setValidAdmin] = useState({ email: "", password: "" });
-  const [view, setView] = useState("selection"); // "selection", "Individuals Drop-Off", "Church/Group Drop-Off", "NCW Short-Term", "PLW"
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [view, setView] = useState("selection"); // "selection", "Individuals Drop-Off", "Church/Group Drop-Off", "NCW Short-Term", "PLW", "custom"
+  const [customTemplates, setCustomTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [customFormData, setCustomFormData] = useState({});
   const [formData, setFormData] = useState({ //All the types of data that can be entered in the various forms
     // Header Info
     locationCode: "",
@@ -47,6 +52,25 @@ export default function Mobile() {
   }); //Fields of the 3 forms we got sent by the sponsor
   
 
+  // Fetch active custom templates once verified
+  useEffect(() => {
+    if (!isVerified) return;
+    const fetchCustomTemplates = async () => {
+      const { data, error } = await databaseAPI.getTemplates();
+      if (error || !data) return;
+      const hardcoded = ["individual", "church", "ncw", "plw"];
+      const todayStr = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD" in local time
+      const active = data.filter((t) => {
+        if (hardcoded.includes(t.event_name?.toLowerCase())) return false;
+        if (t.start_date && t.start_date > todayStr) return false;
+        if (t.end_date && t.end_date < todayStr) return false;
+        return true;
+      });
+      setCustomTemplates(active);
+    };
+    fetchCustomTemplates();
+  }, [isVerified]);
+
   //Prevent Back Navigation & URL changes
   useEffect(() => {
     sessionStorage.setItem("kioskMode", "true");
@@ -62,19 +86,59 @@ export default function Mobile() {
     };
   }, []);
 
-  //Handle Admin Login, and so hitting enter doesn't refresh the page
-  const handleNextStep = (e) => {
-    if (e) e.preventDefault();
+  //Allow for the PWA to be downloaded from the mobile page only
+  useEffect(() => {
+    // Checks if the PWA is already downloaded
+    if (!window.matchMedia('(display-mode: standalone)').matches && !window.navigator.standalone) {
+      //If not set up the links and logo
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = '/manifest.json';
+      link.id = 'dynamic-manifest';
+      document.head.appendChild(link);
 
-    if (
-      validAdmin.email === "admin@gmail.com" &&
-      validAdmin.password === "admin123"
-    ) {
-      //Can later replace with actual auth from Supabase
-      setIsVerified(true);
-    } else {
-      alert("Invalid credentials. Try: admin@gmail.com / admin123");
+      // Apple Icon injection (for the iPad Home Screen)
+      const appleIcon = document.createElement('link');
+      appleIcon.rel = 'apple-touch-icon';
+      appleIcon.href = '/OCClogo.png'; // Using your 1024px master
+      appleIcon.id = 'dynamic-apple-icon';
+      document.head.appendChild(appleIcon);
+  
+      return () => {
+        const el = document.getElementById('dynamic-manifest');
+        const ai = document.getElementById('dynamic-apple-icon');
+        if (el) document.head.removeChild(el);
+        if (ai) document.head.removeChild(ai);
+      };
     }
+  }, []);
+
+  //Handle Admin Login using real Supabase auth
+  const handleNextStep = async (e) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    setErrorMessage("");
+
+    // Clear any stale session first
+    databaseAPI.setSession({ access_token: null, refresh_token: null });
+
+    const { data, error } = await databaseAPI.signInWithPassword(
+      { email: validAdmin.email, password: validAdmin.password }
+    );
+
+    if (error) {
+      setErrorMessage(error.message);
+    } else {
+      const isAdmin = await databaseAPI.checkAdmin();
+      if (isAdmin) {
+        setIsVerified(true);
+      } else {
+        await databaseAPI.signOut();
+        setErrorMessage("Access denied. Admin account required.");
+      }
+    }
+
+    setLoading(false);
   };
 
   //If Cancel is clicked, reset everything
@@ -88,6 +152,17 @@ export default function Mobile() {
       setFormData({ name: "", email: "" });
       setValidAdmin({ email: "", password: "" });
     }
+  };
+
+  const handleSelectCustomTemplate = (template) => {
+    setSelectedTemplate(template);
+    const initial = {};
+    const fields = Array.isArray(template.fields) ? template.fields : [];
+    fields.forEach((f) => {
+      initial[f.name] = f.type === "multi-select" ? [] : "";
+    });
+    setCustomFormData(initial);
+    setView("custom");
   };
 
   //When Switch Form is selected wipes the data previously entered in the form (Can be removed if we decide that we don't want the switch form option)
@@ -167,16 +242,16 @@ export default function Mobile() {
               />
             </div>
             
-            <div className="p-4 bg-blue-50 rounded-xl border border-dashed border-blue-300">
-              <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-1">Demo Credentials:</p>
-              <p className="text-slate-700 font-mono text-sm">admin@gmail.com / admin123</p>
-            </div>
-  
+            {errorMessage && (
+              <p className="text-red-500 text-sm font-medium">{errorMessage}</p>
+            )}
+
             <button
               type="submit"
-              className="w-full py-5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xl font-bold rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all"
+              disabled={loading}
+              className="w-full py-5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xl font-bold rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all disabled:opacity-50"
             >
-              Sign In
+              {loading ? "Signing In..." : "Sign In"}
             </button>
           </form>
         </div>
@@ -198,7 +273,6 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#2563EB]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-1">Individuals Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">Individual Shoebox Drop-Off</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-blue-600">→</span>
@@ -211,7 +285,6 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#10B981]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-1">Church/Group Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">Church/Group Shoebox Drop-Off</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-emerald-600">→</span>
@@ -224,7 +297,6 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#6366F1]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-1">National Collection Week Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">NCW Short-Term Volunteer</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
@@ -237,11 +309,25 @@ export default function Mobile() {
             >
               <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#F43F5E]" />
               <div className="flex flex-col text-left">
-                <span className="text-sm font-bold text-rose-600 uppercase tracking-widest mb-1">Project Leader Workshop Form</span>
                 <span className="text-3xl font-black text-slate-900 tracking-tight">PLW Registration</span>
               </div>
               <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
             </button>
+
+            {/* Custom Templates */}
+            {customTemplates.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleSelectCustomTemplate(template)}
+                className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+              >
+                <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
+                <div className="flex flex-col text-left">
+                  <span className="text-3xl font-black text-slate-900 tracking-tight">{template.event_name}</span>
+                </div>
+                <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
+              </button>
+            ))}
 
             {/* Exit Button To Leave The Selection Screen & To Return To The Admin Login */}
             <button
@@ -255,8 +341,287 @@ export default function Mobile() {
         </div>
       )}
   
+      {/* 3a. CUSTOM TEMPLATE FORM */}
+      {isVerified && view === "custom" && selectedTemplate && (
+        <div className="w-full max-w-3xl mt-10">
+          <header className="flex flex-col md:flex-row justify-between items-center mb-10 px-2 space-y-4 md:space-y-0">
+            <div className="text-left">
+              <p className="text-violet-600 font-bold text-sm uppercase tracking-[0.2em] mb-1">Custom Form</p>
+              <h1 className="text-4xl font-black text-slate-900">{selectedTemplate.event_name}</h1>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedTemplate(null);
+                setCustomFormData({});
+                setView("selection");
+              }}
+              className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
+            >
+              ← Switch Form
+            </button>
+          </header>
+
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const fields = Array.isArray(selectedTemplate.fields) ? selectedTemplate.fields : [];
+              for (const f of fields) {
+                if (f.required) {
+                  const val = customFormData[f.name];
+                  if (val === undefined || val === "" || (Array.isArray(val) && val.length === 0)) {
+                    alert(`Please fill in the required field: ${f.form_name || f.name}`);
+                    return;
+                  }
+                }
+              }
+              try {
+                const { error: submitError } = await databaseAPI.submitForm(
+                  selectedTemplate.id,
+                  selectedTemplate.event_name,
+                  customFormData,
+                  selectedTemplate.destination_table || null
+                );
+                if (submitError) {
+                  console.error("Error submitting form:", submitError);
+                  alert("Failed to submit form. Please try again.");
+                  return;
+                }
+                setView("submission");
+              } catch (error) {
+                console.error("Unexpected error during form submission:", error);
+                alert("An unexpected error occurred. Please try again.");
+              }
+            }}
+            className="w-full space-y-6"
+          >
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-200/60 border border-slate-100 space-y-8">
+              {(Array.isArray(selectedTemplate.fields) ? selectedTemplate.fields : []).map((field, idx) => {
+                const label = field.form_name || field.name;
+                const value = customFormData[field.name];
+
+                if (field.type === "text") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={label}
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "textarea") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <textarea
+                        rows={4}
+                        placeholder={label}
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all resize-none"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "number") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="number"
+                        placeholder={label}
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "phone") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="tel"
+                        placeholder="(123) 456-7890"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "zip") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={5}
+                        placeholder="e.g. 35401"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "date") {
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      />
+                    </div>
+                  );
+                }
+
+                if (field.type === "select") {
+                  const options = Array.isArray(field.options) ? field.options : [];
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <select
+                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
+                        value={value || ""}
+                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                        required={field.required}
+                      >
+                        <option value="">Select...</option>
+                        {options.map((opt, oi) => (
+                          <option key={oi} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+
+                if (field.type === "multi-select") {
+                  const options = Array.isArray(field.options) ? field.options : [];
+                  const selected = Array.isArray(value) ? value : [];
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {options.map((opt, oi) => (
+                          <button
+                            key={oi}
+                            type="button"
+                            onClick={() => setCustomFormData((prev) => {
+                              const cur = Array.isArray(prev[field.name]) ? prev[field.name] : [];
+                              return { ...prev, [field.name]: cur.includes(opt) ? cur.filter((v) => v !== opt) : [...cur, opt] };
+                            })}
+                            className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${
+                              selected.includes(opt)
+                                ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner"
+                                : "border-slate-100 bg-slate-50 text-slate-400"
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (field.type === "bubble-select") {
+                  const options = Array.isArray(field.options) ? field.options : [];
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        {options.map((opt, oi) => (
+                          <button
+                            key={oi}
+                            type="button"
+                            onClick={() => setCustomFormData((prev) => ({ ...prev, [field.name]: opt }))}
+                            className={`px-6 py-4 text-lg font-bold rounded-2xl border-2 transition-all ${
+                              value === opt
+                                ? "border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner"
+                                : "border-slate-100 bg-slate-50 text-slate-400"
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Fallback: render as text input
+                return (
+                  <div key={idx} className="space-y-2">
+                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                      {label}{field.required && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={label}
+                      className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all"
+                      value={value || ""}
+                      onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                      required={field.required}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* SUBMIT BUTTON */}
+              <button
+                type="submit"
+                className="w-full py-6 bg-slate-900 hover:bg-black text-white text-2xl font-bold rounded-[1.5rem] shadow-xl active:scale-[0.98] transition-all tracking-tight"
+              >
+                Complete Registration
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* 3. REGISTRATION FORM (Shown after a selection is made) */}
-      {isVerified && view !== "selection" && (
+      {isVerified && view !== "selection" && view !== "custom" && (
         <div className="w-full max-w-3xl mt-10">
           {view !== "submission" && (
             <header className="flex flex-col md:flex-row justify-between items-center mb-10 px-2 space-y-4 md:space-y-0">
@@ -273,6 +638,8 @@ export default function Mobile() {
               <button 
                 onClick={() => {
                   resetForm();
+                  setSelectedTemplate(null);
+                  setCustomFormData({});
                   setView("selection")
                 }}
                 className="px-6 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
@@ -301,6 +668,8 @@ export default function Mobile() {
                   <button
                     onClick={() => {
                       resetForm(); // Ensure state is wiped for the next user
+                      setSelectedTemplate(null);
+                      setCustomFormData({});
                       setView("selection"); //Goes back to the selection screen
                     }}
                     className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white text-2xl font-bold rounded-2xl shadow-lg shadow-indigo-200 active:scale-[0.98] transition-all"
@@ -328,12 +697,10 @@ export default function Mobile() {
                 return;
               }
 
-              console.log(`Saving ${view} data:`, formData);
-              
               try {
                 // Look up form template ID from form_templates table using the form name
                 const { data: templates, error: lookupError } = await databaseAPI.list("form_templates", {
-                  filters: [{ column: "name", op: "eq", value: view }]
+                  filters: [{ column: "event_name", op: "eq", value: view }]
                 });
                 
                 console.log("Looking for form template with name:", view);
@@ -371,6 +738,8 @@ export default function Mobile() {
                 
                 console.log("Form submitted successfully:", data);
                 setView("submission"); // Goes to the submission screen
+                setSelectedTemplate(null);
+                setCustomFormData({});
               } catch (error) {
                 console.error("Unexpected error during form submission:", error);
                 alert("An unexpected error occurred. Please try again.");

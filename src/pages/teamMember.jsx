@@ -100,18 +100,24 @@ export default function TeamMemberPage() {
 
             setChurchesLoading(true);
             const currentYear = new Date().getFullYear();
-            const relationsField = `church_relations_member_${currentYear}`;
 
-            const { data: churchesData, error } = await databaseAPI.list("church2", {
-                select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
-                filters: [{ column: relationsField, op: "eq", value: member.id }],
-                orderBy: { column: "church_name", ascending: true },
+            const { data: attrs, error } = await databaseAPI.list("church_annual_attributes", {
+                select: `
+                    church_id,
+                    church2 (id, church_name, church_physical_city, church_physical_state, church_physical_county)
+                `,
+                filters: [
+                    { column: "relations_member", op: "eq", value: member.id },
+                    { column: "year", op: "eq", value: currentYear }
+                ],
             });
 
             if (error) {
-                // Error fetching relations churches
+                setRelationsChurches([]);
             } else {
-                setRelationsChurches(churchesData || []);
+                const churches = (attrs || []).map(a => a.church2).filter(Boolean);
+                churches.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || ""));
+                setRelationsChurches(churches);
             }
             setChurchesLoading(false);
         }

@@ -37,6 +37,7 @@ export default function Navbar() {
                   <Link to="/" className="hover:text-gray-300">Churches</Link>
                   <Link to="/team-members" className="hover:text-gray-300">Team Members</Link>
                   <Link to="/individuals" className="hover:text-gray-300">Individuals</Link>
+                  <Link to="/form-submissions" className="hover:text-gray-300">Forms</Link>
                   <Link to="/about" className="hover:text-gray-300">About</Link>
                   <Link to="/profile" className="hover:text-gray-300">Profile</Link>
                   <Link to="/mobile" replace={true} className="hover:text-gray-300">Mobile</Link>
@@ -74,6 +75,7 @@ export default function Navbar() {
                 <Link to="/" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Home</Link>
                 <Link to="/team-members" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Team Members</Link>
                 <Link to="/individuals" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Individuals</Link>
+                <Link to="/form-submissions" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Form</Link>
                 <Link to="/about" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>About</Link>
                 <Link to="/profile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Profile</Link>
                 <Link to="/mobile" replace={true} className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Mobile</Link>
