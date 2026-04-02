@@ -59,12 +59,11 @@ export default function Mobile() {
       const { data, error } = await databaseAPI.getTemplates();
       if (error || !data) return;
       const hardcoded = ["individual", "church", "ncw", "plw"];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayStr = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD" in local time
       const active = data.filter((t) => {
-        if (hardcoded.includes(t.template_name?.toLowerCase())) return false;
-        if (t.start_date && new Date(t.start_date) > today) return false;
-        if (t.end_date && new Date(t.end_date) < today) return false;
+        if (hardcoded.includes(t.event_name?.toLowerCase())) return false;
+        if (t.start_date && t.start_date > todayStr) return false;
+        if (t.end_date && t.end_date < todayStr) return false;
         return true;
       });
       setCustomTemplates(active);
@@ -328,8 +327,8 @@ export default function Mobile() {
               >
                 <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
                 <div className="flex flex-col text-left">
-                  <span className="text-sm font-bold text-violet-600 uppercase tracking-widest mb-1">{template.type || "Custom Form"}</span>
-                  <span className="text-3xl font-black text-slate-900 tracking-tight">{template.template_name}</span>
+                  <span className="text-sm font-bold text-violet-600 uppercase tracking-widest mb-1">Custom Form</span>
+                  <span className="text-3xl font-black text-slate-900 tracking-tight">{template.event_name}</span>
                 </div>
                 <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
               </button>
@@ -352,8 +351,8 @@ export default function Mobile() {
         <div className="w-full max-w-3xl mt-10">
           <header className="flex flex-col md:flex-row justify-between items-center mb-10 px-2 space-y-4 md:space-y-0">
             <div className="text-left">
-              <p className="text-violet-600 font-bold text-sm uppercase tracking-[0.2em] mb-1">{selectedTemplate.type || "Custom Form"}</p>
-              <h1 className="text-4xl font-black text-slate-900">{selectedTemplate.template_name}</h1>
+              <p className="text-violet-600 font-bold text-sm uppercase tracking-[0.2em] mb-1">Custom Form</p>
+              <h1 className="text-4xl font-black text-slate-900">{selectedTemplate.event_name}</h1>
             </div>
             <button
               onClick={() => {
@@ -383,7 +382,7 @@ export default function Mobile() {
               try {
                 const { error: submitError } = await databaseAPI.submitForm(
                   selectedTemplate.id,
-                  selectedTemplate.template_name,
+                  selectedTemplate.event_name,
                   customFormData
                 );
                 if (submitError) {
@@ -665,7 +664,7 @@ export default function Mobile() {
               try {
                 // Look up form template ID from form_templates table using the form name
                 const { data: templates, error: lookupError } = await databaseAPI.list("form_templates", {
-                  filters: [{ column: "template_name", op: "eq", value: view }]
+                  filters: [{ column: "event_name", op: "eq", value: view }]
                 });
                 
                 console.log("Looking for form template with name:", view);
