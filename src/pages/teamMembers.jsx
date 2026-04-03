@@ -131,13 +131,12 @@ export default function TeamMembers() {
             const membersWithChurchData = await Promise.all(
                 membersData.map(async (m) => {
                     let churchData = null;
-                    if (m.church_affiliation_name) {
-                        // Try to fetch church data by name (may fail if name format doesn't match)
+                    if (m.church_affiliation_id) {
                         try {
                             const { data: church, error: churchError } = await databaseAPI
                                 .list("church2", {
                                     select: "id, church_name, church_physical_county",
-                                    filters: [{ column: "church_name", op: "eq", value: m.church_affiliation_name }],
+                                    filters: [{ column: "id", op: "eq", value: m.church_affiliation_id }],
                                 })
                                 .maybeSingle();
                             
@@ -146,7 +145,7 @@ export default function TeamMembers() {
                             }
                         } catch (err) {
                             // Silently handle church lookup errors
-                            console.warn(`Could not fetch church data for: ${m.church_affiliation_name}`);
+                            console.warn(`Could not fetch church data for: ${m.church_affiliation_id}`);
                         }
                     }
                     
@@ -165,7 +164,7 @@ export default function TeamMembers() {
                     return {
                         ...m,
                         position: positionsText,
-                        church_name: churchData?.church_name || m.church_affiliation_name || null,
+                        church_name: churchData?.church_name || null,
                         church_county: churchData?.["church_physical_county"] || null,
                     };
                 })

@@ -143,33 +143,15 @@ export default function ChurchPage() {
         return;
       }
       
-      // Use the actual church name from the database (already loaded correctly)
-      // Try multiple variants to handle both spaces and underscores
-      const churchNameVariants = [
-        church.church_name, // Actual name from database
-        church.church_name.replace(/ /g, "_"), // With underscores
-        church.church_name.replace(/_/g, " ") // With spaces
-      ];
+      const { data, error } = await databaseAPI.list("individuals", {
+        filters: [{ column: "church_id", op: "eq", value: church.id }],
+      });
       
-      let allIndividuals = [];
-      
-      // Try each variant and collect all individuals
-      for (const nameVariant of churchNameVariants) {
-        const { data, error } = await databaseAPI.list("individuals", {
-          filters: [{ column: "church_name", op: "eq", value: nameVariant }],
-        });
-        
-        if (!error && data) {
-          allIndividuals = [...allIndividuals, ...data];
-        }
+      if (!error && data) {
+        setIndividuals(data);
+      } else {
+        setIndividuals([]);
       }
-      
-      // Remove duplicates based on id
-      const uniqueIndividuals = Array.from(
-        new Map(allIndividuals.map(ind => [ind.id, ind])).values()
-      );
-      
-      setIndividuals(uniqueIndividuals);
       setIndividualsLoading(false);
     }
     if (church) {

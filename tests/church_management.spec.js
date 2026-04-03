@@ -123,24 +123,23 @@ test.describe("Add New Church", () => {
       .fill(churchData.church_physical_zip);
     await page.getByRole("button", { name: /apply filters/i }).click();
 
+    const churchCard = page
+      .locator("div.bg-white.shadow-md")
+      .filter({ hasText: churchData.church_name });
+
     // Verify the church card appears with correct info
+    await expect(churchCard).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: churchData.church_name }),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
+      churchCard.getByText(
         `${churchData.church_physical_city}, ${churchData.church_physical_state}`,
       ),
     ).toBeVisible();
     await expect(
-      page.getByText(`${churchData.church_physical_county} County`),
+      churchCard.getByText(`${churchData.church_physical_county} County`),
     ).toBeVisible();
 
     /* ---------------- CLEANUP (UI DELETE TEST) ---------------- */
     // Find the church card and click the delete button (trash icon)
-    const churchCard = page
-      .locator("div.bg-white.shadow-md")
-      .filter({ hasText: churchData.church_name });
     await churchCard.getByTitle("Delete Church").click();
 
     // Confirm deletion in the modal

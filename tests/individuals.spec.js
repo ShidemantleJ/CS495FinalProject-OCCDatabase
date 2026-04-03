@@ -82,7 +82,7 @@ test.describe.serial("Individuals Management", () => {
 
     // Select Church
     await page
-      .locator('select[name="church_name"]')
+      .locator('select[name="church_id"]')
       .selectOption({ label: churchName });
 
     await page.getByPlaceholder("Role").fill("Volunteer");
