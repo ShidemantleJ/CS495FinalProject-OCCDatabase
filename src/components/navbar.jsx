@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import logo from "../assets/OCClogo.png";
@@ -11,9 +11,30 @@ const handleLogout = async () => {
 export default function Navbar() {
   const {user} = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
 
   const hideLinks = ["/login", "/reset-password", "/mobile"].includes(location.pathname);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAdminStatus = async () => {
+      if (!user) {
+        if (isMounted) setIsAdmin(false);
+        return;
+      }
+
+      const adminStatus = await databaseAPI.checkAdmin();
+      if (isMounted) setIsAdmin(adminStatus);
+    };
+
+    loadAdminStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-gray-800 text-white shadow-md">
@@ -37,7 +58,7 @@ export default function Navbar() {
                   <Link to="/" className="hover:text-gray-300">Churches</Link>
                   <Link to="/team-members" className="hover:text-gray-300">Team Members</Link>
                   <Link to="/individuals" className="hover:text-gray-300">Individuals</Link>
-                  <Link to="/form-submissions" className="hover:text-gray-300">Forms</Link>
+                  {isAdmin && <Link to="/form-submissions" className="hover:text-gray-300">Forms</Link>}
                   <Link to="/about" className="hover:text-gray-300">About</Link>
                   <Link to="/profile" className="hover:text-gray-300">Profile</Link>
                   <Link to="/mobile" replace={true} className="hover:text-gray-300">Mobile</Link>
@@ -75,7 +96,7 @@ export default function Navbar() {
                 <Link to="/" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Home</Link>
                 <Link to="/team-members" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Team Members</Link>
                 <Link to="/individuals" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Individuals</Link>
-                <Link to="/form-submissions" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Form</Link>
+                {isAdmin && <Link to="/form-submissions" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Forms</Link>}
                 <Link to="/about" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>About</Link>
                 <Link to="/profile" className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Profile</Link>
                 <Link to="/mobile" replace={true} className="block py-2 hover:text-gray-300" onClick={() => setIsMenuOpen(false)}>Mobile</Link>
