@@ -107,26 +107,26 @@ export const supabaseAPI = {
     return { data: dict, error };
   },
 
-  async submitForm(formTemplateId, formTemplateName, formContent, { select = "*" } = {}) {
+  async submitForm(formTemplateId, formTemplateName, formContent, destinationTable, { select = "*" } = {}) {
     return supabase
       .from("form_submissions")
       .insert([{
         form_template_id: formTemplateId,
         form_template_name: formTemplateName,
-        form_content: formContent
+        form_content: formContent,
+        destination_table: destinationTable || null
       }])
       .select(select)
       .single();
   },
 
-  async saveTemplate(templateName, startDate, endDate, type, destinationTable, fields, { select = "*" } = {}) {
+  async saveTemplate(templateName, startDate, endDate, _type, destinationTable, fields, { select = "*" } = {}) {
     return supabase
       .from("form_templates")
       .insert([{
-        template_name: templateName,
+        event_name: templateName,
         start_date: startDate,
         end_date: endDate,
-        type: type,
         destination_table: destinationTable,
         fields: fields
       }])
@@ -151,7 +151,7 @@ export const supabaseAPI = {
   },
 
   async getTemplates({ select = "*" } = {}) {
-    return supabase.from("form_templates").select(select).order("template_name", { ascending: true });
+    return supabase.from("form_templates").select(select).order("event_name", { ascending: true });
   },
 
   // Storage functions

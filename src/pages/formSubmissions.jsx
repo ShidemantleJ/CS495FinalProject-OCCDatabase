@@ -46,8 +46,8 @@ export default function FormSubmissions() {
       setErrorMessage("");
 
       const { data, error } = await databaseAPI.list("form_templates", {
-        select: "id, template_name",
-        orderBy: { column: "template_name", ascending: true },
+        select: "id, event_name",
+        orderBy: { column: "event_name", ascending: true },
       });
 
       if (error) {
@@ -150,7 +150,7 @@ export default function FormSubmissions() {
           {!loadingTemplates &&
             templates.map((template) => (
               <option key={template.id} value={String(template.id)}>
-                {template.template_name || "Unnamed Template"}
+                {template.event_name || "Unnamed Template"}
               </option>
             ))}
         </select>
