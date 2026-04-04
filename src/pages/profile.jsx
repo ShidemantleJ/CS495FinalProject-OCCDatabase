@@ -45,6 +45,8 @@ const MANAGED_BY = {
     "Media Support Team Member": [],
 };
 
+const ACTIVE_POSITION_FILTER = { column: "end_date", op: "is", value: null };
+
 export default function Profile() {
     const [user, setUser] = useState(null);
     const [memberData, setMemberData] = useState(null);
@@ -88,7 +90,7 @@ export default function Profile() {
                     select: "position",
                     filters: [
                         { column: "member_id", op: "eq", value: member.id },
-                        { column: "end_date", op: "is", value: null }
+                        ACTIVE_POSITION_FILTER
                     ]
                 });
 
@@ -274,7 +276,10 @@ export default function Profile() {
 
             if (scopes.includes("ALL")) {
                 const { data, error } = await databaseAPI.list("team_members", {
-                    select: "id, first_name, last_name, email, photo_url",
+                    select: "id, first_name, last_name, email, photo_url, active",
+                    filters: [
+                        { column: "active", op: "eq", value: true },
+                    ],
                     orderBy: { column: "last_name", ascending: true },
                 });
                 if (error) throw error;
@@ -286,7 +291,8 @@ export default function Profile() {
                 const { data: positionsData, error: posErr } = await databaseAPI.list("member_positions", {
                     select: "member_id, position",
                     filters: [
-                        { column: "member_id", op: "in", value: memberIds }
+                        { column: "member_id", op: "in", value: memberIds },
+                        ACTIVE_POSITION_FILTER,
                     ]
                 });
 
@@ -310,7 +316,8 @@ export default function Profile() {
             const { data: mpRows, error: mpErr } = await databaseAPI.list("member_positions", {
                 select: "member_id, position",
                 filters: [
-                    { column: "position", op: "in", value: managedPositions }
+                    { column: "position", op: "in", value: managedPositions },
+                    ACTIVE_POSITION_FILTER,
                 ]
             });
 
@@ -336,7 +343,8 @@ export default function Profile() {
             const { data: positionsData, error: posErr } = await databaseAPI.list("member_positions", {
                 select: "member_id, position",
                 filters: [
-                    { column: "member_id", op: "in", value: ids }
+                    { column: "member_id", op: "in", value: ids },
+                    ACTIVE_POSITION_FILTER,
                 ]
             });
 
