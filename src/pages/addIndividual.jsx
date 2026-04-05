@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
+import ChurchDropdown from '../components/ChurchDropdown';
 
 export default function AddIndividual() {
   const navigate = useNavigate();
   const [churches, setChurches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -29,7 +31,7 @@ export default function AddIndividual() {
   useEffect(() => {
     async function getChurches() {
       const { data, error } = await databaseAPI.list("church2", {
-        select: "church_name",
+        select: "church_name, church_physical_city",
         orderBy: { column: "church_name", ascending: true },
       });
       
@@ -117,7 +119,7 @@ export default function AddIndividual() {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <select
+          {/* <select
             name="church_name"
             value={formData.church_name}
             onChange={handleChange}
@@ -126,10 +128,20 @@ export default function AddIndividual() {
             <option value="">Select Church...</option>
             {churches.map((church) => (
               <option key={church.church_name} value={church.church_name}>
-                {church.church_name.replace(/_/g, " ")}
+                {church.church_name.replace(/_/g, " ")} ({church.church_physical_city || "City N/A"})
               </option>
             ))}
-          </select>
+          </select> */}
+          <ChurchDropdown
+            churches={churches}
+            selectedName={formData.church_name}
+            isAddingNew={isAddingNewChurch}
+            setIsAddingNew={setIsAddingNewChurch}
+            onSelect={(name) => {
+              // This replaces the old 'handleChange' for the church field specifically
+              setFormData({ ...formData, church_name: name });
+            }}
+          />
 
           <input
             name="role"

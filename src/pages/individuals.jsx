@@ -3,6 +3,7 @@ import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
+import ChurchDropdown from '../components/ChurchDropdown';
 
 export default function Individuals() {
     const {user} = useUser();
@@ -20,6 +21,7 @@ export default function Individuals() {
     const [savingIndividual, setSavingIndividual] = useState(false);
     const [churches, setChurches] = useState([]);
     const navigate = useNavigate();
+    const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
     
     // Filter states
     const [filters, setFilters] = useState({
@@ -39,7 +41,7 @@ export default function Individuals() {
     useEffect(() => {
         async function getChurches() {
         const { data, error } = await databaseAPI.list("church2", {
-            select: "church_name",
+            select: "church_name, church_physical_city",
             orderBy: { column: "church_name", ascending: true },
         });
         
@@ -309,6 +311,12 @@ export default function Individuals() {
         setEditingIndividual(null);
     };
 
+    const getChurchCity = (churchName) => {
+        if (!churchName) return "";
+        const match = churches.find(c => c.church_name === churchName);
+        return match ? match.church_physical_city : "";
+    };
+
     if (loading) return <p className="text-center mt-10">Loading individuals...</p>;
 
     return (
@@ -502,6 +510,7 @@ export default function Individuals() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Church</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Church City</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active to Emails</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resources Requested</th>
                             </tr>
@@ -545,6 +554,15 @@ export default function Individuals() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {ind.church_name ? ind.church_name.replace(/_/g, " ") : "N/A"}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {getChurchCity(ind.church_name) ? (
+                                                    <span className="italic text-gray-400">
+                                                        {getChurchCity(ind.church_name)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300 italic">No City Data</span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm" onClick={(e) => e.stopPropagation()}>
                                                 <label className={`flex items-center ${isAdmin ? "cursor-pointer" : "cursor-not-allowed"}`}>
@@ -675,7 +693,7 @@ export default function Individuals() {
                                                                     />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
+                                                                    {/* <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
                                                                     <select
                                                                         value={editingIndividual.church_name}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, church_name: e.target.value })}
@@ -685,10 +703,20 @@ export default function Individuals() {
                                                                         <option value="">-- Select a Church --</option>
                                                                         {churches.map((church, index) => (
                                                                             <option key={index} value={church.church_name}>
-                                                                                {church.church_name}
+                                                                                {church.church_name} ({church.church_physical_city || "City N/A"})
                                                                             </option>
                                                                         ))}
-                                                                    </select>
+                                                                    </select>church */}
+                                                                    <ChurchDropdown
+                                                                        churches={churches}
+                                                                        selectedName={editingIndividual.church_name}
+                                                                        isAddingNew={isAddingNewChurch}
+                                                                        setIsAddingNew={setIsAddingNewChurch}
+                                                                        onSelect={(name) => {
+                                                                            // Updates the church_name inside your editingIndividual object
+                                                                            setEditingIndividual({ ...editingIndividual, church_name: name });
+                                                                        }}
+                                                                        />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>

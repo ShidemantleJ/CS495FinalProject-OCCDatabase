@@ -6,7 +6,7 @@ import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
 import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
 
-export default function AddChurch() {
+export default function AddChurch({ isEmbedded = false, onSaved }) {
   const {user} = useUser();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -203,16 +203,35 @@ export default function AddChurch() {
 
     if (error) {
       setError("Error adding church. Please try again.");
+      return; 
+    }
+
+    // Handle the Success State (No Error)
+    if (isEmbedded) {
+        // Dropdown Mode: Just tell the parent form we're done
+        if (onSaved) {
+            onSaved(formData.church_name);
+        }
     } else {
-      navigate("/home");
+        // Standalone Mode: Check where we are before navigating
+        const isMobileFlow = window.location.pathname.includes('/mobile');
+
+        if (isMobileFlow) {
+            // Redirect back to the mobile page if in mobile interface
+            navigate('/mobile'); 
+        } else {
+            // Standard Admin behavior
+            navigate("/home");
+        }
     }
   };
 
   if (checkingAdmin || !isAdmin) return <p className="text-center mt-10">Loading...</p>;
 
   return (
-    <div className="max-w-2xl mx-auto mt-10 bg-white p-4 md:p-6 rounded-2xl shadow">
-      <h1 className="text-2xl font-bold mb-4 text-center">Add Church</h1>
+    <div className={isEmbedded ? "p-0" : "p-8 max-w-4xl mx-auto"}>
+    <div className={`${isEmbedded ? "mt-2" : "mt-10"} max-w-2xl mx-auto bg-white p-4 md:p-6 rounded-2xl shadow`}>
+      {!isEmbedded && <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">Add Church</h1>}
       {error && <p className="text-red-500 text-center mb-3">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -426,6 +445,7 @@ export default function AddChurch() {
           {loading ? "Adding..." : "Add Church"}
         </button>
       </form>
+    </div>
     </div>
   );
 }
