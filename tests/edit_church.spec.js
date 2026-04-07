@@ -182,8 +182,10 @@ test.describe("Church Management & Editing", () => {
     await page.getByPlaceholder("Search by church name").fill(churchName);
     await page.getByRole("button", { name: "Apply Filters" }).click();
 
+    const card = page.locator("div.bg-white.shadow-md").filter({ hasText: churchName });
+
     // Verify initial count (10)
-    await expect(page.getByText(`Shoebox ${currentYear}: 10`)).toBeVisible();
+    await expect(card.getByText(`Shoebox ${currentYear}: 10`, { exact: true })).toBeVisible();
 
     // Open Update Modal
     await page
@@ -205,8 +207,7 @@ test.describe("Church Management & Editing", () => {
     await expect(page.getByRole("button", { name: "Save All Changes" })).toBeHidden();
 
     // Verify update on card
-    const card = page.locator("div.bg-white.shadow-md").filter({ hasText: churchName });
-    await expect(card.getByText(`Shoebox ${currentYear}: 50`)).toBeVisible();
+    await expect(card.getByText(`Shoebox ${currentYear}: 50`, { exact: true })).toBeVisible();
   });
 
   test("Church Relations Team Member (Display Verification)", async ({

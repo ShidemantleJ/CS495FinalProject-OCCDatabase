@@ -21,10 +21,7 @@ export default function AddMember() {
     home_county: "",
     date_of_birth: "",
     shirt_size: "",
-    church_affiliation_name: "",
-    church_affiliation_city: "",
-    church_affiliation_state: "",
-    church_affiliation_county: "",
+    church_affiliation_id: null,
     member_notes: "",
     photo_url: "", // Added photo_url field
     active: true, // Always true by default — no checkbox needed
@@ -62,26 +59,15 @@ export default function AddMember() {
     console.log("Selected church ID:", churchId);
     
     if (churchId) {
-      const selectedChurch = churches.find(c => c.id === churchId);
-      console.log("Churches list:", churches);
-      console.log("Selected church data:", selectedChurch);
-      if (selectedChurch) {
-        setForm(prev => ({
-          ...prev,
-          church_affiliation_name: selectedChurch.church_name || "",
-          church_affiliation_city: selectedChurch.church_physical_city || "",
-          church_affiliation_state: selectedChurch.church_physical_state || "",
-          church_affiliation_county: selectedChurch.church_physical_county || ""
-        }));
-      }
+      setForm(prev => ({
+        ...prev,
+        church_affiliation_id: churchId
+      }));
     } else {
       // Clear church affiliation fields if no church selected
       setForm(prev => ({
         ...prev,
-        church_affiliation_name: "",
-        church_affiliation_city: "",
-        church_affiliation_state: "",
-        church_affiliation_county: ""
+        church_affiliation_id: null
       }));
     }
   };
@@ -101,10 +87,6 @@ export default function AddMember() {
       home_state: 2,
       home_zip: 10,
       home_county: 100,
-      church_affiliation_name: 200,
-      church_affiliation_city: 100,
-      church_affiliation_state: 2,
-      church_affiliation_county: 100,
       member_notes: 1000,
     };
 
@@ -227,10 +209,7 @@ export default function AddMember() {
   const formFields = Object.keys(form).filter((field) => 
     field !== "active" && 
     field !== "photo_url" &&
-    field !== "church_affiliation_name" &&
-    field !== "church_affiliation_city" &&
-    field !== "church_affiliation_state" &&
-    field !== "church_affiliation_county"
+    field !== "church_affiliation_id"
   );
 
   return (
@@ -329,10 +308,6 @@ export default function AddMember() {
                     field === "home_state" ? 2 :
                     field === "home_zip" ? 10 :
                     field === "home_county" ? 100 :
-                    field === "church_affiliation_name" ? 200 :
-                    field === "church_affiliation_city" ? 100 :
-                    field === "church_affiliation_state" ? 2 :
-                    field === "church_affiliation_county" ? 100 :
                     field === "member_notes" ? 1000 :
                     undefined
                   }

@@ -88,15 +88,8 @@ export default function EditProfile() {
                 setFormData(member);
                 
                 // Find matching church if affiliation exists
-                if (member.church_affiliation_name && churches.length > 0) {
-                    const matchingChurch = churches.find(c => 
-                        c.church_name === member.church_affiliation_name &&
-                        c.church_physical_city === member.church_affiliation_city &&
-                        c.church_physical_state === member.church_affiliation_state
-                    );
-                    if (matchingChurch) {
-                        setSelectedChurchId(matchingChurch.id);
-                    }
+                if (member.church_affiliation_id) {
+                    setSelectedChurchId(member.church_affiliation_id);
                 }
             } catch (err) {
                 alert("An error occurred loading your profile.");
@@ -113,24 +106,15 @@ export default function EditProfile() {
         setSelectedChurchId(churchId);
         
         if (churchId) {
-            const selectedChurch = churches.find(c => c.id === churchId);
-            if (selectedChurch) {
-                setFormData(prev => ({
-                    ...prev,
-                    church_affiliation_name: selectedChurch.church_name || "",
-                    church_affiliation_city: selectedChurch.church_physical_city || "",
-                    church_affiliation_state: selectedChurch.church_physical_state || "",
-                    church_affiliation_county: selectedChurch.church_physical_county || ""
-                }));
-            }
+            setFormData(prev => ({
+                ...prev,
+                church_affiliation_id: churchId
+            }));
         } else {
             // Clear church affiliation fields if no church selected
             setFormData(prev => ({
                 ...prev,
-                church_affiliation_name: "",
-                church_affiliation_city: "",
-                church_affiliation_state: "",
-                church_affiliation_county: ""
+                church_affiliation_id: null
             }));
         }
     };
@@ -150,10 +134,6 @@ export default function EditProfile() {
             home_zip: 10,
             home_county: 100,
             shirt_size: 10,
-            church_affiliation_name: 200,
-            church_affiliation_city: 100,
-            church_affiliation_state: 2,
-            church_affiliation_county: 100,
             member_notes: 1000,
         };
         
@@ -239,10 +219,7 @@ export default function EditProfile() {
                     home_county: formData.home_county ?? null,
                     date_of_birth: formData.date_of_birth ?? null,
                     shirt_size: formData.shirt_size && formData.shirt_size.trim() !== "" ? formData.shirt_size : null,
-                    church_affiliation_name: formData.church_affiliation_name ?? null,
-                    church_affiliation_city: formData.church_affiliation_city ?? null,
-                    church_affiliation_state: formData.church_affiliation_state ?? null,
-                    church_affiliation_county: formData.church_affiliation_county ?? null,
+                    church_affiliation_id: formData.church_affiliation_id ?? null,
                     active: formData.active ?? true,
                     member_notes: formData.member_notes ?? null,
                     admin_flag: formData.admin_flag ?? false,

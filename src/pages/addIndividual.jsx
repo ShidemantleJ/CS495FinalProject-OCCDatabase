@@ -11,7 +11,7 @@ export default function AddIndividual() {
     first_name: "",
     last_name: "",
     email: "",
-    church_name: "",
+    church_id: "",
     role: "",
     active_to_emails: true,
     craft_ideas: false,
@@ -29,7 +29,7 @@ export default function AddIndividual() {
   useEffect(() => {
     async function getChurches() {
       const { data, error } = await databaseAPI.list("church2", {
-        select: "church_name",
+        select: "id, church_name",
         orderBy: { column: "church_name", ascending: true },
       });
       
@@ -61,14 +61,15 @@ export default function AddIndividual() {
     setLoading(true);
     setError(null);
 
-    // Use the church name as-is (from dropdown, which has the actual database value)
-    // No need to convert - the dropdown already has the correct format from the database
-
     const submitData = {
       ...formData,
-      church_name: formData.church_name, // Use as-is from dropdown
+      church_id: formData.church_id || null,
       other_description: formData.other ? formData.other_description : null,
     };
+
+    if ("church_name" in submitData) {
+      delete submitData.church_name;
+    }
 
     const { error: insertError } = await databaseAPI.create("individuals", submitData);
 
@@ -118,14 +119,14 @@ export default function AddIndividual() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <select
-            name="church_name"
-            value={formData.church_name}
+            name="church_id"
+            value={formData.church_id}
             onChange={handleChange}
             className="border rounded-lg p-2"
           >
             <option value="">Select Church...</option>
             {churches.map((church) => (
-              <option key={church.church_name} value={church.church_name}>
+              <option key={church.id} value={church.id}>
                 {church.church_name.replace(/_/g, " ")}
               </option>
             ))}
@@ -286,4 +287,3 @@ export default function AddIndividual() {
     </div>
   );
 }
-

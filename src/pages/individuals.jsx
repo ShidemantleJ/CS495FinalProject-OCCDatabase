@@ -39,7 +39,7 @@ export default function Individuals() {
     useEffect(() => {
         async function getChurches() {
         const { data, error } = await databaseAPI.list("church2", {
-            select: "church_name",
+            select: "id, church_name",
             orderBy: { column: "church_name", ascending: true },
         });
         
@@ -115,8 +115,9 @@ export default function Individuals() {
             const searchWithSpaces = searchValue;
             const searchWithUnderscores = searchValue.replace(/ /g, "_");
             filtered = filtered.filter(ind => {
-                if (!ind.church_name) return false;
-                const churchNameLower = ind.church_name.toLowerCase();
+                const churchName = churches.find(c => c.id === ind.church_id)?.church_name;
+                if (!churchName) return false;
+                const churchNameLower = churchName.toLowerCase();
                 return churchNameLower.includes(searchWithSpaces) || 
                        churchNameLower.includes(searchWithUnderscores);
             });
@@ -173,12 +174,12 @@ export default function Individuals() {
                     const nameB2 = `${b.first_name} ${b.last_name}`.toLowerCase();
                     return nameB2.localeCompare(nameA2);
                 case "church_asc":
-                    const churchA = (a.church_name || "").toLowerCase();
-                    const churchB = (b.church_name || "").toLowerCase();
+                    const churchA = (churches.find(c => c.id === a.church_id)?.church_name || "").toLowerCase();
+                    const churchB = (churches.find(c => c.id === b.church_id)?.church_name || "").toLowerCase();
                     return churchA.localeCompare(churchB);
                 case "church_desc":
-                    const churchA2 = (a.church_name || "").toLowerCase();
-                    const churchB2 = (b.church_name || "").toLowerCase();
+                    const churchA2 = (churches.find(c => c.id === a.church_id)?.church_name || "").toLowerCase();
+                    const churchB2 = (churches.find(c => c.id === b.church_id)?.church_name || "").toLowerCase();
                     return churchB2.localeCompare(churchA2);
                 default:
                     return 0;
@@ -186,7 +187,7 @@ export default function Individuals() {
         });
 
         setFilteredIndividuals(filtered);
-    }, [individuals, filters, sortBy]);
+    }, [individuals, filters, sortBy, churches]);
 
     const copyAllEmails = async () => {
         // Only copy emails from active individuals
@@ -246,7 +247,7 @@ export default function Individuals() {
                 first_name: individual.first_name || "",
                 last_name: individual.last_name || "",
                 email: individual.email || "",
-                church_name: individual.church_name || "",
+                church_id: individual.church_id || "",
                 birth_date: individual.birth_date || "",
                 role: individual.role || "",
                 craft_ideas: individual.craft_ideas || false,
@@ -271,7 +272,7 @@ export default function Individuals() {
             first_name: editingIndividual.first_name,
             last_name: editingIndividual.last_name,
             email: editingIndividual.email,
-            church_name: editingIndividual.church_name,
+            church_id: editingIndividual.church_id || null,
             birth_date: editingIndividual.birth_date || null,
             role: editingIndividual.role || null,
             craft_ideas: editingIndividual.craft_ideas,
@@ -544,7 +545,7 @@ export default function Individuals() {
                                                 {ind.email || "N/A"}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {ind.church_name ? ind.church_name.replace(/_/g, " ") : "N/A"}
+                                            {ind.church_id ? (churches.find(c => c.id === ind.church_id)?.church_name || "N/A").replace(/_/g, " ") : "N/A"}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm" onClick={(e) => e.stopPropagation()}>
                                                 <label className={`flex items-center ${isAdmin ? "cursor-pointer" : "cursor-not-allowed"}`}>
@@ -677,14 +678,14 @@ export default function Individuals() {
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
                                                                     <select
-                                                                        value={editingIndividual.church_name}
-                                                                        onChange={(e) => setEditingIndividual({ ...editingIndividual, church_name: e.target.value })}
+                                                                    value={editingIndividual.church_id}
+                                                                    onChange={(e) => setEditingIndividual({ ...editingIndividual, church_id: e.target.value })}
                                                                         disabled={savingIndividual}
                                                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
                                                                     >
                                                                         <option value="">-- Select a Church --</option>
                                                                         {churches.map((church, index) => (
-                                                                            <option key={index} value={church.church_name}>
+                                                                        <option key={church.id || index} value={church.id}>
                                                                                 {church.church_name}
                                                                             </option>
                                                                         ))}

@@ -98,38 +98,14 @@ export default function Profile() {
                     setPositions(uniquePositions);
                 }
 
-                // Fetch affiliated church by name and city to get the correct one
-                if (member.church_affiliation_name) {
-                    // Try multiple name variants to handle both spaces and underscores
-                    const churchNameVariants = [
-                        member.church_affiliation_name, // Original
-                        member.church_affiliation_name.replace(/ /g, "_"), // With underscores
-                        member.church_affiliation_name.replace(/_/g, " ") // With spaces
-                    ];
-                    
-                    let churchData = null;
-                    
-                    // Try each variant
-                    for (const nameVariant of churchNameVariants) {
-                        let churchQuery = databaseAPI.list("church2", {
-                            select: "id, church_name, church_physical_city, church_physical_state",
-                            filters: [{ column: "church_name", op: "eq", value: nameVariant }],
-                        });
-                        
-                        // If we have city info, filter by city to get the exact match
-                        if (member.church_affiliation_city) {
-                            churchQuery = churchQuery.ilike("church_physical_city", `%${member.church_affiliation_city}%`);
-                        }
-                        
-                        const { data, error: churchError } = await churchQuery.maybeSingle();
-                        
-                        if (!churchError && data) {
-                            churchData = data;
-                            break; // Found it, stop searching
-                        }
-                    }
-                    
-                    if (churchData) {
+                // Fetch affiliated church by ID
+                if (member.church_affiliation_id) {
+                    const { data: churchData, error: churchError } = await databaseAPI.list("church2", {
+                        select: "id, church_name, church_physical_city, church_physical_state",
+                        filters: [{ column: "id", op: "eq", value: member.church_affiliation_id }],
+                    }).maybeSingle();
+
+                    if (!churchError && churchData) {
                         setAffiliatedChurch(churchData);
                     }
                 }
@@ -484,33 +460,26 @@ export default function Profile() {
                             </div>
                         )}
                         {/* Church Affiliation */}
-                        {(memberData.church_affiliation_name || memberData.church_affiliation_city || memberData.church_affiliation_state || memberData.church_affiliation_county) && (
+                        {affiliatedChurch && (
                             <div>
                                 <h2 className="text-lg font-semibold mb-2">Church Affiliation</h2>
                                 <div className="space-y-1 text-gray-700">
-                                    {memberData.church_affiliation_name && (
-                                        <p>
-                                            <strong>Church Name:</strong>{" "}
-                                            {affiliatedChurch ? (
-                                                <button
-                                                    onClick={() => navigate(`/church/${affiliatedChurch.id}`)}
-                                                    className="text-blue-600 hover:underline"
-                                                >
-                                                    {memberData.church_affiliation_name.replace(/_/g, " ")}
-                                                </button>
-                                            ) : (
-                                                memberData.church_affiliation_name.replace(/_/g, " ")
-                                            )}
-                                        </p>
-                                    )}
-                                    {(memberData.church_affiliation_city || memberData.church_affiliation_state || memberData.church_affiliation_county) && (
+                                    <p>
+                                        <strong>Church Name:</strong>{" "}
+                                        <button
+                                            onClick={() => navigate(`/church/${affiliatedChurch.id}`)}
+                                            className="text-blue-600 hover:underline"
+                                        >
+                                            {affiliatedChurch.church_name ? affiliatedChurch.church_name.replace(/_/g, " ") : "Unknown"}
+                                        </button>
+                                    </p>
+                                    {(affiliatedChurch.church_physical_city || affiliatedChurch.church_physical_state) && (
                                         <p>
                                             <strong>Location:</strong>{" "}
                                             {[
-                                                memberData.church_affiliation_city,
-                                                memberData.church_affiliation_state
+                                                affiliatedChurch.church_physical_city,
+                                                affiliatedChurch.church_physical_state
                                             ].filter(Boolean).join(", ")}
-                                            {memberData.church_affiliation_county && ` - ${memberData.church_affiliation_county} County`}
                                         </p>
                                     )}
                                 </div>

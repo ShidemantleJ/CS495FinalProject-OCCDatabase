@@ -74,11 +74,11 @@ export default function TeamMemberPage() {
             setMember(formattedMember);
 
             // Fetch church if there's a church affiliation
-            if (memberData.church_affiliation_name) {
+            if (memberData.church_affiliation_id) {
                 const { data: churchData, error: churchError } = await databaseAPI
                     .list("church2", {
                         select: "id, church_name, church_physical_city, church_physical_state, church_phone_number, church_physical_zip",
-                        filters: [{ column: "church_name", op: "eq", value: memberData.church_affiliation_name }],
+                        filters: [{ column: "id", op: "eq", value: memberData.church_affiliation_id }],
                     })
                     .single();
 
@@ -175,20 +175,20 @@ export default function TeamMemberPage() {
                             <p><strong>Shirt Size:</strong> {member.shirt_size || "N/A"}</p>
                             <p>
                                 <strong>Church Affiliation:</strong>{" "}
-                                {member.church_affiliation_name ? (
+                                {member.church_affiliation_id ? (
                                     church?.id ? (
                                         <button
                                             onClick={() => navigate(`/church/${church.id}`)}
                                             className="text-blue-600 hover:underline"
                                         >
-                                            {member.church_affiliation_name.replace(/_/g, " ")}
+                                            {church.church_name ? church.church_name.replace(/_/g, " ") : "Unknown"}
                                         </button>
                                     ) : (
                                         <span
                                             className="text-gray-400 cursor-help"
                                             title="Church not in database"
                                         >
-                                            {member.church_affiliation_name.replace(/_/g, " ")}
+                                            Unknown Church
                                         </span>
                                     )
                                 ) : (
