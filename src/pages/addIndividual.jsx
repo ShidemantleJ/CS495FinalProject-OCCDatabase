@@ -28,7 +28,6 @@ export default function AddIndividual() {
   });
 
   // Fetch churches for dropdown
-  // Fetch churches for dropdown
   const getChurches = async () => {
     const { data, error } = await databaseAPI.list("church2", {
         select: "church_name, church_physical_city",
