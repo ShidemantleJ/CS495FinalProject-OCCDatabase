@@ -144,7 +144,11 @@ export default function AddChurch({ isEmbedded = false, onSaved }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    // e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation(); //Stops the window popup from refreshing
+  }
     setLoading(true);
     setError(null);
 
@@ -230,11 +234,29 @@ export default function AddChurch({ isEmbedded = false, onSaved }) {
 
   return (
     <div className={isEmbedded ? "p-0" : "p-8 max-w-4xl mx-auto"}>
-    <div className={`${isEmbedded ? "mt-2" : "mt-10"} max-w-2xl mx-auto bg-white p-4 md:p-6 rounded-2xl shadow`}>
-      {!isEmbedded && <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">Add Church</h1>}
-      {error && <p className="text-red-500 text-center mb-3">{error}</p>}
+      <div className={`${isEmbedded ? "mt-2" : "mt-10"} max-w-2xl mx-auto bg-white p-4 md:p-6 rounded-2xl shadow`}>
+        
+        {!isEmbedded && <h1 className="text-2xl font-bold mb-4 text-center text-gray-800">Add Church</h1>}
+        {error && <p className="text-red-500 text-center mb-3 text-sm">{error}</p>}
+  
+        {/* Form if from add church button, div tags if from dropdown*/}
+        {isEmbedded ? (
+          <div className="space-y-4">
+            {renderFormFields()}
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {renderFormFields()}
+          </form>
+        )}
+      </div>
+    </div>
+  );
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+  //All of the form fields
+  function renderFormFields() {
+    return (
+      <>
         <input
           name="church_name"
           value={formData.church_name}
@@ -436,16 +458,17 @@ export default function AddChurch({ isEmbedded = false, onSaved }) {
             </div>
           )}
         </div>
-
+  
         <button
-          type="submit"
+          //Prevents ghost submissions
+          type={isEmbedded ? "button" : "submit"}
+          onClick={isEmbedded ? handleSubmit : undefined}
           disabled={loading || uploading}
           className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
         >
           {loading ? "Adding..." : "Add Church"}
         </button>
-      </form>
-    </div>
-    </div>
-  );
+      </>
+    );
+  }
 }

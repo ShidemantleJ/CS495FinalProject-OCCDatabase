@@ -38,21 +38,31 @@ export default function Individuals() {
     });
 
     // Fetch churches for dropdown
-    useEffect(() => {
-        async function getChurches() {
+    const getChurches = async () => {
         const { data, error } = await databaseAPI.list("church2", {
             select: "church_name, church_physical_city",
-            orderBy: { column: "church_name", ascending: true },
+            // Note: double-check if your API uses 'order' or 'orderBy' 
+            order: { column: "church_name", ascending: true },
         });
         
         if (error) {
-            // Error fetching churches
+            console.error("Error fetching churches:", error);
         } else {
             setChurches(data || []);
         }
-        }
+    };
+    
+    // Calls it 
+    useEffect(() => {
         getChurches();
     }, []);
+    
+    // Newly added church is visible in dropdown without refreshing the page
+    const handleChurchSelected = async (name) => {
+        setEditingIndividual(prev => ({ ...prev, church_name: name }));
+      
+        await getChurches(); 
+    };
     
     // Sort state
     const [sortBy, setSortBy] = useState("name_asc"); // name_asc, name_desc, church_asc, church_desc
@@ -693,29 +703,12 @@ export default function Individuals() {
                                                                     />
                                                                 </div>
                                                                 <div>
-                                                                    {/* <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
-                                                                    <select
-                                                                        value={editingIndividual.church_name}
-                                                                        onChange={(e) => setEditingIndividual({ ...editingIndividual, church_name: e.target.value })}
-                                                                        disabled={savingIndividual}
-                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                                                    >
-                                                                        <option value="">-- Select a Church --</option>
-                                                                        {churches.map((church, index) => (
-                                                                            <option key={index} value={church.church_name}>
-                                                                                {church.church_name} ({church.church_physical_city || "City N/A"})
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>church */}
                                                                     <ChurchDropdown
                                                                         churches={churches}
                                                                         selectedName={editingIndividual.church_name}
                                                                         isAddingNew={isAddingNewChurch}
                                                                         setIsAddingNew={setIsAddingNewChurch}
-                                                                        onSelect={(name) => {
-                                                                            // Updates the church_name inside your editingIndividual object
-                                                                            setEditingIndividual({ ...editingIndividual, church_name: name });
-                                                                        }}
+                                                                        onSelect={handleChurchSelected}
                                                                         />
                                                                 </div>
                                                                 <div>

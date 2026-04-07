@@ -28,21 +28,32 @@ export default function AddIndividual() {
   });
 
   // Fetch churches for dropdown
-  useEffect(() => {
-    async function getChurches() {
-      const { data, error } = await databaseAPI.list("church2", {
+  // Fetch churches for dropdown
+  const getChurches = async () => {
+    const { data, error } = await databaseAPI.list("church2", {
         select: "church_name, church_physical_city",
-        orderBy: { column: "church_name", ascending: true },
-      });
-      
-      if (error) {
-        // Error fetching churches
-      } else {
+        // Note: double-check if your API uses 'order' or 'orderBy' 
+        order: { column: "church_name", ascending: true },
+    });
+    
+    if (error) {
+        console.error("Error fetching churches:", error);
+    } else {
         setChurches(data || []);
-      }
     }
-    getChurches();
+  };
+
+  // Calls it 
+  useEffect(() => {
+      getChurches();
   }, []);
+
+  // Newly added church is visible in dropdown without refreshing the page
+  const handleChurchSelected = async (name) => {
+      setFormData(prev => ({ ...prev, church_name: name }));
+    
+      await getChurches(); 
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -119,28 +130,12 @@ export default function AddIndividual() {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* <select
-            name="church_name"
-            value={formData.church_name}
-            onChange={handleChange}
-            className="border rounded-lg p-2"
-          >
-            <option value="">Select Church...</option>
-            {churches.map((church) => (
-              <option key={church.church_name} value={church.church_name}>
-                {church.church_name.replace(/_/g, " ")} ({church.church_physical_city || "City N/A"})
-              </option>
-            ))}
-          </select> */}
           <ChurchDropdown
             churches={churches}
             selectedName={formData.church_name}
             isAddingNew={isAddingNewChurch}
             setIsAddingNew={setIsAddingNewChurch}
-            onSelect={(name) => {
-              // This replaces the old 'handleChange' for the church field specifically
-              setFormData({ ...formData, church_name: name });
-            }}
+            onSelect={handleChurchSelected}
           />
 
           <input

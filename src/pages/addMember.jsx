@@ -5,6 +5,7 @@ import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import DOMPurify from "dompurify";
 import { processImage } from "../utils/imageProcessing";
+import ChurchDropdown from '../components/ChurchDropdown';
 
 export default function AddMember() {
   const navigate = useNavigate();
@@ -36,54 +37,39 @@ export default function AddMember() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [churches, setChurches] = useState([]);
   const [selectedChurchId, setSelectedChurchId] = useState("");
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
 
   // Fetch churches on component mount
+  const getChurches = async () => {
+    const { data, error } = await databaseAPI.list("church2", {
+        // We need these extra fields for the auto-fill logic below
+        select: "church_name, church_physical_city, church_physical_state, church_physical_county",
+        orderBy: { column: "church_name", ascending: true },
+    });
+    if (!error) setChurches(data || []);
+  };
+
   useEffect(() => {
-    const fetchChurches = async () => {
-      try {
-        const { data, error } = await databaseAPI.list("church2", {
-          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
-        });
-        if (error) {
-          console.error("Error fetching churches:", error);
-        } else {
-          setChurches(data || []);
-        }
-      } catch (err) {
-        console.error("Error fetching churches:", err);
-      }
-    };
-    fetchChurches();
+      getChurches();
   }, []);
 
-  const handleChurchChange = (e) => {
-    const churchId = e.target.value;
-    setSelectedChurchId(churchId);
-    console.log("Selected church ID:", churchId);
-    
-    if (churchId) {
-      const selectedChurch = churches.find(c => c.id === churchId);
-      console.log("Churches list:", churches);
-      console.log("Selected church data:", selectedChurch);
+  const handleChurchSelected = async (name) => {
+      // 1. Find the full church object from our list using the name
+      const selectedChurch = churches.find(c => c.church_name === name);
+
       if (selectedChurch) {
-        setForm(prev => ({
-          ...prev,
-          church_affiliation_name: selectedChurch.church_name || "",
-          church_affiliation_city: selectedChurch.church_physical_city || "",
-          church_affiliation_state: selectedChurch.church_physical_state || "",
-          church_affiliation_county: selectedChurch.church_physical_county || ""
-        }));
+          // 3. Update EVERYTHING in the form, just like the old handleChurchChange did
+          setForm(prev => ({
+              ...prev,
+              church_affiliation_name: selectedChurch.church_name, 
+              church_affiliation_city: selectedChurch.church_physical_city || "",
+              church_affiliation_state: selectedChurch.church_physical_state || "",
+              church_affiliation_county: selectedChurch.church_physical_county || ""
+          }));
       }
-    } else {
-      // Clear church affiliation fields if no church selected
-      setForm(prev => ({
-        ...prev,
-        church_affiliation_name: "",
-        church_affiliation_city: "",
-        church_affiliation_state: "",
-        church_affiliation_county: ""
-      }));
-    }
+
+      // 4. Refetch so the dropdown is up to date
+      await getChurches();
   };
 
   const handleChange = (e) => {
@@ -271,19 +257,13 @@ export default function AddMember() {
         {/* Church Affiliation Dropdown */}
         <div className="mb-6 p-4 border rounded-lg">
           <label htmlFor="church-affiliation" className="block text-lg font-medium mb-2">Church Affiliation</label>
-          <select
-            id="church-affiliation"
-            value={selectedChurchId}
-            onChange={handleChurchChange}
-            className="w-full border rounded-md px-3 py-2"
-          >
-            <option value="">Select a church (optional)</option>
-            {churches.map((church) => (
-              <option key={church.id} value={church.id}>
-                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
-              </option>
-            ))}
-          </select>
+          <ChurchDropdown
+            churches={churches}
+            selectedName={form.church_affiliation_name || ""} 
+            isAddingNew={isAddingNewChurch}
+            setIsAddingNew={setIsAddingNewChurch}
+            onSelect={handleChurchSelected}
+        />
           <p className="text-sm text-gray-500 mt-1">
             Select the church the member is affiliated with
           </p>
