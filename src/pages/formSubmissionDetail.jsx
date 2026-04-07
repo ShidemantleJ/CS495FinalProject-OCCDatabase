@@ -1,0 +1,374 @@
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { databaseAPI } from "../api";
+
+export default function FormSubmissionDetail() {
+  const navigate = useNavigate();
+  const { templateId } = useParams();
+
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateFields, setTemplateFields] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [expandedSubmissions, setExpandedSubmissions] = useState({});
+  const [pendingTransfer, setPendingTransfer] = useState(null);
+  const [transferring, setTransferring] = useState(false);
+  const [editingSubmission, setEditingSubmission] = useState(null);
+  const [editFieldValues, setEditFieldValues] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const verifyAdmin = async () => {
+      const adminStatus = await databaseAPI.checkAdmin();
+
+      if (!isMounted) return;
+
+      setIsAdmin(adminStatus);
+      setCheckingAdmin(false);
+
+      if (!adminStatus) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    verifyAdmin();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (checkingAdmin || !isAdmin || !templateId) return;
+
+    const loadData = async () => {
+      setLoadingSubmissions(true);
+      setErrorMessage("");
+
+      const [templateResult, submissionsResult] = await Promise.all([
+        databaseAPI.list("form_templates", {
+          select: "id, event_name, fields",
+          filters: [{ column: "id", op: "eq", value: Number(templateId) }],
+        }),
+        databaseAPI.list("form_submissions", {
+          filters: [
+            {
+              column: "form_template_id",
+              op: "eq",
+              value: Number(templateId),
+            },
+          ],
+          orderBy: { column: "id", ascending: false },
+        }),
+      ]);
+
+      if (templateResult.data && templateResult.data.length > 0) {
+        setTemplateName(templateResult.data[0].event_name || "Unnamed Template");
+        setTemplateFields(Array.isArray(templateResult.data[0].fields) ? templateResult.data[0].fields : []);
+      }
+
+      if (submissionsResult.error) {
+        setErrorMessage("Failed to load form submissions.");
+        setSubmissions([]);
+      } else {
+        setSubmissions(submissionsResult.data || []);
+      }
+
+      setLoadingSubmissions(false);
+    };
+
+    loadData();
+  }, [checkingAdmin, isAdmin, templateId]);
+
+  const prettifyKey = (key) =>
+    key
+      .replace(/_/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const renderFieldValue = (value) => {
+    if (value === null || value === undefined) return "";
+    if (Array.isArray(value)) return value.join(", ");
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+
+  const getFieldEntries = (content) => {
+    if (!content || typeof content !== "object") return [];
+    return Object.entries(content);
+  };
+
+  const getLabelForKey = (key) => {
+    const field = templateFields.find((f) => f.name === key);
+    return field?.form_name || prettifyKey(key);
+  };
+
+  const toggleExpanded = (id) =>
+    setExpandedSubmissions((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const getSummary = (content) => {
+    if (!content || typeof content !== "object") return "—";
+    const pairs = Object.entries(content)
+      .slice(0, 3)
+      .map(([k, v]) => `${getLabelForKey(k)}: ${renderFieldValue(v) || "—"}`);
+    return pairs.join(" · ");
+  };
+
+  const openEditModal = (submission) => {
+    setEditingSubmission(submission);
+    setEditFieldValues(
+      submission.form_content && typeof submission.form_content === "object"
+        ? { ...submission.form_content }
+        : {}
+    );
+    setEditError("");
+  };
+
+  const handleEditSave = async () => {
+    if (!editingSubmission) return;
+    setEditSaving(true);
+    setEditError("");
+    const { error } = await databaseAPI.update(
+      "form_submissions",
+      editingSubmission.id,
+      { form_content: editFieldValues }
+    );
+    setEditSaving(false);
+    if (error) {
+      setEditError(`Save failed: ${error.message}`);
+    } else {
+      setSubmissions((prev) =>
+        prev.map((s) =>
+          s.id === editingSubmission.id ? { ...s, form_content: editFieldValues } : s
+        )
+      );
+      setEditingSubmission(null);
+    }
+  };
+
+  const handleTransferConfirm = async () => {
+    if (!pendingTransfer) return;
+    setTransferring(true);
+    setErrorMessage("");
+    const { error } = await databaseAPI.transferForm(pendingTransfer.id);
+    setTransferring(false);
+    setPendingTransfer(null);
+    if (error) {
+      setErrorMessage(`Transfer failed: ${error.message}`);
+    } else {
+      setSubmissions((prev) =>
+        prev.map((s) =>
+          s.id === pendingTransfer.id
+            ? { ...s, transferred_at: new Date().toISOString() }
+            : s
+        )
+      );
+    }
+  };
+
+  if (checkingAdmin) {
+    return <p className="text-center mt-10">Loading...</p>;
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto mt-10 px-4 md:px-0">
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          type="button"
+          onClick={() => navigate("/form-submissions")}
+          className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+          title="Back to templates"
+        >
+          ← Back
+        </button>
+        <h1 className="text-3xl font-bold">{templateName}</h1>
+      </div>
+
+      {errorMessage && <p className="text-red-600 mb-4">{errorMessage}</p>}
+
+      {loadingSubmissions ? (
+        <p>Loading submissions...</p>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-lg shadow">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form Content</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {submissions.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
+                    No submissions for this event.
+                  </td>
+                </tr>
+              ) : (
+                submissions.map((submission) => {
+                  const entries = getFieldEntries(submission.form_content);
+                  const expanded = !!expandedSubmissions[submission.id];
+
+                  return (
+                    <tr key={submission.id}>
+                      <td className="px-4 py-3 align-top text-sm">{submission.id}</td>
+                      <td className="px-4 py-3">
+                        {entries.length === 0 ? (
+                          <span className="text-gray-400 text-sm italic">No content</span>
+                        ) : (
+                          <div>
+                            {!expanded && (
+                              <p className="text-sm text-gray-600 truncate max-w-xl">
+                                {getSummary(submission.form_content)}
+                              </p>
+                            )}
+                            {expanded && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 max-w-3xl mt-1">
+                                {entries.map(([key, value]) => (
+                                  <div key={key} className="flex flex-col gap-0.5">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                      {getLabelForKey(key)}
+                                    </label>
+                                    <input
+                                      readOnly
+                                      value={renderFieldValue(value)}
+                                      className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm bg-gray-50 text-gray-800 cursor-default focus:outline-none"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(submission.id)}
+                              className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+                            >
+                              {expanded ? "▲ Collapse" : "▼ Expand"}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <div className="flex items-center gap-2">
+                          {submission.transferred_at ? (
+                            <span className="text-green-600 text-sm font-medium px-1">Transferred</span>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => openEditModal(submission)}
+                                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                title="Edit form content"
+                              >
+                                ✎
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPendingTransfer(submission)}
+                                className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                                title="Transfer this submission"
+                              >
+                                ✓
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {editingSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl mx-4 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold">Edit Form Content</h2>
+            <p className="text-sm text-gray-500">Submission ID: {editingSubmission.id}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+              {getFieldEntries(editingSubmission.form_content).map(([key]) => (
+                <div key={key} className="flex flex-col gap-0.5">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {getLabelForKey(key)}
+                  </label>
+                  <input
+                    type="text"
+                    value={renderFieldValue(editFieldValues[key])}
+                    onChange={(e) =>
+                      setEditFieldValues((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    disabled={editSaving}
+                    className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60"
+                  />
+                </div>
+              ))}
+            </div>
+            {editError && <p className="text-red-600 text-sm">{editError}</p>}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingSubmission(null)}
+                disabled={editSaving}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleEditSave}
+                disabled={editSaving}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {editSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingTransfer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-3">Confirm Transfer</h2>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to transfer this form to{" "}
+              <span className="font-mono font-semibold">&apos;{pendingTransfer.destination_table}&apos;</span>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingTransfer(null)}
+                disabled={transferring}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleTransferConfirm}
+                disabled={transferring}
+                className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {transferring ? "Transferring..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
