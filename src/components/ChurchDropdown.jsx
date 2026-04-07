@@ -75,7 +75,7 @@ const ChurchDropdown = ({ churches, selectedName, onSelect, isAddingNew, setIsAd
             
             {/* Modal Content */}
             <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in duration-200">
-              {/* Sticky Header inside Modal */}
+              {/* Header inside Modal */}
               <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
                 <span className="text-xs font-black text-blue-800 uppercase tracking-widest">
                   Quick Church Registration

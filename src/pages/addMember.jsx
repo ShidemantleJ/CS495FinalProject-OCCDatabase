@@ -42,7 +42,6 @@ export default function AddMember() {
   // Fetch churches on component mount
   const getChurches = async () => {
     const { data, error } = await databaseAPI.list("church2", {
-        // We need these extra fields for the auto-fill logic below
         select: "church_name, church_physical_city, church_physical_state, church_physical_county",
         orderBy: { column: "church_name", ascending: true },
     });
@@ -54,11 +53,9 @@ export default function AddMember() {
   }, []);
 
   const handleChurchSelected = async (name) => {
-      // 1. Find the full church object from our list using the name
       const selectedChurch = churches.find(c => c.church_name === name);
 
       if (selectedChurch) {
-          // 3. Update EVERYTHING in the form, just like the old handleChurchChange did
           setForm(prev => ({
               ...prev,
               church_affiliation_name: selectedChurch.church_name, 
@@ -68,7 +65,7 @@ export default function AddMember() {
           }));
       }
 
-      // 4. Refetch so the dropdown is up to date
+      // Refetch so the dropdown is up to date
       await getChurches();
   };
 

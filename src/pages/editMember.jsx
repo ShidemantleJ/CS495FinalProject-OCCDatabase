@@ -72,7 +72,6 @@ export default function EditMember() {
     }, []);
     
     const handleChurchSelected = async (name) => {
-        // Find the church object to perform the "Auto-Fill"
         const selectedChurch = churches.find(c => c.church_name === name);
         
         if (selectedChurch) {
@@ -89,7 +88,7 @@ export default function EditMember() {
             }));
         }
     
-        // Refresh the list in case a new church was just added via the modal
+        // Refresh the church dropdown
         await getChurches();
     };
 
