@@ -95,12 +95,13 @@ export const supabaseAPI = {
     const { data, error } = await supabase.rpc('get_table_columns', {
       p_table_name: tableName,
     });
+    console.log(data);
     if (error) console.error("Error fetching table columns:", error);
     const dict = {};
     if (data) {
-      data.forEach(({ column_name, data_type }) => {
+      data.forEach(({ column_name, data_type, is_nullable }) => {
         if (!column_name.endsWith("_id") && column_name !== "id") {
-          dict[column_name] = data_type;
+          dict[column_name] = { data_type, nonNullable: is_nullable === 'NO' };
         }
       });
     }
