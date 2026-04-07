@@ -5,6 +5,8 @@ import { databaseAPI } from "../api";
 
 export default function EditTemplates() {
   const navigate = useNavigate();
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -169,11 +171,36 @@ export default function EditTemplates() {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
+    const verifyAdmin = async () => {
+      const adminStatus = await databaseAPI.checkAdmin();
+
+      if (!isMounted) return;
+
+      setIsAdmin(adminStatus);
+      setCheckingAdmin(false);
+
+      if (!adminStatus) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    verifyAdmin();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (checkingAdmin || !isAdmin) return;
+
     loadTemplates();
     databaseAPI.getValidTablesForSubmissions().then(({ data }) => {
       if (data) setValidTables(data);
     });
-  }, []);
+  }, [checkingAdmin, isAdmin]);
 
   const loadTemplates = async () => {
     setLoadingTemplates(true);
@@ -329,6 +356,13 @@ export default function EditTemplates() {
     setDeletingId(null);
   };
 
+  if (checkingAdmin) {
+    return <p className="text-center mt-10">Loading...</p>;
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto mt-10 px-4 md:px-0">

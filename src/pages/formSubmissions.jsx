@@ -5,6 +5,8 @@ import { databaseAPI } from "../api";
 export default function FormSubmissions() {
   const navigate = useNavigate();
   const MAX_CONTENT_HEIGHT_REM = 7;
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [submissions, setSubmissions] = useState([]);
@@ -14,6 +16,31 @@ export default function FormSubmissions() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    let isMounted = true;
+
+    const verifyAdmin = async () => {
+      const adminStatus = await databaseAPI.checkAdmin();
+
+      if (!isMounted) return;
+
+      setIsAdmin(adminStatus);
+      setCheckingAdmin(false);
+
+      if (!adminStatus) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    verifyAdmin();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (checkingAdmin || !isAdmin) return;
+
     const loadTemplates = async () => {
       setLoadingTemplates(true);
       setErrorMessage("");
@@ -39,9 +66,11 @@ export default function FormSubmissions() {
     };
 
     loadTemplates();
-  }, []);
+  }, [checkingAdmin, isAdmin]);
 
   useEffect(() => {
+    if (checkingAdmin || !isAdmin) return;
+
     if (!selectedTemplateId) {
       setSubmissions([]);
       return;
@@ -73,7 +102,7 @@ export default function FormSubmissions() {
     };
 
     loadSubmissions();
-  }, [selectedTemplateId]);
+  }, [selectedTemplateId, checkingAdmin, isAdmin]);
 
   const renderFormContent = (content) => {
     if (!content) return "";
@@ -92,6 +121,14 @@ export default function FormSubmissions() {
       [submissionId]: !prev[submissionId],
     }));
   };
+
+  if (checkingAdmin) {
+    return <p className="text-center mt-10">Loading...</p>;
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto mt-10 px-4 md:px-0">
