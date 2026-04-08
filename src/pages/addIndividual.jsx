@@ -13,7 +13,7 @@ export default function AddIndividual() {
     first_name: "",
     last_name: "",
     email: "",
-    church_name: "",
+    church_id: "",
     role: "",
     active_to_emails: true,
     craft_ideas: false,
@@ -77,14 +77,15 @@ export default function AddIndividual() {
     setLoading(true);
     setError(null);
 
-    // Use the church name as-is (from dropdown, which has the actual database value)
-    // No need to convert - the dropdown already has the correct format from the database
-
     const submitData = {
       ...formData,
-      church_name: formData.church_name, // Use as-is from dropdown
+      church_id: formData.church_id || null,
       other_description: formData.other ? formData.other_description : null,
     };
+
+    if ("church_name" in submitData) {
+      delete submitData.church_name;
+    }
 
     const { error: insertError } = await databaseAPI.create("individuals", submitData);
 
@@ -296,4 +297,3 @@ export default function AddIndividual() {
     </div>
   );
 }
-

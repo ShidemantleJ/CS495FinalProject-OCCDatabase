@@ -191,15 +191,8 @@ export default function EditMember() {
             else {
                 setForm(data);
                 // Find matching church if affiliation exists
-                if (data.church_affiliation_name && churches.length > 0) {
-                    const matchingChurch = churches.find(c => 
-                        c.church_name === data.church_affiliation_name &&
-                        c.church_physical_city === data.church_affiliation_city &&
-                        c.church_physical_state === data.church_affiliation_state
-                    );
-                    if (matchingChurch) {
-                        setSelectedChurchId(matchingChurch.id);
-                    }
+                if (data.church_affiliation_id) {
+                    setSelectedChurchId(data.church_affiliation_id);
                 }
             }
             setLoading(false);
@@ -439,7 +432,7 @@ export default function EditMember() {
 
                 {/* Remaining Fields */}
                 {Object.keys(form).map((field) =>
-                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address", "church_affiliation_name", "church_affiliation_city", "church_affiliation_state", "church_affiliation_county"].includes(field)
+                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address", "church_affiliation_id"].includes(field)
                         ? null
                         : field === "active" ? (
                             <label key={field} className="col-span-2 flex items-center gap-2">
