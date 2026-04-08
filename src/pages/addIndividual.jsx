@@ -31,14 +31,18 @@ export default function AddIndividual() {
   const getChurches = async () => {
     const { data, error } = await databaseAPI.list("church2", {
         select: "church_name, church_physical_city",
-        // Note: double-check if your API uses 'order' or 'orderBy' 
         order: { column: "church_name", ascending: true },
     });
     
     if (error) {
         console.error("Error fetching churches:", error);
     } else {
-        setChurches(data || []);
+        const sortedData = (data || []).sort((a, b) => 
+        // Use localeCompare for sorting alphabetically
+            (a.church_name || "").localeCompare(b.church_name || "")
+        );
+    
+        setChurches(sortedData);
     }
   };
 

@@ -45,7 +45,18 @@ export default function AddMember() {
         select: "church_name, church_physical_city, church_physical_state, church_physical_county",
         orderBy: { column: "church_name", ascending: true },
     });
-    if (!error) setChurches(data || []);
+
+    if (error) {
+      console.error("Error fetching churches:", error);
+    } else {
+        const sortedData = (data || []).sort((a, b) => 
+        // Use localeCompare for sorting alphabetically
+            (a.church_name || "").localeCompare(b.church_name || "")
+        );
+    
+        setChurches(sortedData);
+    }
+    
   };
 
   useEffect(() => {

@@ -61,10 +61,16 @@ export default function EditMember() {
                 select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
                 orderBy: { column: "church_name", ascending: true }
             });
-            if (!error) setChurches(data || []);
-        } catch (err) {
-            console.error("Error fetching churches:", err);
-        }
+            if (!error) {
+                // Sort A-Z before updating state
+                const sortedData = (data || []).sort((a, b) => 
+                    (a.church_name || "").localeCompare(b.church_name || "")
+                );
+                setChurches(sortedData);
+            }
+            } catch (err) {
+                console.error("Error fetching churches:", err);
+            }
     };
     
     useEffect(() => {

@@ -48,7 +48,12 @@ export default function Individuals() {
         if (error) {
             console.error("Error fetching churches:", error);
         } else {
-            setChurches(data || []);
+            const sortedData = (data || []).sort((a, b) => 
+                // Use localeCompare for sorting alphabetically
+                (a.church_name || "").localeCompare(b.church_name || "")
+            );
+            
+            setChurches(sortedData);
         }
     };
     
