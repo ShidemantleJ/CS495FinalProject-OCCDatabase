@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
-import ChurchDropdown from '../components/ChurchDropdown';
+import ChurchDropdown from "../components/ChurchDropdown";
 
 export default function AddIndividual() {
   const navigate = useNavigate();
   const [churches, setChurches] = useState([]);
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -27,35 +27,31 @@ export default function AddIndividual() {
     notes: "",
   });
 
-  // Fetch churches for dropdown
   const getChurches = async () => {
     const { data, error } = await databaseAPI.list("church2", {
-        select: "church_name, church_physical_city",
-        order: { column: "church_name", ascending: true },
+      select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+      orderBy: { column: "church_name", ascending: true },
     });
     
-    if (error) {
-        console.error("Error fetching churches:", error);
-    } else {
-        const sortedData = (data || []).sort((a, b) => 
-        // Use localeCompare for sorting alphabetically
-            (a.church_name || "").localeCompare(b.church_name || "")
-        );
-    
-        setChurches(sortedData);
+    if (!error) {
+      setChurches(data || []);
+      return data || [];
     }
+    return [];
   };
 
-  // Calls it 
   useEffect(() => {
-      getChurches();
+    getChurches();
   }, []);
 
-  // Newly added church is visible in dropdown without refreshing the page
   const handleChurchSelected = async (name) => {
-      setFormData(prev => ({ ...prev, church_name: name }));
-    
-      await getChurches(); 
+    const latestChurches = await getChurches();
+    const selectedChurch = latestChurches.find((c) => c.church_name === name);
+    if (selectedChurch) {
+      setFormData((prev) => ({ ...prev, church_id: selectedChurch.id }));
+    } else {
+      setFormData((prev) => ({ ...prev, church_id: "" }));
+    }
   };
 
   const handleChange = (e) => {
@@ -136,7 +132,7 @@ export default function AddIndividual() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ChurchDropdown
             churches={churches}
-            selectedName={formData.church_name}
+            selectedName={churches.find(c => c.id === formData.church_id)?.church_name || ""}
             isAddingNew={isAddingNewChurch}
             setIsAddingNew={setIsAddingNewChurch}
             onSelect={handleChurchSelected}

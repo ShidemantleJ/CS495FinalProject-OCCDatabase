@@ -67,10 +67,12 @@ export default function EditMember() {
                     (a.church_name || "").localeCompare(b.church_name || "")
                 );
                 setChurches(sortedData);
+                return sortedData;
             }
             } catch (err) {
                 console.error("Error fetching churches:", err);
             }
+            return [];
     };
     
     useEffect(() => {
@@ -78,7 +80,8 @@ export default function EditMember() {
     }, []);
     
     const handleChurchSelected = async (name) => {
-        const selectedChurch = churches.find(c => c.church_name === name);
+        const latestChurches = await getChurches();
+        const selectedChurch = latestChurches.find(c => c.church_name === name);
         
         if (selectedChurch) {
             // Update the ID reference if your edit form still needs it
@@ -87,15 +90,15 @@ export default function EditMember() {
             // Perform Auto-Fill into the 'form' state
             setForm(prev => ({
                 ...prev,
-                church_affiliation_name: selectedChurch.church_name,
-                church_affiliation_city: selectedChurch.church_physical_city || "",
-                church_affiliation_state: selectedChurch.church_physical_state || "",
-                church_affiliation_county: selectedChurch.church_physical_county || ""
+                church_affiliation_id: selectedChurch.id
+            }));
+        } else {
+            setSelectedChurchId("");
+            setForm(prev => ({
+                ...prev,
+                church_affiliation_id: null
             }));
         }
-    
-        // Refresh the church dropdown
-        await getChurches();
     };
 
     const [expiredPositions, setExpiredPositions] = useState([]);
@@ -198,7 +201,7 @@ export default function EditMember() {
             setLoading(false);
         };
         loadMember();
-    }, [id, churches]);
+    }, [id]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -403,8 +406,7 @@ export default function EditMember() {
                     <label className="block text-lg font-medium mb-2">Church Affiliation</label>
                     <ChurchDropdown
                         churches={churches}
-                        // Use 'church_affiliation_name' so the selection stays visible in the box
-                        selectedName={form.church_affiliation_name || ""} 
+                        selectedName={churches.find(c => c.id === selectedChurchId)?.church_name || ""} 
                         isAddingNew={isAddingNewChurch}
                         setIsAddingNew={setIsAddingNewChurch}
                         onSelect={handleChurchSelected}

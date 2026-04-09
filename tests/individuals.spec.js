@@ -81,14 +81,8 @@ test.describe.serial("Individuals Management", () => {
     await page.getByPlaceholder("Email").fill(email);
 
     // Select Church
-<<<<<<< HEAD
     await page.getByPlaceholder("Search church or church city...").fill(churchName);
     await page.getByText(churchName, { exact: true }).click();
-=======
-    await page
-      .locator('select[name="church_id"]')
-      .selectOption({ label: churchName });
->>>>>>> develop
 
     await page.getByPlaceholder("Role").fill("Volunteer");
 

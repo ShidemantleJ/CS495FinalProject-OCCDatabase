@@ -3,7 +3,7 @@ import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
-import ChurchDropdown from '../components/ChurchDropdown';
+import ChurchDropdown from "../components/ChurchDropdown";
 
 export default function Individuals() {
     const {user} = useUser();
@@ -20,8 +20,8 @@ export default function Individuals() {
     const [editingIndividual, setEditingIndividual] = useState(null);
     const [savingIndividual, setSavingIndividual] = useState(false);
     const [churches, setChurches] = useState([]);
-    const navigate = useNavigate();
     const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
+    const navigate = useNavigate();
     
     // Filter states
     const [filters, setFilters] = useState({
@@ -37,35 +37,31 @@ export default function Individuals() {
         other: false,
     });
 
-    // Fetch churches for dropdown
     const getChurches = async () => {
-        const { data, error } = await databaseAPI.list("church2", {
-            select: "church_name, church_physical_city",
-            order: { column: "church_name", ascending: true },
-        });
-        
-        if (error) {
-            console.error("Error fetching churches:", error);
-        } else {
-            const sortedData = (data || []).sort((a, b) => 
-                // Use localeCompare for sorting alphabetically
-                (a.church_name || "").localeCompare(b.church_name || "")
-            );
-            
-            setChurches(sortedData);
-        }
-    };
-    
-    // Calls it 
-    useEffect(() => {
-        getChurches();
-    }, []);
-    
-    // Newly added church is visible in dropdown without refreshing the page
-    const handleChurchSelected = async (name) => {
-        setEditingIndividual(prev => ({ ...prev, church_name: name }));
+      const { data, error } = await databaseAPI.list("church2", {
+        select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+        orderBy: { column: "church_name", ascending: true },
+      });
       
-        await getChurches(); 
+      if (!error) {
+        setChurches(data || []);
+        return data || [];
+      }
+      return [];
+    };
+
+    useEffect(() => {
+      getChurches();
+    }, []);
+
+    const handleChurchSelected = async (name) => {
+      const latestChurches = await getChurches();
+      const selectedChurch = latestChurches.find((c) => c.church_name === name);
+      if (selectedChurch) {
+        setEditingIndividual((prev) => ({ ...prev, church_id: selectedChurch.id }));
+      } else {
+        setEditingIndividual((prev) => ({ ...prev, church_id: "" }));
+      }
     };
     
     // Sort state
@@ -326,12 +322,6 @@ export default function Individuals() {
         setEditingIndividual(null);
     };
 
-    const getChurchCity = (churchName) => {
-        if (!churchName) return "";
-        const match = churches.find(c => c.church_name === churchName);
-        return match ? match.church_physical_city : "";
-    };
-
     if (loading) return <p className="text-center mt-10">Loading individuals...</p>;
 
     return (
@@ -525,7 +515,6 @@ export default function Individuals() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Church</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Church City</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active to Emails</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resources Requested</th>
                             </tr>
@@ -569,15 +558,6 @@ export default function Individuals() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {ind.church_id ? (churches.find(c => c.id === ind.church_id)?.church_name || "N/A").replace(/_/g, " ") : "N/A"}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {getChurchCity(ind.church_name) ? (
-                                                    <span className="italic text-gray-400">
-                                                        {getChurchCity(ind.church_name)}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-300 italic">No City Data</span>
-                                                )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm" onClick={(e) => e.stopPropagation()}>
                                                 <label className={`flex items-center ${isAdmin ? "cursor-pointer" : "cursor-not-allowed"}`}>
@@ -708,13 +688,16 @@ export default function Individuals() {
                                                                     />
                                                                 </div>
                                                                 <div>
-                                                                    <ChurchDropdown
-                                                                        churches={churches}
-                                                                        selectedName={editingIndividual.church_name}
-                                                                        isAddingNew={isAddingNewChurch}
-                                                                        setIsAddingNew={setIsAddingNewChurch}
-                                                                        onSelect={handleChurchSelected}
+                                                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
+                                                                    <div className={savingIndividual ? "opacity-50 pointer-events-none" : ""}>
+                                                                        <ChurchDropdown
+                                                                            churches={churches}
+                                                                            selectedName={churches.find(c => c.id === editingIndividual.church_id)?.church_name || ""}
+                                                                            isAddingNew={isAddingNewChurch}
+                                                                            setIsAddingNew={setIsAddingNewChurch}
+                                                                            onSelect={handleChurchSelected}
                                                                         />
+                                                                    </div>
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>

@@ -33,13 +33,12 @@ export default function AddMember() {
   const [error, setError] = useState("");
   const [photoPreview, setPhotoPreview] = useState("");
   const [churches, setChurches] = useState([]);
-  const [selectedChurchId, setSelectedChurchId] = useState("");
   const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
 
   // Fetch churches on component mount
   const getChurches = async () => {
     const { data, error } = await databaseAPI.list("church2", {
-        select: "church_name, church_physical_city, church_physical_state, church_physical_county",
+        select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
         orderBy: { column: "church_name", ascending: true },
     });
 
@@ -52,8 +51,9 @@ export default function AddMember() {
         );
     
         setChurches(sortedData);
+        return sortedData;
     }
-    
+    return [];
   };
 
   useEffect(() => {
@@ -61,20 +61,20 @@ export default function AddMember() {
   }, []);
 
   const handleChurchSelected = async (name) => {
-      const selectedChurch = churches.find(c => c.church_name === name);
+      const latestChurches = await getChurches();
+      const selectedChurch = latestChurches.find(c => c.church_name === name);
 
       if (selectedChurch) {
           setForm(prev => ({
               ...prev,
-              church_affiliation_name: selectedChurch.church_name, 
-              church_affiliation_city: selectedChurch.church_physical_city || "",
-              church_affiliation_state: selectedChurch.church_physical_state || "",
-              church_affiliation_county: selectedChurch.church_physical_county || ""
+              church_affiliation_id: selectedChurch.id
+          }));
+      } else {
+          setForm(prev => ({
+              ...prev,
+              church_affiliation_id: null
           }));
       }
-
-      // Refetch so the dropdown is up to date
-      await getChurches();
   };
 
   const handleChange = (e) => {
@@ -257,7 +257,7 @@ export default function AddMember() {
           <label htmlFor="church-affiliation" className="block text-lg font-medium mb-2">Church Affiliation</label>
           <ChurchDropdown
             churches={churches}
-            selectedName={form.church_affiliation_name || ""} 
+            selectedName={churches.find(c => c.id === form.church_affiliation_id)?.church_name || ""} 
             isAddingNew={isAddingNewChurch}
             setIsAddingNew={setIsAddingNewChurch}
             onSelect={handleChurchSelected}
