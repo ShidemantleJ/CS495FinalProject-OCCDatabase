@@ -59,8 +59,18 @@ export default function FormSubmissions() {
         setErrorMessage("Failed to load form templates.");
         setTemplates([]);
       } else {
-        // Sort: entries with a start_date descending (newest first), then those without a date at the end
+        const getStatus = (t) => {
+          const today = new Date().toLocaleDateString("en-CA");
+          if (t.start_date || t.end_date) {
+            if (t.end_date && today > t.end_date) return 2; // archived
+            if (t.start_date && today < t.start_date) return 1; // upcoming
+            return 0; // active
+          }
+          return 3; // no date
+        };
         const sorted = (data || []).slice().sort((a, b) => {
+          const statusDiff = getStatus(a) - getStatus(b);
+          if (statusDiff !== 0) return statusDiff;
           if (!a.start_date && !b.start_date) return 0;
           if (!a.start_date) return 1;
           if (!b.start_date) return -1;
