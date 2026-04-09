@@ -153,6 +153,13 @@ export default function AddMember() {
     setLoading(true);
     setError("");
 
+    if (!form.first_name.trim() || !form.last_name.trim()) {
+      setError("First name and last name are required.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setLoading(false);
+      return;
+    }
+
     // Validate phone numbers
 
     if (form.phone_number && !validatePhoneNumber(form.phone_number)) {
@@ -176,21 +183,26 @@ export default function AddMember() {
       return;
     }
 
-    const existingEmails = await databaseAPI.list("team_members", {
-      select: "email",
-    });
+    if (form.email) {
+      const existingEmails = await databaseAPI.list("team_members", {
+        select: "email",
+      });
 
-    if (existingEmails.data.some(member => member.email === form.email)) {
-      setError("A member with this email address already exists.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setLoading(false);
-      return;
+      if (existingEmails.data.some(member => member.email === form.email)) {
+        setError("A member with this email address already exists.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setLoading(false);
+        return;
+      }
     }
 
     // Prepare form data, converting empty strings to null for optional fields
     const formData = { ...form };
     if (formData.shirt_size === "") {
       formData.shirt_size = null;
+    }
+    if (formData.date_of_birth === "") {
+      formData.date_of_birth = null;
     }
 
     const { error } = await databaseAPI.create("team_members", formData);
@@ -273,6 +285,7 @@ export default function AddMember() {
             <div key={field} className="col-span-1">
               <label className="block text-sm font-medium mb-1 capitalize">
                 {field.replaceAll("_", " ")}
+                {(field === "first_name" || field === "last_name") && <span className="text-red-500"> *</span>}
               </label>
               {field === "shirt_size" ? (
                 <select
@@ -311,6 +324,7 @@ export default function AddMember() {
                     field === "member_notes" ? 1000 :
                     undefined
                   }
+                  required={field === "first_name" || field === "last_name"}
                 />
               )}
             </div>
