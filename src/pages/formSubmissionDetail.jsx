@@ -20,6 +20,8 @@ export default function FormSubmissionDetail() {
   const [editFieldValues, setEditFieldValues] = useState({});
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
+  const [pendingUndo, setPendingUndo] = useState(null);
+  const [undoing, setUndoing] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,14 +56,14 @@ export default function FormSubmissionDetail() {
       const [templateResult, submissionsResult] = await Promise.all([
         databaseAPI.list("form_templates", {
           select: "id, event_name, fields",
-          filters: [{ column: "id", op: "eq", value: Number(templateId) }],
+          filters: [{ column: "id", op: "eq", value: templateId }],
         }),
         databaseAPI.list("form_submissions", {
           filters: [
             {
               column: "form_template_id",
               op: "eq",
-              value: Number(templateId),
+              value: templateId,
             },
           ],
           orderBy: { column: "id", ascending: false },
@@ -156,7 +158,7 @@ export default function FormSubmissionDetail() {
     if (!pendingTransfer) return;
     setTransferring(true);
     setErrorMessage("");
-    const { error } = await databaseAPI.transferForm(pendingTransfer.id);
+    const { data: insertedRow, error } = await databaseAPI.transferForm(pendingTransfer.id);
     setTransferring(false);
     setPendingTransfer(null);
     if (error) {
@@ -165,7 +167,27 @@ export default function FormSubmissionDetail() {
       setSubmissions((prev) =>
         prev.map((s) =>
           s.id === pendingTransfer.id
-            ? { ...s, transferred_at: new Date().toISOString() }
+            ? { ...s, transferred_at: new Date().toISOString(), transferred_row_id: insertedRow?.id ?? null }
+            : s
+        )
+      );
+    }
+  };
+
+  const handleUndoConfirm = async () => {
+    if (!pendingUndo) return;
+    setUndoing(true);
+    setErrorMessage("");
+    const { error } = await databaseAPI.undoTransfer(pendingUndo.id);
+    setUndoing(false);
+    setPendingUndo(null);
+    if (error) {
+      setErrorMessage(`Undo failed: ${error.message}`);
+    } else {
+      setSubmissions((prev) =>
+        prev.map((s) =>
+          s.id === pendingUndo.id
+            ? { ...s, transferred_at: null, transferred_row_id: null }
             : s
         )
       );
@@ -262,7 +284,17 @@ export default function FormSubmissionDetail() {
                       <td className="px-4 py-3 align-middle">
                         <div className="flex items-center gap-2">
                           {submission.transferred_at ? (
-                            <span className="text-green-600 text-sm font-medium px-1">Transferred</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-green-600 text-sm font-medium">Transferred</span>
+                              <button
+                                type="button"
+                                onClick={() => setPendingUndo(submission)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                title="Undo transfer (removes row from destination table)"
+                              >
+                                ↩
+                              </button>
+                            </div>
                           ) : (
                             <>
                               <button
@@ -364,6 +396,37 @@ export default function FormSubmissionDetail() {
                 className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {transferring ? "Transferring..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingUndo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-3">Undo Transfer</h2>
+            <p className="text-gray-700 mb-2">
+              This will <span className="font-semibold text-red-600">permanently delete</span> the transferred row from{" "}
+              <span className="font-mono font-semibold">&apos;{pendingUndo.destination_table}&apos;</span> and mark this submission as not yet transferred.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">Submission ID: {pendingUndo.id}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingUndo(null)}
+                disabled={undoing}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUndoConfirm}
+                disabled={undoing}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {undoing ? "Undoing..." : "Undo Transfer"}
               </button>
             </div>
           </div>

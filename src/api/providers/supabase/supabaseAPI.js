@@ -147,11 +147,35 @@ export const supabaseAPI = {
 
     const { error: updateError } = await supabase
       .from("form_submissions")
-      .update({ transferred_at: new Date().toISOString() })
+      .update({ transferred_at: new Date().toISOString(), transferred_row_id: insertData.id ?? null })
       .eq("id", formSubmissionId);
     if (updateError) return { data: insertData, error: updateError };
 
     return { data: insertData, error: null };
+  },
+
+  async undoTransfer(formSubmissionId) {
+    const { data: submission, error: fetchError } = await supabase
+      .from("form_submissions")
+      .select("destination_table, transferred_row_id")
+      .eq("id", formSubmissionId)
+      .single();
+    if (fetchError || !submission) return { error: fetchError || new Error("Submission not found") };
+
+    const { destination_table, transferred_row_id } = submission;
+    if (!transferred_row_id) return { error: new Error("No transferred row ID recorded; cannot safely undo.") };
+
+    const { error: deleteError } = await supabase
+      .from(destination_table)
+      .delete()
+      .eq("id", transferred_row_id);
+    if (deleteError) return { error: deleteError };
+
+    const { error: updateError } = await supabase
+      .from("form_submissions")
+      .update({ transferred_at: null, transferred_row_id: null })
+      .eq("id", formSubmissionId);
+    return { error: updateError || null };
   },
 
   async saveTemplate(templateName, startDate, endDate, _type, destinationTable, fields, { select = "*" } = {}) {
