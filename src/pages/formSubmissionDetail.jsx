@@ -220,111 +220,151 @@ export default function FormSubmissionDetail() {
 
       {loadingSubmissions ? (
         <p>Loading submissions...</p>
-      ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form Content</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {submissions.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
-                    No submissions for this event.
-                  </td>
-                </tr>
-              ) : (
-                submissions.map((submission) => {
-                  const entries = getFieldEntries(submission.form_content);
-                  const expanded = !!expandedSubmissions[submission.id];
+      ) : (() => {
+        const pending = submissions.filter((s) => !s.transferred_at);
+        const transferred = submissions.filter((s) => s.transferred_at);
 
-                  return (
-                    <tr key={submission.id}>
-                      <td className="px-4 py-3 align-top text-sm">{submission.id}</td>
-                      <td className="px-4 py-3">
-                        {entries.length === 0 ? (
-                          <span className="text-gray-400 text-sm italic">No content</span>
-                        ) : (
-                          <div>
-                            {!expanded && (
-                              <p className="text-sm text-gray-600 truncate max-w-xl">
-                                {getSummary(submission.form_content)}
-                              </p>
-                            )}
-                            {expanded && (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 max-w-3xl mt-1">
-                                {entries.map(([key, value]) => (
-                                  <div key={key} className="flex flex-col gap-0.5">
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                      {getLabelForKey(key)}
-                                    </label>
-                                    <input
-                                      readOnly
-                                      value={renderFieldValue(value)}
-                                      className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm bg-gray-50 text-gray-800 cursor-default focus:outline-none"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => toggleExpanded(submission.id)}
-                              className="mt-2 text-xs text-blue-600 hover:text-blue-800"
-                            >
-                              {expanded ? "▲ Collapse" : "▼ Expand"}
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 align-middle">
-                        <div className="flex items-center gap-2">
-                          {submission.transferred_at ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-green-600 text-sm font-medium">Transferred</span>
-                              <button
-                                type="button"
-                                onClick={() => setPendingUndo(submission)}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                title="Undo transfer (removes row from destination table)"
-                              >
-                                ↩
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(submission)}
-                                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                                title="Edit form content"
-                              >
-                                ✎
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setPendingTransfer(submission)}
-                                className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                                title="Transfer this submission"
-                              >
-                                ✓
-                              </button>
-                            </>
-                          )}
-                        </div>
+        const renderContentCell = (submission) => {
+          const entries = getFieldEntries(submission.form_content);
+          const expanded = !!expandedSubmissions[submission.id];
+          return entries.length === 0 ? (
+            <span className="text-gray-400 text-sm italic">No content</span>
+          ) : (
+            <div>
+              {!expanded && (
+                <p className="text-sm text-gray-600 truncate max-w-xl">
+                  {getSummary(submission.form_content)}
+                </p>
+              )}
+              {expanded && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 max-w-3xl mt-1">
+                  {entries.map(([key, value]) => (
+                    <div key={key} className="flex flex-col gap-0.5">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {getLabelForKey(key)}
+                      </label>
+                      <input
+                        readOnly
+                        value={renderFieldValue(value)}
+                        className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm bg-gray-50 text-gray-800 cursor-default focus:outline-none"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => toggleExpanded(submission.id)}
+                className="mt-2 text-xs text-blue-600 hover:text-blue-800"
+              >
+                {expanded ? "▲ Collapse" : "▼ Expand"}
+              </button>
+            </div>
+          );
+        };
+
+        return (
+          <>
+            {/* Pending submissions */}
+            <div>
+              <h2 className="text-xl font-semibold mb-3 text-gray-700">Pending</h2>
+            <div className="overflow-x-auto bg-white rounded-lg shadow">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form Content</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {pending.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
+                        No pending submissions.
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  ) : (
+                    pending.map((submission) => (
+                      <tr key={submission.id}>
+                        <td className="px-4 py-3 align-top text-sm">{submission.id}</td>
+                        <td className="px-4 py-3">{renderContentCell(submission)}</td>
+                        <td className="px-4 py-3 align-middle">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(submission)}
+                              className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                              title="Edit form content"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingTransfer(submission)}
+                              className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                              title="Transfer this submission"
+                            >
+                              ✓
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            </div>
+
+            {/* Transferred submissions */}
+            <div className="mt-10">
+              <h2 className="text-xl font-semibold mb-3 text-gray-700">Transferred</h2>
+              <div className="overflow-x-auto bg-white rounded-lg shadow">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form Content</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transferred At</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {transferred.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
+                          No transferred submissions yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      transferred.map((submission) => (
+                        <tr key={submission.id}>
+                          <td className="px-4 py-3 align-top text-sm">{submission.id}</td>
+                          <td className="px-4 py-3">{renderContentCell(submission)}</td>
+                          <td className="px-4 py-3 align-top text-sm text-gray-500 whitespace-nowrap">
+                            {new Date(submission.transferred_at).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 align-middle">
+                            <button
+                              type="button"
+                              onClick={() => setPendingUndo(submission)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              title="Undo transfer (removes row from destination table)"
+                            >
+                              ↩
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {editingSubmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
