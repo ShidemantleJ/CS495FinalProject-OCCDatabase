@@ -310,7 +310,7 @@ export default function Home() {
             });
             
             filteredData = [...churchesWithData];
-            if (filterValues.flaggedOnly) {
+            if (isAdmin && filterValues.flaggedOnly) {
                 filteredData = filteredData.filter((church) => church.missingRequiredFields.length > 0);
             }
 
@@ -450,20 +450,23 @@ export default function Home() {
                         onKeyDown={handleFilterInputKeyDown}
                         className="border p-2 rounded w-full md:w-1/3"
                     />
-                    <label className="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm text-gray-700">
-                        <input
-                            type="checkbox"
-                            checked={filters.flaggedOnly}
-                            onChange={
-                                (e) => {
-                                    const newFilters = { ...filters, flaggedOnly: e.target.checked };
-                                    setFilters(newFilters);
-                                    getChurches(newFilters);                                }
-                            }
-                            className="h-4 w-4"
-                        />
-                        Only Flagged Churches
-                    </label>
+                    {isAdmin && (
+                        <label className="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm text-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={filters.flaggedOnly}
+                                onChange={
+                                    (e) => {
+                                        const newFilters = { ...filters, flaggedOnly: e.target.checked };
+                                        setFilters(newFilters);
+                                        getChurches(newFilters);
+                                    }
+                                }
+                                className="h-4 w-4"
+                            />
+                            Only Flagged Churches
+                        </label>
+                    )}
                 </div>
 
                 <div className="mt-4 flex flex-col">
@@ -546,7 +549,7 @@ export default function Home() {
                         )}
                         <div>
                             <h2 className="text-xl font-bold mb-2">{church.church_name?.replace(/_/g, " ") || "Unnamed Church"}</h2>
-                            {church.missingRequiredFields.length > 0 && (
+                            {isAdmin && church.missingRequiredFields.length > 0 && (
                                 <div className="mb-3 inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
                                     Insufficient info: missing {church.missingRequiredFields.join(", ")}
                                 </div>
