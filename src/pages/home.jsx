@@ -302,6 +302,7 @@ export default function Home() {
                 return {
                     ...church,
                     relationsMemberName: relationsMemberName,
+                    relationsMemberId: currentYearAttr?.relations_member || null,
                     projectLeaderName: projectLeaderName,
                     pocName: pocName,
                     missingRequiredFields: getMissingChurchRequiredFields(church),
@@ -565,7 +566,19 @@ export default function Home() {
                             <p className="text-gray-700">
                                 <strong>Project Leader:</strong> {church.projectLeaderName || "N/A"}
                             </p>
-                            <p className="text-gray-700"><strong>Church Relations Team Member:</strong> {church.relationsMemberName}</p>
+                            <p className="text-gray-700">
+                                <strong>Church Relations Team Member:</strong>{" "}
+                                {church.relationsMemberId ? (
+                                    <button
+                                        onClick={() => navigate(`/team-member/${church.relationsMemberId}`)}
+                                        className="text-blue-600 hover:underline"
+                                    >
+                                        {church.relationsMemberName}
+                                    </button>
+                                ) : (
+                                    church.relationsMemberName
+                                )}
+                            </p>
                         </div>
                         {church.photo_url && (
                             <PrivateBucketImage
