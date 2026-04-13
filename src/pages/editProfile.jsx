@@ -5,6 +5,7 @@ import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import ChurchDropdown from "../components/ChurchDropdown";
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -45,25 +46,28 @@ export default function EditProfile() {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState("");
     const [churches, setChurches] = useState([]);
+    const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
     const [selectedChurchId, setSelectedChurchId] = useState("");
     const navigate = useNavigate();
 
     // Fetch churches on component mount
-    useEffect(() => {
-        const fetchChurches = async () => {
-            try {
-                const { data, error } = await databaseAPI.list("church2", {
-                    select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
-                });
-                if (error) {
-                    console.error("Error fetching churches:", error);
-                } else {
-                    setChurches(data || []);
-                }
-            } catch (err) {
-                console.error("Error fetching churches:", err);
+    const fetchChurches = async () => {
+        try {
+            const { data, error } = await databaseAPI.list("church2", {
+                select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+                orderBy: { column: "church_name", ascending: true }
+            });
+            if (!error) {
+                setChurches(data || []);
+                return data || [];
             }
-        };
+        } catch (err) {
+            console.error("Error fetching churches:", err);
+        }
+        return [];
+    };
+
+    useEffect(() => {
         fetchChurches();
     }, []);
 
@@ -99,19 +103,19 @@ export default function EditProfile() {
         };
 
         fetchUserData();
-    }, [navigate, authUser, churches]);
+    }, [navigate, authUser]);
 
-    const handleChurchChange = (e) => {
-        const churchId = e.target.value;
-        setSelectedChurchId(churchId);
-        
-        if (churchId) {
+    const handleChurchSelected = async (name) => {
+        const latestChurches = await fetchChurches();
+        const selectedChurch = latestChurches.find(c => c.church_name === name);
+        if (selectedChurch) {
+            setSelectedChurchId(selectedChurch.id);
             setFormData(prev => ({
                 ...prev,
-                church_affiliation_id: churchId
+                church_affiliation_id: selectedChurch.id
             }));
         } else {
-            // Clear church affiliation fields if no church selected
+            setSelectedChurchId("");
             setFormData(prev => ({
                 ...prev,
                 church_affiliation_id: null
@@ -415,18 +419,13 @@ export default function EditProfile() {
                     <h2 className="text-lg font-semibold text-gray-800 mb-4">Church Affiliation</h2>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Church</label>
-                        <select
-                            value={selectedChurchId}
-                            onChange={handleChurchChange}
-                            className="w-full border rounded-md px-3 py-2"
-                        >
-                            <option value="">Select a church (optional)</option>
-                            {churches.map((church) => (
-                                <option key={church.id} value={church.id}>
-                                    {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
-                                </option>
-                            ))}
-                        </select>
+                    <ChurchDropdown
+                        churches={churches}
+                        selectedName={churches.find(c => c.id === selectedChurchId)?.church_name || ""} 
+                        isAddingNew={isAddingNewChurch}
+                        setIsAddingNew={setIsAddingNewChurch}
+                        onSelect={handleChurchSelected}
+                    />
                         <p className="text-sm text-gray-500 mt-1">
                             Select the church you are affiliated with
                         </p>

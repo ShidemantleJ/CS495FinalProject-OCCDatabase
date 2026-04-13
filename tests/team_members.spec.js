@@ -77,6 +77,10 @@ test.describe.serial("Team Members Management", () => {
 
     await expect(page).toHaveURL(/\/add-member/);
 
+    // Church info
+    await page.getByPlaceholder("Search church or church city...").fill(churchName);
+    await page.getByText(churchName, { exact: true }).click();
+
     // Fill form
     await page.locator('input[name="first_name"]').fill(firstName);
     await page.locator('input[name="last_name"]').fill(lastName);
@@ -88,11 +92,6 @@ test.describe.serial("Team Members Management", () => {
     await page.locator('input[name="home_zip"]').fill("12345");
     await page.locator('input[name="home_county"]').fill("Test County");
     await page.locator('input[name="date_of_birth"]').fill("1990-01-01");
-
-    // Church info
-    await page
-      .getByRole("combobox", { name: "Church Affiliation" })
-      .selectOption({ label: `${churchName} - TestCity, TS` });
 
     await page.getByRole("button", { name: /add member/i }).click();
 

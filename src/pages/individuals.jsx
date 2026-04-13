@@ -3,6 +3,7 @@ import { FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
+import ChurchDropdown from "../components/ChurchDropdown";
 
 export default function Individuals() {
     const {user} = useUser();
@@ -19,6 +20,7 @@ export default function Individuals() {
     const [editingIndividual, setEditingIndividual] = useState(null);
     const [savingIndividual, setSavingIndividual] = useState(false);
     const [churches, setChurches] = useState([]);
+    const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
     const navigate = useNavigate();
     
     // Filter states
@@ -35,22 +37,32 @@ export default function Individuals() {
         other: false,
     });
 
-    // Fetch churches for dropdown
+    const getChurches = async () => {
+      const { data, error } = await databaseAPI.list("church2", {
+        select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+        orderBy: { column: "church_name", ascending: true },
+      });
+      
+      if (!error) {
+        setChurches(data || []);
+        return data || [];
+      }
+      return [];
+    };
+
     useEffect(() => {
-        async function getChurches() {
-        const { data, error } = await databaseAPI.list("church2", {
-            select: "id, church_name",
-            orderBy: { column: "church_name", ascending: true },
-        });
-        
-        if (error) {
-            // Error fetching churches
-        } else {
-            setChurches(data || []);
-        }
-        }
-        getChurches();
+      getChurches();
     }, []);
+
+    const handleChurchSelected = async (name) => {
+      const latestChurches = await getChurches();
+      const selectedChurch = latestChurches.find((c) => c.church_name === name);
+      if (selectedChurch) {
+        setEditingIndividual((prev) => ({ ...prev, church_id: selectedChurch.id }));
+      } else {
+        setEditingIndividual((prev) => ({ ...prev, church_id: "" }));
+      }
+    };
     
     // Sort state
     const [sortBy, setSortBy] = useState("name_asc"); // name_asc, name_desc, church_asc, church_desc
@@ -677,19 +689,15 @@ export default function Individuals() {
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
-                                                                    <select
-                                                                    value={editingIndividual.church_id}
-                                                                    onChange={(e) => setEditingIndividual({ ...editingIndividual, church_id: e.target.value })}
-                                                                        disabled={savingIndividual}
-                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                                                    >
-                                                                        <option value="">-- Select a Church --</option>
-                                                                        {churches.map((church, index) => (
-                                                                        <option key={church.id || index} value={church.id}>
-                                                                                {church.church_name}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
+                                                                    <div className={savingIndividual ? "opacity-50 pointer-events-none" : ""}>
+                                                                        <ChurchDropdown
+                                                                            churches={churches}
+                                                                            selectedName={churches.find(c => c.id === editingIndividual.church_id)?.church_name || ""}
+                                                                            isAddingNew={isAddingNewChurch}
+                                                                            setIsAddingNew={setIsAddingNewChurch}
+                                                                            onSelect={handleChurchSelected}
+                                                                        />
+                                                                    </div>
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>
