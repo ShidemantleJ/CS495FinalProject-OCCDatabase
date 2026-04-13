@@ -271,7 +271,6 @@ export default function AddChurch({ isEmbedded = false, onSaved }) {
           value={formData["church_phone_number"]}
           onChange={handleChange}
           placeholder="Church Phone Number"
-          required
           className="w-full border rounded-lg p-2"
           maxLength={20}
         />
@@ -317,7 +316,6 @@ export default function AddChurch({ isEmbedded = false, onSaved }) {
             value={formData["church_physical_county"]}
             onChange={handleChange}
             placeholder="County"
-            required
             className="border rounded-lg p-2"
             maxLength={100}
           />
@@ -459,15 +457,28 @@ export default function AddChurch({ isEmbedded = false, onSaved }) {
           )}
         </div>
   
+        <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+      {/* ONLY show Cancel if NOT in the dropdown modal */}
+      {!isEmbedded && (
         <button
-          //Prevents ghost submissions
-          type={isEmbedded ? "button" : "submit"}
-          onClick={isEmbedded ? handleSubmit : undefined}
-          disabled={loading || uploading}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
+          type="button"
+          onClick={() => navigate(-1)}
+          className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition-colors"
         >
-          {loading ? "Adding..." : "Add Church"}
+          Cancel
         </button>
+      )}
+
+      {/* Always show the Submit button */}
+      <button
+        type={isEmbedded ? "button" : "submit"}
+        onClick={isEmbedded ? handleSubmit : undefined}
+        disabled={loading || uploading}
+        className={`${isEmbedded ? 'w-full' : ''} bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:bg-emerald-300 transition-colors`}
+      >
+        {loading ? "Saving..." : "Add Church"}
+      </button>
+    </div>
       </>
     );
   }
