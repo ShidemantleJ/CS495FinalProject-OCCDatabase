@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
+import { useUser } from "../contexts/UserContext";
 
 function PrivateBucketImage({ filePath, className }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -38,6 +39,8 @@ export default function TeamMemberPage() {
     const [relationsChurches, setRelationsChurches] = useState([]);
     const [churchesLoading, setChurchesLoading] = useState(true);
     const [loading, setLoading] = useState(true);
+    const { user } = useUser();
+    const [isAdmin, setIsAdmin] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -124,17 +127,44 @@ export default function TeamMemberPage() {
         getRelationsChurches();
     }, [member]);
 
+    useEffect(() => {
+        async function checkAdmin() {
+            if (user) {
+                const { data: memberData, error } = await databaseAPI
+                    .list("team_members", {
+                        select: "admin_flag",
+                        filters: [{ column: "email", op: "eq", value: user.email }],
+                    })
+                    .single();
+                if (!error && memberData) {
+                    setIsAdmin(memberData.admin_flag === true || memberData.admin_flag === "true");
+                }
+            }
+        }
+        checkAdmin();
+    }, [user]);
+
     if (loading) return <p className="text-center mt-10">Loading team member...</p>;
     if (!member) return <p className="text-center mt-10">Team member not found.</p>;
 
     return (
         <div className="max-w-4xl mx-auto mt-10">
-            <button
-                className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 mb-4"
-                onClick={() => navigate("/team-members")}
-            >
-                Back to Team Members
-            </button>
+            <div className="flex gap-2 mb-4">
+                <button
+                    className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+                    onClick={() => navigate("/team-members")}
+                >
+                    Back to Team Members
+                </button>
+                {isAdmin && (
+                    <button
+                        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                        onClick={() => navigate(`/edit-member/${member.id}`)}
+                    >
+                        Edit Member
+                    </button>
+                )}
+            </div>
 
             <div className="bg-white shadow-md rounded-lg p-6">
                 <div className="flex flex-col md:flex-row gap-6">

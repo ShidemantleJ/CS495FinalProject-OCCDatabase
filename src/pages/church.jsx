@@ -107,11 +107,8 @@ export default function ChurchPage() {
   // Fetch all team members for admin dropdown
   useEffect(() => {
     async function getAllTeamMembers() {
-      if (!isAdmin) return;
-      
       const { data, error } = await databaseAPI.list("team_members", {
         select: "id, first_name, last_name, active",
-        filters: [{ column: "active", op: "eq", value: true }],
         orderBy: { column: "last_name", ascending: true },
       });
       
@@ -122,7 +119,7 @@ export default function ChurchPage() {
       }
     }
     getAllTeamMembers();
-  }, [isAdmin]);
+  }, []);
 
   // Fetch notes for this church
   useEffect(() => {
@@ -649,7 +646,16 @@ export default function ChurchPage() {
                     const relationsMemberId = attr?.relations_member;
                     if (relationsMemberId) {
                       const member = teamMembers.find(m => m.id === relationsMemberId);
-                      return member ? `${member.first_name} ${member.last_name}` : "N/A";
+                      if (member) {
+                        return (
+                          <button
+                            onClick={() => navigate(`/team-member/${relationsMemberId}`)}
+                            className="text-blue-600 hover:underline"
+                          >
+                            {member.first_name} {member.last_name}
+                          </button>
+                        );
+                      }
                     }
                     return "N/A";
                   })()}
