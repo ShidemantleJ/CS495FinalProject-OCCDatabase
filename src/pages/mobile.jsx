@@ -266,69 +266,83 @@ export default function Mobile() {
             <p className="text-xl text-slate-500 font-medium">Select a form to begin registration</p>
           </div>
           
-          <div className="grid grid-cols-1 gap-8 w-full">
-            {/* Individual Drop-Off */}
-            <button 
-              onClick={() => setView("individual")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#2563EB]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">Individual Shoebox Drop-Off</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-blue-600">→</span>
-            </button>
+          <div className="flex flex-col gap-12 w-full">
 
-            {/* Church/Group Drop-Off */}
-            <button 
-              onClick={() => setView("church")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#10B981]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">Church/Group Shoebox Drop-Off</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-emerald-600">→</span>
-            </button>
-
-            {/* NCW Short-Term */}
-            <button 
-              onClick={() => setView("ncw")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#6366F1]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">NCW Short-Term Volunteer</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
-            </button>
-
-            {/* PLW Short-Term */}
-            <button 
-              onClick={() => setView("plw")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#F43F5E]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">PLW Registration</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
-            </button>
-
-            {/* Custom Templates */}
-            {customTemplates.map((template) => (
-              <button
-                key={template.id}
-                onClick={() => handleSelectCustomTemplate(template)}
-                className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-              >
-                <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
-                <div className="flex flex-col text-left">
-                  <span className="text-3xl font-black text-slate-900 tracking-tight">{template.event_name}</span>
+            {/* Current Events Section */}
+            {customTemplates.length > 0 && (
+              <div className="flex flex-col gap-6">
+                <h2 className="text-2xl font-black text-slate-700 uppercase tracking-widest border-b-2 border-violet-200 pb-3">Current Events</h2>
+                <div className="grid grid-cols-1 gap-6">
+                  {customTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => handleSelectCustomTemplate(template)}
+                      className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                    >
+                      <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
+                      <div className="flex flex-col text-left">
+                        <span className="text-3xl font-black text-slate-900 tracking-tight">{template.event_name}</span>
+                      </div>
+                      <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
+                    </button>
+                  ))}
                 </div>
-                <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
-              </button>
-            ))}
+              </div>
+            )}
+
+            {/* Legacy Forms Section */}
+            <div className="flex flex-col gap-6">
+              <h2 className="text-2xl font-black text-slate-700 uppercase tracking-widest border-b-2 border-slate-200 pb-3">Legacy Forms</h2>
+              <div className="grid grid-cols-1 gap-6">
+                {/* Individual Drop-Off */}
+                <button 
+                  onClick={() => setView("individual")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#2563EB]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">Individual Shoebox Drop-Off</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-blue-600">→</span>
+                </button>
+
+                {/* Church/Group Drop-Off */}
+                <button 
+                  onClick={() => setView("church")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#10B981]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">Church/Group Shoebox Drop-Off</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-emerald-600">→</span>
+                </button>
+
+                {/* NCW Short-Term */}
+                <button 
+                  onClick={() => setView("ncw")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#6366F1]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">NCW Short-Term Volunteer</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
+                </button>
+
+                {/* PLW Short-Term */}
+                <button 
+                  onClick={() => setView("plw")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#F43F5E]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">PLW Registration</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-rose-600">→</span>
+                </button>
+              </div>
+            </div>
 
             {/* Exit Button To Leave The Selection Screen & To Return To The Admin Login */}
             <button
