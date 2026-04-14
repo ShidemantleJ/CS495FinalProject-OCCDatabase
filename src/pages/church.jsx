@@ -106,11 +106,8 @@ export default function ChurchPage() {
   // Fetch all team members for admin dropdown
   useEffect(() => {
     async function getAllTeamMembers() {
-      if (!isAdmin) return;
-      
       const { data, error } = await databaseAPI.list("team_members", {
         select: "id, first_name, last_name, active",
-        filters: [{ column: "active", op: "eq", value: true }],
         orderBy: { column: "last_name", ascending: true },
       });
       
@@ -121,7 +118,7 @@ export default function ChurchPage() {
       }
     }
     getAllTeamMembers();
-  }, [isAdmin]);
+  }, []);
 
   // Fetch notes for this church
   useEffect(() => {
@@ -143,33 +140,15 @@ export default function ChurchPage() {
         return;
       }
       
-      // Use the actual church name from the database (already loaded correctly)
-      // Try multiple variants to handle both spaces and underscores
-      const churchNameVariants = [
-        church.church_name, // Actual name from database
-        church.church_name.replace(/ /g, "_"), // With underscores
-        church.church_name.replace(/_/g, " ") // With spaces
-      ];
+      const { data, error } = await databaseAPI.list("individuals", {
+        filters: [{ column: "church_id", op: "eq", value: church.id }],
+      });
       
-      let allIndividuals = [];
-      
-      // Try each variant and collect all individuals
-      for (const nameVariant of churchNameVariants) {
-        const { data, error } = await databaseAPI.list("individuals", {
-          filters: [{ column: "church_name", op: "eq", value: nameVariant }],
-        });
-        
-        if (!error && data) {
-          allIndividuals = [...allIndividuals, ...data];
-        }
+      if (!error && data) {
+        setIndividuals(data);
+      } else {
+        setIndividuals([]);
       }
-      
-      // Remove duplicates based on id
-      const uniqueIndividuals = Array.from(
-        new Map(allIndividuals.map(ind => [ind.id, ind])).values()
-      );
-      
-      setIndividuals(uniqueIndividuals);
       setIndividualsLoading(false);
     }
     if (church) {
@@ -643,7 +622,7 @@ export default function ChurchPage() {
                   disabled={savingRelationsMember}
                 >
                   <option value="">None</option>
-                  {teamMembers.map((member) => (
+                  {teamMembers.filter(m => m.active).map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.first_name} {member.last_name}
                     </option>
@@ -672,7 +651,16 @@ export default function ChurchPage() {
                     const relationsMemberId = attr?.relations_member;
                     if (relationsMemberId) {
                       const member = teamMembers.find(m => m.id === relationsMemberId);
-                      return member ? `${member.first_name} ${member.last_name}` : "N/A";
+                      if (member) {
+                        return (
+                          <button
+                            onClick={() => navigate(`/team-member/${relationsMemberId}`)}
+                            className="text-blue-600 hover:underline"
+                          >
+                            {member.first_name} {member.last_name}
+                          </button>
+                        );
+                      }
                     }
                     return "N/A";
                   })()}

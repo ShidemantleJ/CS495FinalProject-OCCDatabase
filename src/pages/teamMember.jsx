@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
+import { useUser } from "../contexts/UserContext";
 
 function PrivateBucketImage({ filePath, className }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -38,6 +39,8 @@ export default function TeamMemberPage() {
     const [relationsChurches, setRelationsChurches] = useState([]);
     const [churchesLoading, setChurchesLoading] = useState(true);
     const [loading, setLoading] = useState(true);
+    const { user } = useUser();
+    const [isAdmin, setIsAdmin] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -74,11 +77,11 @@ export default function TeamMemberPage() {
             setMember(formattedMember);
 
             // Fetch church if there's a church affiliation
-            if (memberData.church_affiliation_name) {
+            if (memberData.church_affiliation_id) {
                 const { data: churchData, error: churchError } = await databaseAPI
                     .list("church2", {
                         select: "id, church_name, church_physical_city, church_physical_state, church_phone_number, church_physical_zip",
-                        filters: [{ column: "church_name", op: "eq", value: memberData.church_affiliation_name }],
+                        filters: [{ column: "id", op: "eq", value: memberData.church_affiliation_id }],
                     })
                     .single();
 
@@ -124,17 +127,44 @@ export default function TeamMemberPage() {
         getRelationsChurches();
     }, [member]);
 
+    useEffect(() => {
+        async function checkAdmin() {
+            if (user) {
+                const { data: memberData, error } = await databaseAPI
+                    .list("team_members", {
+                        select: "admin_flag",
+                        filters: [{ column: "email", op: "eq", value: user.email }],
+                    })
+                    .single();
+                if (!error && memberData) {
+                    setIsAdmin(memberData.admin_flag === true || memberData.admin_flag === "true");
+                }
+            }
+        }
+        checkAdmin();
+    }, [user]);
+
     if (loading) return <p className="text-center mt-10">Loading team member...</p>;
     if (!member) return <p className="text-center mt-10">Team member not found.</p>;
 
     return (
         <div className="max-w-4xl mx-auto mt-10">
-            <button
-                className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 mb-4"
-                onClick={() => navigate("/team-members")}
-            >
-                Back to Team Members
-            </button>
+            <div className="flex gap-2 mb-4">
+                <button
+                    className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+                    onClick={() => navigate("/team-members")}
+                >
+                    Back to Team Members
+                </button>
+                {isAdmin && (
+                    <button
+                        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                        onClick={() => navigate(`/edit-member/${member.id}`)}
+                    >
+                        Edit Member
+                    </button>
+                )}
+            </div>
 
             <div className="bg-white shadow-md rounded-lg p-6">
                 <div className="flex flex-col md:flex-row gap-6">
@@ -175,20 +205,20 @@ export default function TeamMemberPage() {
                             <p><strong>Shirt Size:</strong> {member.shirt_size || "N/A"}</p>
                             <p>
                                 <strong>Church Affiliation:</strong>{" "}
-                                {member.church_affiliation_name ? (
+                                {member.church_affiliation_id ? (
                                     church?.id ? (
                                         <button
                                             onClick={() => navigate(`/church/${church.id}`)}
                                             className="text-blue-600 hover:underline"
                                         >
-                                            {member.church_affiliation_name.replace(/_/g, " ")}
+                                            {church.church_name ? church.church_name.replace(/_/g, " ") : "Unknown"}
                                         </button>
                                     ) : (
                                         <span
                                             className="text-gray-400 cursor-help"
                                             title="Church not in database"
                                         >
-                                            {member.church_affiliation_name.replace(/_/g, " ")}
+                                            Unknown Church
                                         </span>
                                     )
                                 ) : (

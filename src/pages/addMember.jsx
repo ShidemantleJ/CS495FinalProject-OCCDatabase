@@ -5,6 +5,7 @@ import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import DOMPurify from "dompurify";
 import { processImage } from "../utils/imageProcessing";
+import ChurchDropdown from '../components/ChurchDropdown';
 
 export default function AddMember() {
   const navigate = useNavigate();
@@ -21,10 +22,7 @@ export default function AddMember() {
     home_county: "",
     date_of_birth: "",
     shirt_size: "",
-    church_affiliation_name: "",
-    church_affiliation_city: "",
-    church_affiliation_state: "",
-    church_affiliation_county: "",
+    church_affiliation_id: null,
     member_notes: "",
     photo_url: "", // Added photo_url field
     active: true, // Always true by default — no checkbox needed
@@ -35,55 +33,48 @@ export default function AddMember() {
   const [error, setError] = useState("");
   const [photoPreview, setPhotoPreview] = useState("");
   const [churches, setChurches] = useState([]);
-  const [selectedChurchId, setSelectedChurchId] = useState("");
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
 
   // Fetch churches on component mount
+  const getChurches = async () => {
+    const { data, error } = await databaseAPI.list("church2", {
+        select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+        orderBy: { column: "church_name", ascending: true },
+    });
+
+    if (error) {
+      console.error("Error fetching churches:", error);
+    } else {
+        const sortedData = (data || []).sort((a, b) => 
+        // Use localeCompare for sorting alphabetically
+            (a.church_name || "").localeCompare(b.church_name || "")
+        );
+    
+        setChurches(sortedData);
+        return sortedData;
+    }
+    return [];
+  };
+
   useEffect(() => {
-    const fetchChurches = async () => {
-      try {
-        const { data, error } = await databaseAPI.list("church2", {
-          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
-        });
-        if (error) {
-          console.error("Error fetching churches:", error);
-        } else {
-          setChurches(data || []);
-        }
-      } catch (err) {
-        console.error("Error fetching churches:", err);
-      }
-    };
-    fetchChurches();
+      getChurches();
   }, []);
 
-  const handleChurchChange = (e) => {
-    const churchId = e.target.value;
-    setSelectedChurchId(churchId);
-    console.log("Selected church ID:", churchId);
-    
-    if (churchId) {
-      const selectedChurch = churches.find(c => c.id === churchId);
-      console.log("Churches list:", churches);
-      console.log("Selected church data:", selectedChurch);
+  const handleChurchSelected = async (name) => {
+      const latestChurches = await getChurches();
+      const selectedChurch = latestChurches.find(c => c.church_name === name);
+
       if (selectedChurch) {
-        setForm(prev => ({
-          ...prev,
-          church_affiliation_name: selectedChurch.church_name || "",
-          church_affiliation_city: selectedChurch.church_physical_city || "",
-          church_affiliation_state: selectedChurch.church_physical_state || "",
-          church_affiliation_county: selectedChurch.church_physical_county || ""
-        }));
+          setForm(prev => ({
+              ...prev,
+              church_affiliation_id: selectedChurch.id
+          }));
+      } else {
+          setForm(prev => ({
+              ...prev,
+              church_affiliation_id: null
+          }));
       }
-    } else {
-      // Clear church affiliation fields if no church selected
-      setForm(prev => ({
-        ...prev,
-        church_affiliation_name: "",
-        church_affiliation_city: "",
-        church_affiliation_state: "",
-        church_affiliation_county: ""
-      }));
-    }
   };
 
   const handleChange = (e) => {
@@ -101,10 +92,6 @@ export default function AddMember() {
       home_state: 2,
       home_zip: 10,
       home_county: 100,
-      church_affiliation_name: 200,
-      church_affiliation_city: 100,
-      church_affiliation_state: 2,
-      church_affiliation_county: 100,
       member_notes: 1000,
     };
 
@@ -171,6 +158,13 @@ export default function AddMember() {
     setLoading(true);
     setError("");
 
+    if (!form.first_name.trim() || !form.last_name.trim()) {
+      setError("First name and last name are required.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setLoading(false);
+      return;
+    }
+
     // Validate phone numbers
 
     if (form.phone_number && !validatePhoneNumber(form.phone_number)) {
@@ -194,21 +188,26 @@ export default function AddMember() {
       return;
     }
 
-    const existingEmails = await databaseAPI.list("team_members", {
-      select: "email",
-    });
+    if (form.email) {
+      const existingEmails = await databaseAPI.list("team_members", {
+        select: "email",
+      });
 
-    if (existingEmails.data.some(member => member.email === form.email)) {
-      setError("A member with this email address already exists.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setLoading(false);
-      return;
+      if (existingEmails.data.some(member => member.email === form.email)) {
+        setError("A member with this email address already exists.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setLoading(false);
+        return;
+      }
     }
 
     // Prepare form data, converting empty strings to null for optional fields
     const formData = { ...form };
     if (formData.shirt_size === "") {
       formData.shirt_size = null;
+    }
+    if (formData.date_of_birth === "") {
+      formData.date_of_birth = null;
     }
 
     const { error } = await databaseAPI.create("team_members", formData);
@@ -227,10 +226,7 @@ export default function AddMember() {
   const formFields = Object.keys(form).filter((field) => 
     field !== "active" && 
     field !== "photo_url" &&
-    field !== "church_affiliation_name" &&
-    field !== "church_affiliation_city" &&
-    field !== "church_affiliation_state" &&
-    field !== "church_affiliation_county"
+    field !== "church_affiliation_id"
   );
 
   return (
@@ -271,19 +267,13 @@ export default function AddMember() {
         {/* Church Affiliation Dropdown */}
         <div className="mb-6 p-4 border rounded-lg">
           <label htmlFor="church-affiliation" className="block text-lg font-medium mb-2">Church Affiliation</label>
-          <select
-            id="church-affiliation"
-            value={selectedChurchId}
-            onChange={handleChurchChange}
-            className="w-full border rounded-md px-3 py-2"
-          >
-            <option value="">Select a church (optional)</option>
-            {churches.map((church) => (
-              <option key={church.id} value={church.id}>
-                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
-              </option>
-            ))}
-          </select>
+          <ChurchDropdown
+            churches={churches}
+            selectedName={churches.find(c => c.id === form.church_affiliation_id)?.church_name || ""} 
+            isAddingNew={isAddingNewChurch}
+            setIsAddingNew={setIsAddingNewChurch}
+            onSelect={handleChurchSelected}
+        />
           <p className="text-sm text-gray-500 mt-1">
             Select the church the member is affiliated with
           </p>
@@ -294,6 +284,7 @@ export default function AddMember() {
             <div key={field} className="col-span-1">
               <label className="block text-sm font-medium mb-1 capitalize">
                 {field.replaceAll("_", " ")}
+                {(field === "first_name" || field === "last_name") && <span className="text-red-500"> *</span>}
               </label>
               {field === "shirt_size" ? (
                 <select
@@ -329,13 +320,10 @@ export default function AddMember() {
                     field === "home_state" ? 2 :
                     field === "home_zip" ? 10 :
                     field === "home_county" ? 100 :
-                    field === "church_affiliation_name" ? 200 :
-                    field === "church_affiliation_city" ? 100 :
-                    field === "church_affiliation_state" ? 2 :
-                    field === "church_affiliation_county" ? 100 :
                     field === "member_notes" ? 1000 :
                     undefined
                   }
+                  required={field === "first_name" || field === "last_name"}
                 />
               )}
             </div>

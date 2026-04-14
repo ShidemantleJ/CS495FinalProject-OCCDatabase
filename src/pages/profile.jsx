@@ -45,6 +45,8 @@ const MANAGED_BY = {
     "Media Support Team Member": [],
 };
 
+const ACTIVE_POSITION_FILTER = { column: "end_date", op: "is", value: null };
+
 export default function Profile() {
     const [user, setUser] = useState(null);
     const [memberData, setMemberData] = useState(null);
@@ -63,6 +65,7 @@ export default function Profile() {
     const [affiliatedChurch, setAffiliatedChurch] = useState(null);
 
     const navigate = useNavigate();
+    const isAdmin = memberData?.admin_flag === true || memberData?.admin_flag === "true";
 
     useEffect(() => {
         const getUserAndData = async () => {
@@ -88,7 +91,7 @@ export default function Profile() {
                     select: "position",
                     filters: [
                         { column: "member_id", op: "eq", value: member.id },
-                        { column: "end_date", op: "is", value: null }
+                        ACTIVE_POSITION_FILTER
                     ]
                 });
 
@@ -98,38 +101,14 @@ export default function Profile() {
                     setPositions(uniquePositions);
                 }
 
-                // Fetch affiliated church by name and city to get the correct one
-                if (member.church_affiliation_name) {
-                    // Try multiple name variants to handle both spaces and underscores
-                    const churchNameVariants = [
-                        member.church_affiliation_name, // Original
-                        member.church_affiliation_name.replace(/ /g, "_"), // With underscores
-                        member.church_affiliation_name.replace(/_/g, " ") // With spaces
-                    ];
-                    
-                    let churchData = null;
-                    
-                    // Try each variant
-                    for (const nameVariant of churchNameVariants) {
-                        let churchQuery = databaseAPI.list("church2", {
-                            select: "id, church_name, church_physical_city, church_physical_state",
-                            filters: [{ column: "church_name", op: "eq", value: nameVariant }],
-                        });
-                        
-                        // If we have city info, filter by city to get the exact match
-                        if (member.church_affiliation_city) {
-                            churchQuery = churchQuery.ilike("church_physical_city", `%${member.church_affiliation_city}%`);
-                        }
-                        
-                        const { data, error: churchError } = await churchQuery.maybeSingle();
-                        
-                        if (!churchError && data) {
-                            churchData = data;
-                            break; // Found it, stop searching
-                        }
-                    }
-                    
-                    if (churchData) {
+                // Fetch affiliated church by ID
+                if (member.church_affiliation_id) {
+                    const { data: churchData, error: churchError } = await databaseAPI.list("church2", {
+                        select: "id, church_name, church_physical_city, church_physical_state",
+                        filters: [{ column: "id", op: "eq", value: member.church_affiliation_id }],
+                    }).maybeSingle();
+
+                    if (!churchError && churchData) {
                         setAffiliatedChurch(churchData);
                     }
                 }
@@ -256,7 +235,7 @@ export default function Profile() {
     };
 
     const fetchMyTeam = async () => {
-        if (!memberData) return;
+        if (!memberData || !isAdmin) return;
         setActiveTab("myTeam");
         setTeamLoading(true);
         setTeamError(null);
@@ -274,7 +253,10 @@ export default function Profile() {
 
             if (scopes.includes("ALL")) {
                 const { data, error } = await databaseAPI.list("team_members", {
-                    select: "id, first_name, last_name, email, photo_url",
+                    select: "id, first_name, last_name, email, photo_url, active",
+                    filters: [
+                        { column: "active", op: "eq", value: true },
+                    ],
                     orderBy: { column: "last_name", ascending: true },
                 });
                 if (error) throw error;
@@ -286,7 +268,8 @@ export default function Profile() {
                 const { data: positionsData, error: posErr } = await databaseAPI.list("member_positions", {
                     select: "member_id, position",
                     filters: [
-                        { column: "member_id", op: "in", value: memberIds }
+                        { column: "member_id", op: "in", value: memberIds },
+                        ACTIVE_POSITION_FILTER,
                     ]
                 });
 
@@ -310,7 +293,8 @@ export default function Profile() {
             const { data: mpRows, error: mpErr } = await databaseAPI.list("member_positions", {
                 select: "member_id, position",
                 filters: [
-                    { column: "position", op: "in", value: managedPositions }
+                    { column: "position", op: "in", value: managedPositions },
+                    ACTIVE_POSITION_FILTER,
                 ]
             });
 
@@ -336,7 +320,8 @@ export default function Profile() {
             const { data: positionsData, error: posErr } = await databaseAPI.list("member_positions", {
                 select: "member_id, position",
                 filters: [
-                    { column: "member_id", op: "in", value: ids }
+                    { column: "member_id", op: "in", value: ids },
+                    ACTIVE_POSITION_FILTER,
                 ]
             });
 
@@ -381,12 +366,14 @@ export default function Profile() {
                     >
                         Profile
                     </button>
-                    <button
-                        onClick={fetchMyTeam}
-                        className={`px-3 py-2 rounded ${activeTab === "myTeam" ? "bg-emerald-700 text-white" : "bg-emerald-200"}`}
-                    >
-                        My Team
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={fetchMyTeam}
+                            className={`px-3 py-2 rounded ${activeTab === "myTeam" ? "bg-emerald-700 text-white" : "bg-emerald-200"}`}
+                        >
+                            My Team
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -484,33 +471,26 @@ export default function Profile() {
                             </div>
                         )}
                         {/* Church Affiliation */}
-                        {(memberData.church_affiliation_name || memberData.church_affiliation_city || memberData.church_affiliation_state || memberData.church_affiliation_county) && (
+                        {affiliatedChurch && (
                             <div>
                                 <h2 className="text-lg font-semibold mb-2">Church Affiliation</h2>
                                 <div className="space-y-1 text-gray-700">
-                                    {memberData.church_affiliation_name && (
-                                        <p>
-                                            <strong>Church Name:</strong>{" "}
-                                            {affiliatedChurch ? (
-                                                <button
-                                                    onClick={() => navigate(`/church/${affiliatedChurch.id}`)}
-                                                    className="text-blue-600 hover:underline"
-                                                >
-                                                    {memberData.church_affiliation_name.replace(/_/g, " ")}
-                                                </button>
-                                            ) : (
-                                                memberData.church_affiliation_name.replace(/_/g, " ")
-                                            )}
-                                        </p>
-                                    )}
-                                    {(memberData.church_affiliation_city || memberData.church_affiliation_state || memberData.church_affiliation_county) && (
+                                    <p>
+                                        <strong>Church Name:</strong>{" "}
+                                        <button
+                                            onClick={() => navigate(`/church/${affiliatedChurch.id}`)}
+                                            className="text-blue-600 hover:underline"
+                                        >
+                                            {affiliatedChurch.church_name ? affiliatedChurch.church_name.replace(/_/g, " ") : "Unknown"}
+                                        </button>
+                                    </p>
+                                    {(affiliatedChurch.church_physical_city || affiliatedChurch.church_physical_state) && (
                                         <p>
                                             <strong>Location:</strong>{" "}
                                             {[
-                                                memberData.church_affiliation_city,
-                                                memberData.church_affiliation_state
+                                                affiliatedChurch.church_physical_city,
+                                                affiliatedChurch.church_physical_state
                                             ].filter(Boolean).join(", ")}
-                                            {memberData.church_affiliation_county && ` - ${memberData.church_affiliation_county} County`}
                                         </p>
                                     )}
                                 </div>
@@ -537,7 +517,7 @@ export default function Profile() {
             ) : null}
 
             {/* MY TEAM TAB */}
-            {activeTab === "myTeam" && (
+            {isAdmin && activeTab === "myTeam" && (
                 <div className="mt-2">
                     <h2 className="text-lg font-semibold mb-2">My Team — West Alabama</h2>
                     {teamLoading ? (

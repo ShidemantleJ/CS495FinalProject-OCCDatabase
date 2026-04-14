@@ -5,6 +5,7 @@ import { databaseAPI } from "../api";
 import { validatePhoneNumber } from "../utils/validation";
 import { useUser } from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import ChurchDropdown from "../components/ChurchDropdown";
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -45,25 +46,28 @@ export default function EditProfile() {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState("");
     const [churches, setChurches] = useState([]);
+    const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
     const [selectedChurchId, setSelectedChurchId] = useState("");
     const navigate = useNavigate();
 
     // Fetch churches on component mount
-    useEffect(() => {
-        const fetchChurches = async () => {
-            try {
-                const { data, error } = await databaseAPI.list("church2", {
-                    select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
-                });
-                if (error) {
-                    console.error("Error fetching churches:", error);
-                } else {
-                    setChurches(data || []);
-                }
-            } catch (err) {
-                console.error("Error fetching churches:", err);
+    const fetchChurches = async () => {
+        try {
+            const { data, error } = await databaseAPI.list("church2", {
+                select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+                orderBy: { column: "church_name", ascending: true }
+            });
+            if (!error) {
+                setChurches(data || []);
+                return data || [];
             }
-        };
+        } catch (err) {
+            console.error("Error fetching churches:", err);
+        }
+        return [];
+    };
+
+    useEffect(() => {
         fetchChurches();
     }, []);
 
@@ -88,15 +92,8 @@ export default function EditProfile() {
                 setFormData(member);
                 
                 // Find matching church if affiliation exists
-                if (member.church_affiliation_name && churches.length > 0) {
-                    const matchingChurch = churches.find(c => 
-                        c.church_name === member.church_affiliation_name &&
-                        c.church_physical_city === member.church_affiliation_city &&
-                        c.church_physical_state === member.church_affiliation_state
-                    );
-                    if (matchingChurch) {
-                        setSelectedChurchId(matchingChurch.id);
-                    }
+                if (member.church_affiliation_id) {
+                    setSelectedChurchId(member.church_affiliation_id);
                 }
             } catch (err) {
                 alert("An error occurred loading your profile.");
@@ -106,31 +103,22 @@ export default function EditProfile() {
         };
 
         fetchUserData();
-    }, [navigate, authUser, churches]);
+    }, [navigate, authUser]);
 
-    const handleChurchChange = (e) => {
-        const churchId = e.target.value;
-        setSelectedChurchId(churchId);
-        
-        if (churchId) {
-            const selectedChurch = churches.find(c => c.id === churchId);
-            if (selectedChurch) {
-                setFormData(prev => ({
-                    ...prev,
-                    church_affiliation_name: selectedChurch.church_name || "",
-                    church_affiliation_city: selectedChurch.church_physical_city || "",
-                    church_affiliation_state: selectedChurch.church_physical_state || "",
-                    church_affiliation_county: selectedChurch.church_physical_county || ""
-                }));
-            }
-        } else {
-            // Clear church affiliation fields if no church selected
+    const handleChurchSelected = async (name) => {
+        const latestChurches = await fetchChurches();
+        const selectedChurch = latestChurches.find(c => c.church_name === name);
+        if (selectedChurch) {
+            setSelectedChurchId(selectedChurch.id);
             setFormData(prev => ({
                 ...prev,
-                church_affiliation_name: "",
-                church_affiliation_city: "",
-                church_affiliation_state: "",
-                church_affiliation_county: ""
+                church_affiliation_id: selectedChurch.id
+            }));
+        } else {
+            setSelectedChurchId("");
+            setFormData(prev => ({
+                ...prev,
+                church_affiliation_id: null
             }));
         }
     };
@@ -150,10 +138,6 @@ export default function EditProfile() {
             home_zip: 10,
             home_county: 100,
             shirt_size: 10,
-            church_affiliation_name: 200,
-            church_affiliation_city: 100,
-            church_affiliation_state: 2,
-            church_affiliation_county: 100,
             member_notes: 1000,
         };
         
@@ -239,10 +223,7 @@ export default function EditProfile() {
                     home_county: formData.home_county ?? null,
                     date_of_birth: formData.date_of_birth ?? null,
                     shirt_size: formData.shirt_size && formData.shirt_size.trim() !== "" ? formData.shirt_size : null,
-                    church_affiliation_name: formData.church_affiliation_name ?? null,
-                    church_affiliation_city: formData.church_affiliation_city ?? null,
-                    church_affiliation_state: formData.church_affiliation_state ?? null,
-                    church_affiliation_county: formData.church_affiliation_county ?? null,
+                    church_affiliation_id: formData.church_affiliation_id ?? null,
                     active: formData.active ?? true,
                     member_notes: formData.member_notes ?? null,
                     admin_flag: formData.admin_flag ?? false,
@@ -438,18 +419,13 @@ export default function EditProfile() {
                     <h2 className="text-lg font-semibold text-gray-800 mb-4">Church Affiliation</h2>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Church</label>
-                        <select
-                            value={selectedChurchId}
-                            onChange={handleChurchChange}
-                            className="w-full border rounded-md px-3 py-2"
-                        >
-                            <option value="">Select a church (optional)</option>
-                            {churches.map((church) => (
-                                <option key={church.id} value={church.id}>
-                                    {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
-                                </option>
-                            ))}
-                        </select>
+                    <ChurchDropdown
+                        churches={churches}
+                        selectedName={churches.find(c => c.id === selectedChurchId)?.church_name || ""} 
+                        isAddingNew={isAddingNewChurch}
+                        setIsAddingNew={setIsAddingNewChurch}
+                        onSelect={handleChurchSelected}
+                    />
                         <p className="text-sm text-gray-500 mt-1">
                             Select the church you are affiliated with
                         </p>

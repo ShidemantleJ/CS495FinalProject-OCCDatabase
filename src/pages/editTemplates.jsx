@@ -5,6 +5,8 @@ import { databaseAPI } from "../api";
 
 export default function EditTemplates() {
   const navigate = useNavigate();
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -63,15 +65,20 @@ export default function EditTemplates() {
     if (tableColumnsCache[tableName]) return tableColumnsCache[tableName];
     const { data } = await databaseAPI.getTableColumns(tableName);
     if (!data) return [];
-    const cols = Object.entries(data).map(([name, sqlType]) => ({
-      name,
-      type: mapSqlType(sqlType),
-      sqlBaseType: mapSqlType(sqlType),
-      enabled: true,
-      required: true,
-      fromTable: true,
-      options: sqlType === "boolean" ? "true, false" : "",
-    }));
+    const cols = Object.entries(data).map(([name, colInfo]) => {
+      const sqlType = colInfo?.data_type ?? colInfo;
+      const nonNullable = colInfo?.nonNullable ?? false;
+      return {
+        name,
+        type: mapSqlType(sqlType),
+        sqlBaseType: mapSqlType(sqlType),
+        enabled: true,
+        required: true,
+        nonNullable,
+        fromTable: true,
+        options: sqlType === "boolean" ? "true, false" : "",
+      };
+    });
     console.log("Fetched columns for table", tableName, cols);
     setTableColumnsCache((prev) => ({ ...prev, [tableName]: cols }));
     return cols;
@@ -169,11 +176,36 @@ export default function EditTemplates() {
   };
 
   useEffect(() => {
+    let isMounted = true;
+
+    const verifyAdmin = async () => {
+      const adminStatus = await databaseAPI.checkAdmin();
+
+      if (!isMounted) return;
+
+      setIsAdmin(adminStatus);
+      setCheckingAdmin(false);
+
+      if (!adminStatus) {
+        navigate("/", { replace: true });
+      }
+    };
+
+    verifyAdmin();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (checkingAdmin || !isAdmin) return;
+
     loadTemplates();
     databaseAPI.getValidTablesForSubmissions().then(({ data }) => {
       if (data) setValidTables(data);
     });
-  }, []);
+  }, [checkingAdmin, isAdmin]);
 
   const loadTemplates = async () => {
     setLoadingTemplates(true);
@@ -256,7 +288,7 @@ export default function EditTemplates() {
         setEditTableColumns(cols.map((c) => ({
           ...c,
           enabled: savedTableFieldNames.size > 0 ? savedTableFieldNames.has(c.name) : true,
-          required: savedTableFieldNames.has(c.name) ? (savedTableFieldMap[c.name]?.required !== false) : true,
+          required: c.nonNullable ? true : (savedTableFieldNames.has(c.name) ? (savedTableFieldMap[c.name]?.required !== false) : true),
           form_name: savedTableFieldMap[c.name]?.form_name || "",
           type: savedTableFieldNames.has(c.name) ? (savedTableFieldMap[c.name]?.type || c.type) : c.type,
           options: savedTableFieldNames.has(c.name)
@@ -329,6 +361,13 @@ export default function EditTemplates() {
     setDeletingId(null);
   };
 
+  if (checkingAdmin) {
+    return <p className="text-center mt-10">Loading...</p>;
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto mt-10 px-4 md:px-0">
@@ -711,9 +750,9 @@ export default function EditTemplates() {
                         onClick={() => {
                           const allEnabled = tableCols.every((c) => c.enabled);
                           if (isEditMode) {
-                            setEditTableColumns((prev) => prev.map((c) => ({ ...c, enabled: !allEnabled })));
+                            setEditTableColumns((prev) => prev.map((c) => c.nonNullable ? c : { ...c, enabled: !allEnabled }));
                           } else {
-                            setNewTableColumns((prev) => prev.map((c) => ({ ...c, enabled: !allEnabled })));
+                            setNewTableColumns((prev) => prev.map((c) => c.nonNullable ? c : { ...c, enabled: !allEnabled }));
                           }
                         }}
                         className="text-xs text-blue-600 hover:text-blue-800"
@@ -730,11 +769,12 @@ export default function EditTemplates() {
                               col.enabled ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200 opacity-60"
                             }`}
                           >
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className={`flex items-center gap-2 ${col.nonNullable ? "cursor-not-allowed" : "cursor-pointer"}`}>
                               <input
                                 type="checkbox"
                                 checked={col.enabled}
                                 onChange={() => toggleTableCol(i)}
+                                disabled={col.nonNullable}
                                 className="shrink-0"
                               />
                               <span title={icon.title}
@@ -742,6 +782,7 @@ export default function EditTemplates() {
                                 {icon.symbol}
                               </span>
                               <span className="text-xs text-gray-700 truncate">{col.name}</span>
+                              {col.nonNullable && <span className="text-[10px] text-gray-400 shrink-0">(required)</span>}
                               <span className="text-[10px] text-gray-400 ml-auto shrink-0">{TYPE_LABEL[col.type] || col.type}</span>
                             </label>
                             {col.enabled && (
@@ -781,13 +822,15 @@ export default function EditTemplates() {
                                     className="border rounded px-2 py-0.5 text-xs w-full"
                                   />
                                 )}
-                                <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+                                <label className={`flex items-center gap-1.5 text-xs cursor-pointer select-none ${col.nonNullable ? "text-gray-400" : "text-gray-600"}`}>
                                   <input
                                     type="checkbox"
                                     checked={col.required !== false}
                                     onChange={(e) => updateTableColFn(i, "required", e.target.checked)}
+                                    disabled={col.nonNullable}
                                   />
                                   Required
+                                  {col.nonNullable && <span className="text-[10px] ml-1">(non-nullable)</span>}
                                 </label>
                               </div>
                             )}

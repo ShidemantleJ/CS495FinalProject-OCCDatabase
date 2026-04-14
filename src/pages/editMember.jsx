@@ -5,6 +5,7 @@ import { databaseAPI } from "../api";
 import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import ChurchDropdown from '../components/ChurchDropdown';
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -51,25 +52,55 @@ export default function EditMember() {
     const [selectedPositions, setSelectedPositions] = useState([]);
     const [churches, setChurches] = useState([]);
     const [selectedChurchId, setSelectedChurchId] = useState("");
+    const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
 
     // Fetch churches on component mount
-    useEffect(() => {
-        const fetchChurches = async () => {
-            try {
-                const { data, error } = await databaseAPI.list("church2", {
-                    select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
-                });
-                if (error) {
-                    console.error("Error fetching churches:", error);
-                } else {
-                    setChurches(data || []);
-                }
+    const getChurches = async () => {
+        try {
+            const { data, error } = await databaseAPI.list("church2", {
+                select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+                orderBy: { column: "church_name", ascending: true }
+            });
+            if (!error) {
+                // Sort A-Z before updating state
+                const sortedData = (data || []).sort((a, b) => 
+                    (a.church_name || "").localeCompare(b.church_name || "")
+                );
+                setChurches(sortedData);
+                return sortedData;
+            }
             } catch (err) {
                 console.error("Error fetching churches:", err);
             }
-        };
-        fetchChurches();
+            return [];
+    };
+    
+    useEffect(() => {
+        getChurches();
     }, []);
+    
+    const handleChurchSelected = async (name) => {
+        const latestChurches = await getChurches();
+        const selectedChurch = latestChurches.find(c => c.church_name === name);
+        
+        if (selectedChurch) {
+            // Update the ID reference if your edit form still needs it
+            setSelectedChurchId(selectedChurch.id);
+    
+            // Perform Auto-Fill into the 'form' state
+            setForm(prev => ({
+                ...prev,
+                church_affiliation_id: selectedChurch.id
+            }));
+        } else {
+            setSelectedChurchId("");
+            setForm(prev => ({
+                ...prev,
+                church_affiliation_id: null
+            }));
+        }
+    };
+
     const [expiredPositions, setExpiredPositions] = useState([]);
     const [expiredLoading, setExpiredLoading] = useState(false);
 
@@ -163,48 +194,14 @@ export default function EditMember() {
             else {
                 setForm(data);
                 // Find matching church if affiliation exists
-                if (data.church_affiliation_name && churches.length > 0) {
-                    const matchingChurch = churches.find(c => 
-                        c.church_name === data.church_affiliation_name &&
-                        c.church_physical_city === data.church_affiliation_city &&
-                        c.church_physical_state === data.church_affiliation_state
-                    );
-                    if (matchingChurch) {
-                        setSelectedChurchId(matchingChurch.id);
-                    }
+                if (data.church_affiliation_id) {
+                    setSelectedChurchId(data.church_affiliation_id);
                 }
             }
             setLoading(false);
         };
         loadMember();
-    }, [id, churches]);
-
-    const handleChurchChange = (e) => {
-        const churchId = e.target.value;
-        setSelectedChurchId(churchId);
-        
-        if (churchId) {
-            const selectedChurch = churches.find(c => c.id === churchId);
-            if (selectedChurch) {
-                setForm(prev => ({
-                    ...prev,
-                    church_affiliation_name: selectedChurch.church_name || "",
-                    church_affiliation_city: selectedChurch.church_physical_city || "",
-                    church_affiliation_state: selectedChurch.church_physical_state || "",
-                    church_affiliation_county: selectedChurch.church_physical_county || ""
-                }));
-            }
-        } else {
-            // Clear church affiliation fields if no church selected
-            setForm(prev => ({
-                ...prev,
-                church_affiliation_name: "",
-                church_affiliation_city: "",
-                church_affiliation_state: "",
-                church_affiliation_county: ""
-            }));
-        }
-    };
+    }, [id]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -265,10 +262,20 @@ export default function EditMember() {
         setLoading(true);
         setError("");
 
+        if (!form.first_name?.trim() || !form.last_name?.trim()) {
+            setError("First name and last name are required.");
+            setLoading(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+        }
+
         // Prepare form data, converting empty strings to null for optional fields
         const formData = { ...form };
         if (formData.shirt_size === "") {
             formData.shirt_size = null;
+        }
+        if (formData.date_of_birth === "") {
+            formData.date_of_birth = null;
         }
 
         // Update team member basic info
@@ -407,18 +414,13 @@ export default function EditMember() {
                 {/* Church Affiliation Dropdown */}
                 <div className="col-span-2 mb-4 p-4 border rounded-lg">
                     <label className="block text-lg font-medium mb-2">Church Affiliation</label>
-                    <select
-                        value={selectedChurchId}
-                        onChange={handleChurchChange}
-                        className="w-full border rounded-md px-3 py-2"
-                    >
-                        <option value="">Select a church (optional)</option>
-                        {churches.map((church) => (
-                            <option key={church.id} value={church.id}>
-                                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
-                            </option>
-                        ))}
-                    </select>
+                    <ChurchDropdown
+                        churches={churches}
+                        selectedName={churches.find(c => c.id === selectedChurchId)?.church_name || ""} 
+                        isAddingNew={isAddingNewChurch}
+                        setIsAddingNew={setIsAddingNewChurch}
+                        onSelect={handleChurchSelected}
+                    />
                     <p className="text-sm text-gray-500 mt-1">
                         Select the church the member is affiliated with
                     </p>
@@ -429,6 +431,7 @@ export default function EditMember() {
                     <div key={field} className="col-span-1">
                         <label className="block text-sm font-medium mb-1 capitalize">
                             {field.replaceAll("_", " ")}
+                            {(field === "first_name" || field === "last_name") && <span className="text-red-500"> *</span>}
                         </label>
                         <input
                             type="text"
@@ -436,13 +439,14 @@ export default function EditMember() {
                             value={form[field] ?? ""}
                             onChange={handleChange}
                             className="w-full border rounded-md px-3 py-2"
+                            required={field === "first_name" || field === "last_name"}
                         />
                     </div>
                 ))}
 
                 {/* Remaining Fields */}
                 {Object.keys(form).map((field) =>
-                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address", "church_affiliation_name", "church_affiliation_city", "church_affiliation_state", "church_affiliation_county"].includes(field)
+                    ["id", "created_at", "updated_at", "admin_flag", "photo_url", "position", "first_name", "last_name", "email", "phone_number", "alt_phone_number", "home_address", "church_affiliation_id"].includes(field)
                         ? null
                         : field === "active" ? (
                             <label key={field} className="col-span-2 flex items-center gap-2">

@@ -95,12 +95,13 @@ export const supabaseAPI = {
     const { data, error } = await supabase.rpc('get_table_columns', {
       p_table_name: tableName,
     });
+    console.log(data);
     if (error) console.error("Error fetching table columns:", error);
     const dict = {};
     if (data) {
-      data.forEach(({ column_name, data_type }) => {
+      data.forEach(({ column_name, data_type, is_nullable }) => {
         if (!column_name.endsWith("_id") && column_name !== "id") {
-          dict[column_name] = data_type;
+          dict[column_name] = { data_type, nonNullable: is_nullable === 'NO' };
         }
       });
     }
@@ -118,6 +119,63 @@ export const supabaseAPI = {
       }])
       .select(select)
       .single();
+  },
+
+  async transferForm(formSubmissionId, { select = "*" } = {}) {
+    const { data: submission, error: fetchError } = await supabase
+      .from("form_submissions")
+      .select("destination_table, form_content")
+      .eq("id", formSubmissionId)
+      .single();
+    if (fetchError || !submission) return { data: null, error: fetchError || new Error("Submission not found") };
+
+    const { destination_table, form_content } = submission;
+    const sanitized = form_content
+      ? Object.fromEntries(
+          Object.entries(form_content).map(([k, v]) => [
+            k,
+            v === "" || v === undefined ? null : v,
+          ])
+        )
+      : null;
+    const { data: insertData, error: insertError } = await supabase
+      .from(destination_table)
+      .insert([sanitized])
+      .select(select)
+      .single();
+    if (insertError) return { data: null, error: insertError };
+
+    const { error: updateError } = await supabase
+      .from("form_submissions")
+      .update({ transferred_at: new Date().toISOString(), transferred_row_id: insertData.id ?? null })
+      .eq("id", formSubmissionId);
+    if (updateError) return { data: insertData, error: updateError };
+
+    return { data: insertData, error: null };
+  },
+
+  async undoTransfer(formSubmissionId) {
+    const { data: submission, error: fetchError } = await supabase
+      .from("form_submissions")
+      .select("destination_table, transferred_row_id")
+      .eq("id", formSubmissionId)
+      .single();
+    if (fetchError || !submission) return { error: fetchError || new Error("Submission not found") };
+
+    const { destination_table, transferred_row_id } = submission;
+    if (!transferred_row_id) return { error: new Error("No transferred row ID recorded; cannot safely undo.") };
+
+    const { error: deleteError } = await supabase
+      .from(destination_table)
+      .delete()
+      .eq("id", transferred_row_id);
+    if (deleteError) return { error: deleteError };
+
+    const { error: updateError } = await supabase
+      .from("form_submissions")
+      .update({ transferred_at: null, transferred_row_id: null })
+      .eq("id", formSubmissionId);
+    return { error: updateError || null };
   },
 
   async saveTemplate(templateName, startDate, endDate, _type, destinationTable, fields, { select = "*" } = {}) {

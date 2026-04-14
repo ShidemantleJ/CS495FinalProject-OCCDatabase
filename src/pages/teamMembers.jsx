@@ -127,49 +127,40 @@ export default function TeamMembers() {
                 return;
             }
 
-            // Fetch church data for each member
-            const membersWithChurchData = await Promise.all(
-                membersData.map(async (m) => {
-                    let churchData = null;
-                    if (m.church_affiliation_name) {
-                        // Try to fetch church data by name (may fail if name format doesn't match)
-                        try {
-                            const { data: church, error: churchError } = await databaseAPI
-                                .list("church2", {
-                                    select: "id, church_name, church_physical_county",
-                                    filters: [{ column: "church_name", op: "eq", value: m.church_affiliation_name }],
-                                })
-                                .maybeSingle();
-                            
-                            if (!churchError && church) {
-                                churchData = church;
-                            }
-                        } catch (err) {
-                            // Silently handle church lookup errors
-                            console.warn(`Could not fetch church data for: ${m.church_affiliation_name}`);
-                        }
-                    }
-                    
-                    // Filter to only active positions (no end_date)
-                    let positionsText = "N/A";
-                    if (Array.isArray(m.member_positions) && m.member_positions.length > 0) {
-                        const activePositions = m.member_positions
-                            .filter(p => !p.end_date) // Only positions without end_date
-                            .map((p) => p.position)
-                            .filter(Boolean);
-                        if (activePositions.length > 0) {
-                            positionsText = activePositions.join(", ");
-                        }
-                    }
+            // Fetch ALL churches once to avoid N+1 queries
+            const { data: churchesData, error: churchesError } = await databaseAPI.list("church2", {
+                select: "id, church_name, church_physical_county",
+            });
+            
+            const churchMap = {};
+            if (!churchesError && churchesData) {
+                churchesData.forEach(c => {
+                    churchMap[c.id] = c;
+                });
+            }
 
-                    return {
-                        ...m,
-                        position: positionsText,
-                        church_name: churchData?.church_name || m.church_affiliation_name || null,
-                        church_county: churchData?.["church_physical_county"] || null,
-                    };
-                })
-            );
+            const membersWithChurchData = membersData.map((m) => {
+                const churchData = churchMap[m.church_affiliation_id] || null;
+                
+                // Filter to only active positions (no end_date)
+                let positionsText = "N/A";
+                if (Array.isArray(m.member_positions) && m.member_positions.length > 0) {
+                    const activePositions = m.member_positions
+                        .filter(p => !p.end_date) // Only positions without end_date
+                        .map((p) => p.position)
+                        .filter(Boolean);
+                    if (activePositions.length > 0) {
+                        positionsText = activePositions.join(", ");
+                    }
+                }
+
+                return {
+                    ...m,
+                    position: positionsText,
+                    church_name: churchData?.church_name || null,
+                    church_county: churchData?.["church_physical_county"] || null,
+                };
+            });
 
             // Sort members alphabetically by last name, then first name (like churches are sorted)
             membersWithChurchData.sort((a, b) => {
@@ -208,10 +199,14 @@ export default function TeamMembers() {
 
         // Filter by church name
         if (searchFilters.churchName) {
-            const searchTerm = searchFilters.churchName.toLowerCase();
-            filtered = filtered.filter(member => 
-                member.church_name && member.church_name.toLowerCase().includes(searchTerm)
-            );
+            const searchTerm = searchFilters.churchName.toLowerCase().trim();
+            const searchWithSpaces = searchTerm;
+            const searchWithUnderscores = searchTerm.replace(/ /g, "_");
+            filtered = filtered.filter(member => {
+                if (!member.church_name) return false;
+                const churchNameLower = member.church_name.toLowerCase();
+                return churchNameLower.includes(searchWithSpaces) || churchNameLower.includes(searchWithUnderscores);
+            });
         }
 
         // Filter by county
