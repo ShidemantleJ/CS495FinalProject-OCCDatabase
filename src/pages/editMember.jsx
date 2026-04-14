@@ -263,11 +263,21 @@ export default function EditMember() {
         setLoading(true);
         setError("");
 
-    const submitData = {
-      ...form,
-      shirt_size: form.shirt_size || null,
-      date_of_birth: form.date_of_birth || null,
-    };
+        if (!form.first_name?.trim() || !form.last_name?.trim()) {
+            setError("First name and last name are required.");
+            setLoading(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+        }
+
+        // Prepare form data, converting empty strings to null for optional fields
+        const formData = { ...form };
+        if (formData.shirt_size === "") {
+            formData.shirt_size = null;
+        }
+        if (formData.date_of_birth === "") {
+            formData.date_of_birth = null;
+        }
 
         // Update team member basic info
         const { error: memberError } = await databaseAPI.update("team_members", id, {
@@ -422,6 +432,7 @@ export default function EditMember() {
                     <div key={field} className="col-span-1">
                         <label className="block text-sm font-medium mb-1 capitalize">
                             {field.replaceAll("_", " ")}
+                            {(field === "first_name" || field === "last_name") && <span className="text-red-500"> *</span>}
                         </label>
                         <input
                             type="text"
@@ -429,6 +440,7 @@ export default function EditMember() {
                             value={form[field] ?? ""}
                             onChange={handleChange}
                             className="w-full border rounded-md px-3 py-2"
+                            required={field === "first_name" || field === "last_name"}
                         />
                     </div>
                 ))}
