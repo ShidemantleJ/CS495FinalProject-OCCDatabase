@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
+import ChurchDropdown from "../components/ChurchDropdown";
 
 export default function AddIndividual() {
   const navigate = useNavigate();
   const [churches, setChurches] = useState([]);
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
@@ -25,22 +27,32 @@ export default function AddIndividual() {
     notes: "",
   });
 
-  // Fetch churches for dropdown
-  useEffect(() => {
-    async function getChurches() {
-      const { data, error } = await databaseAPI.list("church2", {
-        select: "id, church_name",
-        orderBy: { column: "church_name", ascending: true },
-      });
-      
-      if (error) {
-        // Error fetching churches
-      } else {
-        setChurches(data || []);
-      }
+  const getChurches = async () => {
+    const { data, error } = await databaseAPI.list("church2", {
+      select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+      orderBy: { column: "church_name", ascending: true },
+    });
+    
+    if (!error) {
+      setChurches(data || []);
+      return data || [];
     }
+    return [];
+  };
+
+  useEffect(() => {
     getChurches();
   }, []);
+
+  const handleChurchSelected = async (name) => {
+    const latestChurches = await getChurches();
+    const selectedChurch = latestChurches.find((c) => c.church_name === name);
+    if (selectedChurch) {
+      setFormData((prev) => ({ ...prev, church_id: selectedChurch.id }));
+    } else {
+      setFormData((prev) => ({ ...prev, church_id: "" }));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -118,19 +130,13 @@ export default function AddIndividual() {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <select
-            name="church_id"
-            value={formData.church_id}
-            onChange={handleChange}
-            className="border rounded-lg p-2"
-          >
-            <option value="">Select Church...</option>
-            {churches.map((church) => (
-              <option key={church.id} value={church.id}>
-                {church.church_name.replace(/_/g, " ")}
-              </option>
-            ))}
-          </select>
+          <ChurchDropdown
+            churches={churches}
+            selectedName={churches.find(c => c.id === formData.church_id)?.church_name || ""}
+            isAddingNew={isAddingNewChurch}
+            setIsAddingNew={setIsAddingNewChurch}
+            onSelect={handleChurchSelected}
+          />
 
           <input
             name="role"

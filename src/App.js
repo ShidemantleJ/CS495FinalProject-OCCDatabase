@@ -16,6 +16,7 @@ import EditChurch from "./pages/editChurch";
 import TeamMember from "./pages/teamMember";
 import Individuals from "./pages/individuals";
 import FormSubmissions from "./pages/formSubmissions";
+import FormSubmissionDetail from "./pages/formSubmissionDetail";
 import EditTemplates from "./pages/editTemplates";
 import AddIndividual from "./pages/addIndividual";
 import ForgotPassword from "./pages/forgotPassword";
@@ -75,6 +76,7 @@ function App() {
                     <Route path="/team-member/:id" element={<TeamMember />} />
                     <Route path="/individuals" element={<Individuals />} />
                     <Route path="/form-submissions" element={<FormSubmissions />} />
+                    <Route path="/form-submissions/:templateId" element={<FormSubmissionDetail />} />
                     <Route path="/edit-templates" element={<EditTemplates />} />
                    
 

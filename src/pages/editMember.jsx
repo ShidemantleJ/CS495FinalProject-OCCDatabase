@@ -5,6 +5,7 @@ import { databaseAPI } from "../api";
 import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
+import ChurchDropdown from '../components/ChurchDropdown';
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -107,25 +108,55 @@ export default function EditMember() {
     const [selectedPositions, setSelectedPositions] = useState([]);
     const [churches, setChurches] = useState([]);
     const [selectedChurchId, setSelectedChurchId] = useState("");
+    const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
 
     // Fetch churches on component mount
-    useEffect(() => {
-        const fetchChurches = async () => {
-            try {
-                const { data, error } = await databaseAPI.list("church2", {
-                    select: "id, church_name, church_physical_city, church_physical_state, church_physical_county"
-                });
-                if (error) {
-                    console.error("Error fetching churches:", error);
-                } else {
-                    setChurches(data || []);
-                }
+    const getChurches = async () => {
+        try {
+            const { data, error } = await databaseAPI.list("church2", {
+                select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+                orderBy: { column: "church_name", ascending: true }
+            });
+            if (!error) {
+                // Sort A-Z before updating state
+                const sortedData = (data || []).sort((a, b) => 
+                    (a.church_name || "").localeCompare(b.church_name || "")
+                );
+                setChurches(sortedData);
+                return sortedData;
+            }
             } catch (err) {
                 console.error("Error fetching churches:", err);
             }
-        };
-        fetchChurches();
+            return [];
+    };
+    
+    useEffect(() => {
+        getChurches();
     }, []);
+    
+    const handleChurchSelected = async (name) => {
+        const latestChurches = await getChurches();
+        const selectedChurch = latestChurches.find(c => c.church_name === name);
+        
+        if (selectedChurch) {
+            // Update the ID reference if your edit form still needs it
+            setSelectedChurchId(selectedChurch.id);
+    
+            // Perform Auto-Fill into the 'form' state
+            setForm(prev => ({
+                ...prev,
+                church_affiliation_id: selectedChurch.id
+            }));
+        } else {
+            setSelectedChurchId("");
+            setForm(prev => ({
+                ...prev,
+                church_affiliation_id: null
+            }));
+        }
+    };
+
     const [expiredPositions, setExpiredPositions] = useState([]);
     const [expiredLoading, setExpiredLoading] = useState(false);
 
@@ -233,25 +264,7 @@ export default function EditMember() {
             setLoading(false);
         };
         loadMember();
-    }, [id, churches]);
-
-    const handleChurchChange = (e) => {
-        const churchId = e.target.value;
-        setSelectedChurchId(churchId);
-        
-        if (churchId) {
-            setForm(prev => ({
-                ...prev,
-                church_affiliation_id: churchId
-            }));
-        } else {
-            // Clear church affiliation fields if no church selected
-            setForm(prev => ({
-                ...prev,
-                church_affiliation_id: null
-            }));
-        }
-    };
+    }, [id]);
 
     const handleChange = async (e) => {
         const { name, value, type, checked } = e.target;
@@ -354,6 +367,9 @@ export default function EditMember() {
         const formData = { ...form };
         if (formData.shirt_size === "") {
             formData.shirt_size = null;
+        }
+        if (formData.date_of_birth === "") {
+            formData.date_of_birth = null;
         }
 
         // Update team member basic info
@@ -542,18 +558,13 @@ export default function EditMember() {
                 {/* Church Affiliation Dropdown */}
                 <div className="col-span-2 mb-4 p-4 border rounded-lg">
                     <label className="block text-lg font-medium mb-2">Church Affiliation</label>
-                    <select
-                        value={selectedChurchId}
-                        onChange={handleChurchChange}
-                        className="w-full border rounded-md px-3 py-2"
-                    >
-                        <option value="">Select a church (optional)</option>
-                        {churches.map((church) => (
-                            <option key={church.id} value={church.id}>
-                                {church.church_name} - {church.church_physical_city}, {church.church_physical_state}
-                            </option>
-                        ))}
-                    </select>
+                    <ChurchDropdown
+                        churches={churches}
+                        selectedName={churches.find(c => c.id === selectedChurchId)?.church_name || ""} 
+                        isAddingNew={isAddingNewChurch}
+                        setIsAddingNew={setIsAddingNewChurch}
+                        onSelect={handleChurchSelected}
+                    />
                     <p className="text-sm text-gray-500 mt-1">
                         Select the church the member is affiliated with
                     </p>
@@ -564,6 +575,7 @@ export default function EditMember() {
                     <div key={field} className="col-span-1">
                         <label className="block text-sm font-medium mb-1 capitalize">
                             {field.replaceAll("_", " ")}
+                            {(field === "first_name" || field === "last_name") && <span className="text-red-500"> *</span>}
                         </label>
                         <input
                             type="text"
@@ -571,6 +583,7 @@ export default function EditMember() {
                             value={form[field] ?? ""}
                             onChange={handleChange}
                             className="w-full border rounded-md px-3 py-2"
+                            required={field === "first_name" || field === "last_name"}
                         />
                     </div>
                 ))}
