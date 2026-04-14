@@ -14,6 +14,7 @@ export default function AddIndividual() {
     last_name: "",
     email: "",
     church_id: "",
+    birth_date: "",
     role: "",
     active_to_emails: true,
     craft_ideas: false,
@@ -76,6 +77,7 @@ export default function AddIndividual() {
     const submitData = {
       ...formData,
       church_id: formData.church_id || null,
+      birth_date: formData.birth_date || null,
       other_description: formData.other ? formData.other_description : null,
     };
 
@@ -144,6 +146,17 @@ export default function AddIndividual() {
             onChange={handleChange}
             placeholder="Role"
             className="border rounded-lg p-2"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Birth Date</label>
+          <input
+            type="date"
+            name="birth_date"
+            value={formData.birth_date}
+            onChange={handleChange}
+            className="w-full border rounded-lg p-2"
           />
         </div>
 

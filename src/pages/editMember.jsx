@@ -6,6 +6,7 @@ import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
 import ChurchDropdown from '../components/ChurchDropdown';
+import Select from 'react-select';
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -364,17 +365,17 @@ export default function EditMember() {
 
     const completeSubmit = async () => {
         // Prepare form data, converting empty strings to null for optional fields
-        const formData = { ...form };
-        if (formData.shirt_size === "") {
-            formData.shirt_size = null;
+        const submitData = { ...form };
+        if (submitData.shirt_size === "") {
+            submitData.shirt_size = null;
         }
-        if (formData.date_of_birth === "") {
-            formData.date_of_birth = null;
+        if (submitData.date_of_birth === "") {
+            submitData.date_of_birth = null;
         }
 
         // Update team member basic info
         const { error: memberError } = await databaseAPI.update("team_members", id, {
-            ...formData,
+        ...submitData,
             updated_at: new Date().toISOString(),
         });
 
@@ -607,21 +608,13 @@ export default function EditMember() {
                                 <label className="block text-sm font-medium mb-1 capitalize">
                                     {field.replaceAll("_", " ")}
                                 </label>
-                                <select
+                                <Select
                                     name={field}
-                                    value={form[field] ?? ""}
-                                    onChange={handleChange}
-                                    className="w-full border rounded-md px-3 py-2"
-                                >
-                                    <option value="">Select size (optional)</option>
-                                    <option value="XS">XS</option>
-                                    <option value="S">S</option>
-                                    <option value="M">M</option>
-                                    <option value="L">L</option>
-                                    <option value="XL">XL</option>
-                                    <option value="2XL">2XL</option>
-                                    <option value="3XL">3XL</option>
-                                </select>
+                                    value={[{ value: "", label: "Select size (optional)" }, { value: "XS", label: "XS" }, { value: "S", label: "S" }, { value: "M", label: "M" }, { value: "L", label: "L" }, { value: "XL", label: "XL" }, { value: "2XL", label: "2XL" }, { value: "3XL", label: "3XL" }].find(opt => opt.value === (form[field] || "")) || { value: "", label: "Select size (optional)" }}
+                                    onChange={(option, meta) => handleChange({ target: { name: meta.name, value: option ? option.value : "" } })}
+                                    options={[{ value: "", label: "Select size (optional)" }, { value: "XS", label: "XS" }, { value: "S", label: "S" }, { value: "M", label: "M" }, { value: "L", label: "L" }, { value: "XL", label: "XL" }, { value: "2XL", label: "2XL" }, { value: "3XL", label: "3XL" }]}
+                                    className="w-full"
+                                />
                             </div>
                         ) : (
                             <div key={field} className="col-span-1">

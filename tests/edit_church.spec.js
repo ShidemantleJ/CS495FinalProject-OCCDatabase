@@ -179,7 +179,10 @@ test.describe("Church Management & Editing", () => {
     await page.goto("/");
 
     // Filter to find our church
-    await page.getByPlaceholder("Search by church name").fill(churchName);
+    const searchChurch = page.getByPlaceholder("Search by church name").or(page.getByText("Search by church name").first());
+    await searchChurch.click();
+    await page.keyboard.type(churchName);
+    await page.keyboard.press("Tab");
     await page.getByRole("button", { name: "Apply Filters" }).click();
 
     const card = page.locator("div.bg-white.shadow-md").filter({ hasText: churchName });
@@ -216,7 +219,10 @@ test.describe("Church Management & Editing", () => {
     // Since we cannot edit this in the UI provided, we verify it displays "N/A" or the value if we seeded it.
     // We didn't seed a relation ID, so it should be N/A.
     await page.goto("/");
-    await page.getByPlaceholder("Search by church name").fill(churchName);
+    const searchChurch = page.getByPlaceholder("Search by church name").or(page.getByText("Search by church name").first());
+    await searchChurch.click();
+    await page.keyboard.type(churchName);
+    await page.keyboard.press("Tab");
     await page.getByRole("button", { name: "Apply Filters" }).click();
 
     const churchCard = page

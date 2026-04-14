@@ -115,12 +115,16 @@ test.describe("Add New Church", () => {
 
     /* ---------------- UI VERIFICATION ---------------- */
     // Use the dashboard filters to find the new church
-    await page
-      .getByPlaceholder(/search by church name/i)
-      .fill(churchData.church_name);
-    await page
-      .getByPlaceholder(/filter by zipcode/i)
-      .fill(churchData.church_physical_zip);
+    const searchChurch = page.getByPlaceholder(/search by church name/i).or(page.getByText(/search by church name/i).first());
+    await searchChurch.click();
+    await page.keyboard.type(churchData.church_name);
+    await page.keyboard.press("Tab");
+
+    const searchZip = page.getByPlaceholder(/filter by zipcode/i).or(page.getByText(/filter by zipcode/i).first());
+    await searchZip.click();
+    await page.keyboard.type(churchData.church_physical_zip);
+    await page.keyboard.press("Tab");
+
     await page.getByRole("button", { name: /apply filters/i }).click();
 
     const churchCard = page
