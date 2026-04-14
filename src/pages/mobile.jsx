@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 // import { supabase } from "../supabaseClient";
 import { databaseAPI } from "../api";
 // import { useNavigate } from "react-router-dom";
+import Select from 'react-select';
 
 export default function Mobile() {
   const [isVerified, setIsVerified] = useState(false); // false = Admin Login, true = Registration Form
@@ -517,17 +518,13 @@ export default function Mobile() {
                       <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
                         {label}{field.required && <span className="text-red-500">*</span>}
                       </label>
-                      <select
-                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
-                        value={value || ""}
-                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                        required={field.required}
-                      >
-                        <option value="">Select...</option>
-                        {options.map((opt, oi) => (
-                          <option key={oi} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                          <Select
+                            className="w-full text-xl"
+                            value={[{ value: "", label: "Select..." }, ...options.map(opt => ({ value: opt, label: opt }))].find(opt => opt.value === (value || "")) || { value: "", label: "Select..." }}
+                            onChange={(option) => setCustomFormData((prev) => ({ ...prev, [field.name]: option ? option.value : "" }))}
+                            options={[{ value: "", label: "Select..." }, ...options.map(opt => ({ value: opt, label: opt }))]}
+                            required={field.required}
+                          />
                     </div>
                   );
                 }
@@ -1255,6 +1252,3 @@ export default function Mobile() {
     </div>
   );
 }
-
-
-

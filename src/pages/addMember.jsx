@@ -6,6 +6,7 @@ import { validatePhoneNumber } from "../utils/validation";
 import DOMPurify from "dompurify";
 import { processImage } from "../utils/imageProcessing";
 import ChurchDropdown from '../components/ChurchDropdown';
+import Select from 'react-select';
 
 export default function AddMember() {
   const navigate = useNavigate();
@@ -192,13 +193,13 @@ export default function AddMember() {
       return;
     }
 
-    // Prepare form data, converting empty strings to null for optional fields
-    const formData = { ...form };
-    if (formData.shirt_size === "") {
-      formData.shirt_size = null;
-    }
+    const submitData = {
+      ...form,
+      shirt_size: form.shirt_size || null,
+      date_of_birth: form.date_of_birth || null,
+    };
 
-    const { error } = await databaseAPI.create("team_members", formData);
+    const { error } = await databaseAPI.create("team_members", submitData);
 
     if (error) {
       setError(error.message);
@@ -274,21 +275,13 @@ export default function AddMember() {
                 {field.replaceAll("_", " ")}
               </label>
               {field === "shirt_size" ? (
-                <select
+                <Select
                   name={field}
-                  value={form[field]}
-                  onChange={handleChange}
-                  className="w-full border rounded-md px-3 py-2"
-                >
-                  <option value="">Select size (optional)</option>
-                  <option value="XS">XS</option>
-                  <option value="S">S</option>
-                  <option value="M">M</option>
-                  <option value="L">L</option>
-                  <option value="XL">XL</option>
-                  <option value="2XL">2XL</option>
-                  <option value="3XL">3XL</option>
-                </select>
+                  value={[{ value: "", label: "Select size (optional)" }, { value: "XS", label: "XS" }, { value: "S", label: "S" }, { value: "M", label: "M" }, { value: "L", label: "L" }, { value: "XL", label: "XL" }, { value: "2XL", label: "2XL" }, { value: "3XL", label: "3XL" }].find(opt => opt.value === (form[field] || "")) || { value: "", label: "Select size (optional)" }}
+                  onChange={(option, meta) => handleChange({ target: { name: meta.name, value: option ? option.value : "" } })}
+                  options={[{ value: "", label: "Select size (optional)" }, { value: "XS", label: "XS" }, { value: "S", label: "S" }, { value: "M", label: "M" }, { value: "L", label: "L" }, { value: "XL", label: "XL" }, { value: "2XL", label: "2XL" }, { value: "3XL", label: "3XL" }]}
+                  className="w-full"
+                />
               ) : (
                 <input
                   type={field === "date_of_birth" ? "date" : field === "email" ? "email" : "text"}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaCog, FaTrash, FaArrowLeft } from "react-icons/fa";
 import { databaseAPI } from "../api";
+import Select from 'react-select';
 
 export default function EditTemplates() {
   const navigate = useNavigate();
@@ -541,16 +542,12 @@ export default function EditTemplates() {
               {/* Destination Table */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Destination Table</label>
-                <select
-                  value={editForm.destination_table || ""}
-                  onChange={(e) => handleEditDestinationChange(e.target.value)}
-                  className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">No Table</option>
-                  {validTables.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <Select
+                  value={[{ value: "", label: "No Table" }, ...validTables.map(t => ({ value: t, label: t }))].find(opt => opt.value === (editForm.destination_table || "")) || { value: "", label: "No Table" }}
+                  onChange={(option) => handleEditDestinationChange(option ? option.value : "")}
+                  options={[{ value: "", label: "No Table" }, ...validTables.map(t => ({ value: t, label: t }))]}
+                  className="w-full text-sm"
+                />
               </div>
 
               {/* Start & End Date */}
@@ -645,16 +642,12 @@ export default function EditTemplates() {
               {/* Destination Table */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Destination Table</label>
-                <select
-                  value={newForm.destination_table}
-                  onChange={(e) => handleNewDestinationChange(e.target.value)}
-                  className="border rounded-md px-3 py-2 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">No Table</option>
-                  {validTables.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
+                <Select
+                  value={[{ value: "", label: "No Table" }, ...validTables.map(t => ({ value: t, label: t }))].find(opt => opt.value === (newForm.destination_table || "")) || { value: "", label: "No Table" }}
+                  onChange={(option) => handleNewDestinationChange(option ? option.value : "")}
+                  options={[{ value: "", label: "No Table" }, ...validTables.map(t => ({ value: t, label: t }))]}
+                  className="w-full text-sm"
+                />
               </div>
 
               {/* Start & End Date */}
@@ -797,20 +790,18 @@ export default function EditTemplates() {
                                 {TYPE_VARIANTS[col.sqlBaseType] && TYPE_VARIANTS[col.sqlBaseType].length > 1 && (
                                   <div className="flex items-center gap-2">
                                     <span className="text-[10px] text-gray-500 shrink-0">Input type:</span>
-                                    <select
-                                      value={col.type}
-                                      onChange={(e) => {
-                                        updateTableColFn(i, "type", e.target.value);
-                                        if (!OPTIONS_TYPES.includes(e.target.value)) {
+                                    <Select
+                                      value={TYPE_VARIANTS[col.sqlBaseType].map(t => ({ value: t, label: TYPE_LABEL[t] })).find(opt => opt.value === col.type)}
+                                      onChange={(option) => {
+                                        if (!option) return;
+                                        updateTableColFn(i, "type", option.value);
+                                        if (!OPTIONS_TYPES.includes(option.value)) {
                                           updateTableColFn(i, "options", "");
                                         }
                                       }}
-                                      className="border rounded px-1.5 py-0.5 text-xs flex-1"
-                                    >
-                                      {TYPE_VARIANTS[col.sqlBaseType].map((t) => (
-                                        <option key={t} value={t}>{TYPE_LABEL[t]}</option>
-                                      ))}
-                                    </select>
+                                      options={TYPE_VARIANTS[col.sqlBaseType].map(t => ({ value: t, label: TYPE_LABEL[t] }))}
+                                      className="flex-1 text-xs"
+                                    />
                                   </div>
                                 )}
                                 {OPTIONS_TYPES.includes(col.type) && (

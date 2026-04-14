@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
+import Select from 'react-select';
 
 export default function ChurchPage() {
   const {user} = useUser();
@@ -618,19 +619,13 @@ export default function ChurchPage() {
             <span><strong>Church Relations Team Member:</strong></span>
             {isEditingRelationsMember && isAdmin ? (
               <div className="flex items-center gap-2">
-                <select
-                  value={selectedRelationsMember}
-                  onChange={(e) => setSelectedRelationsMember(e.target.value)}
-                  className="border rounded-md p-1"
-                  disabled={savingRelationsMember}
-                >
-                  <option value="">None</option>
-                  {teamMembers.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.first_name} {member.last_name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={[{ value: "", label: "None" }, ...teamMembers.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))].find(opt => opt.value === selectedRelationsMember) || { value: "", label: "None" }}
+                  onChange={(option) => setSelectedRelationsMember(option ? option.value : "")}
+                  options={[{ value: "", label: "None" }, ...teamMembers.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))]}
+                  isDisabled={savingRelationsMember}
+                  className="min-w-[200px]"
+                />
                 <button
                   onClick={handleSaveRelationsMember}
                   disabled={savingRelationsMember}
