@@ -203,12 +203,12 @@ export default function AddMember() {
     }
 
     // Prepare form data, converting empty strings to null for optional fields
-    const formData = { ...form };
-    if (formData.shirt_size === "") {
-      formData.shirt_size = null;
+    const submitData = { ...form };
+    if (submitData.shirt_size === "") {
+      submitData.shirt_size = null;
     }
-    if (formData.date_of_birth === "") {
-      formData.date_of_birth = null;
+    if (submitData.date_of_birth === "") {
+      submitData.date_of_birth = null;
     }
 
     const { error } = await databaseAPI.create("team_members", submitData);
