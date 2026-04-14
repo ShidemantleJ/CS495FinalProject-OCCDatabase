@@ -65,6 +65,7 @@ export default function Profile() {
     const [affiliatedChurch, setAffiliatedChurch] = useState(null);
 
     const navigate = useNavigate();
+    const isAdmin = memberData?.admin_flag === true || memberData?.admin_flag === "true";
 
     useEffect(() => {
         const getUserAndData = async () => {
@@ -234,7 +235,7 @@ export default function Profile() {
     };
 
     const fetchMyTeam = async () => {
-        if (!memberData) return;
+        if (!memberData || !isAdmin) return;
         setActiveTab("myTeam");
         setTeamLoading(true);
         setTeamError(null);
@@ -365,12 +366,14 @@ export default function Profile() {
                     >
                         Profile
                     </button>
-                    <button
-                        onClick={fetchMyTeam}
-                        className={`px-3 py-2 rounded ${activeTab === "myTeam" ? "bg-emerald-700 text-white" : "bg-emerald-200"}`}
-                    >
-                        My Team
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={fetchMyTeam}
+                            className={`px-3 py-2 rounded ${activeTab === "myTeam" ? "bg-emerald-700 text-white" : "bg-emerald-200"}`}
+                        >
+                            My Team
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -514,7 +517,7 @@ export default function Profile() {
             ) : null}
 
             {/* MY TEAM TAB */}
-            {activeTab === "myTeam" && (
+            {isAdmin && activeTab === "myTeam" && (
                 <div className="mt-2">
                     <h2 className="text-lg font-semibold mb-2">My Team — West Alabama</h2>
                     {teamLoading ? (
