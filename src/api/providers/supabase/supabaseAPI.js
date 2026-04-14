@@ -98,11 +98,13 @@ export const supabaseAPI = {
     console.log(data);
     if (error) console.error("Error fetching table columns:", error);
     const dict = {};
+    const ALLOWED_ID_FIELDS = new Set(["church_id", "church_affiliation_id"]);
     if (data) {
-      data.forEach(({ column_name, data_type, is_nullable }) => {
-        if (!column_name.endsWith("_id") && column_name !== "id") {
-          dict[column_name] = { data_type, nonNullable: is_nullable === 'NO' };
-        }
+      data.forEach(({ column_name, data_type, is_nullable, column_default }) => {
+        const isIdColumn = column_name.endsWith("_id") || column_name === "id";
+        if (isIdColumn && !ALLOWED_ID_FIELDS.has(column_name)) return;
+        if (column_default !== null && column_default !== undefined) return;
+        dict[column_name] = { data_type, nonNullable: is_nullable === 'NO' };
       });
     }
     return { data: dict, error };

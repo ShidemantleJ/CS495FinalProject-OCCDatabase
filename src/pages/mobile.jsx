@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { databaseAPI } from "../api";
 // import { useNavigate } from "react-router-dom";
 import Select from 'react-select';
+import ChurchDropdown from '../components/ChurchDropdown';
 
 export default function Mobile() {
   const [isVerified, setIsVerified] = useState(false); // false = Admin Login, true = Registration Form
@@ -13,6 +14,8 @@ export default function Mobile() {
   const [customTemplates, setCustomTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [customFormData, setCustomFormData] = useState({});
+  const [churches, setChurches] = useState([]);
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
   const [formData, setFormData] = useState({ //All the types of data that can be entered in the various forms
     // Header Info
     locationCode: "",
@@ -56,6 +59,18 @@ export default function Mobile() {
   // Fetch active custom templates once verified
   useEffect(() => {
     if (!isVerified) return;
+
+    const fetchChurches = async () => {
+      const { data, error } = await databaseAPI.list("church2", {
+        select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+        orderBy: { column: "church_name", ascending: true },
+      });
+      if (!error && data) {
+        setChurches(data.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || "")));
+      }
+    };
+    fetchChurches();
+
     const fetchCustomTemplates = async () => {
       const { data, error } = await databaseAPI.getTemplates();
       if (error || !data) return;
@@ -413,6 +428,34 @@ export default function Mobile() {
               {(Array.isArray(selectedTemplate.fields) ? selectedTemplate.fields : []).map((field, idx) => {
                 const label = field.form_name || field.name;
                 const value = customFormData[field.name];
+
+                if (field.name === "church_id" || field.name === "church_affiliation_id") {
+                  const selectedChurch = churches.find(c => c.id === value);
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <ChurchDropdown
+                        churches={churches}
+                        selectedName={selectedChurch?.church_name || ""}
+                        isAddingNew={isAddingNewChurch}
+                        setIsAddingNew={setIsAddingNewChurch}
+                        onSelect={async (name) => {
+                          const { data } = await databaseAPI.list("church2", {
+                            select: "id, church_name",
+                            orderBy: { column: "church_name", ascending: true },
+                          });
+                          if (data) {
+                            setChurches(data.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || "")));
+                            const found = data.find(c => c.church_name === name);
+                            setCustomFormData((prev) => ({ ...prev, [field.name]: found ? found.id : null }));
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                }
 
                 if (field.type === "text") {
                   return (
