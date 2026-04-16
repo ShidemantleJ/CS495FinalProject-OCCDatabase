@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaTrash } from "react-icons/fa";
 import { databaseAPI } from "../api";
+import ChurchDropdown from "../components/ChurchDropdown";
 
 export default function FormSubmissionDetail() {
   const navigate = useNavigate();
@@ -26,6 +27,10 @@ export default function FormSubmissionDetail() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [submissionToDelete, setSubmissionToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [churches, setChurches] = useState([]);
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
+
+  const CHURCH_FIELD_NAMES = new Set(["church_id", "church_affiliation_id"]);
 
   useEffect(() => {
     let isMounted = true;
@@ -57,7 +62,7 @@ export default function FormSubmissionDetail() {
       setLoadingSubmissions(true);
       setErrorMessage("");
 
-      const [templateResult, submissionsResult] = await Promise.all([
+      const [templateResult, submissionsResult, churchesResult] = await Promise.all([
         databaseAPI.list("form_templates", {
           select: "id, event_name, fields",
           filters: [{ column: "id", op: "eq", value: templateId }],
@@ -72,7 +77,19 @@ export default function FormSubmissionDetail() {
           ],
           orderBy: { column: "id", ascending: false },
         }),
+        databaseAPI.list("church2", {
+          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+          orderBy: { column: "church_name", ascending: true },
+        }),
       ]);
+
+      if (churchesResult.data) {
+        setChurches(
+          churchesResult.data.sort((a, b) =>
+            (a.church_name || "").localeCompare(b.church_name || "")
+          )
+        );
+      }
 
       if (templateResult.data && templateResult.data.length > 0) {
         setTemplateName(templateResult.data[0].event_name || "Unnamed Template");
@@ -118,11 +135,19 @@ export default function FormSubmissionDetail() {
   const toggleExpanded = (id) =>
     setExpandedSubmissions((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  const resolveDisplayValue = (key, value) => {
+    if (CHURCH_FIELD_NAMES.has(key)) {
+      const church = churches.find((c) => c.id === value);
+      return church ? church.church_name : renderFieldValue(value);
+    }
+    return renderFieldValue(value);
+  };
+
   const getSummary = (content) => {
     if (!content || typeof content !== "object") return "—";
     const pairs = Object.entries(content)
       .slice(0, 3)
-      .map(([k, v]) => `${getLabelForKey(k)}: ${renderFieldValue(v) || "—"}`);
+      .map(([k, v]) => `${getLabelForKey(k)}: ${resolveDisplayValue(k, v) || "—"}`);
     return pairs.join(" · ");
   };
 
@@ -268,7 +293,7 @@ export default function FormSubmissionDetail() {
                       </label>
                       <input
                         readOnly
-                        value={renderFieldValue(value)}
+                        value={resolveDisplayValue(key, value)}
                         className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm bg-gray-50 text-gray-800 cursor-default focus:outline-none"
                       />
                     </div>
@@ -424,6 +449,26 @@ export default function FormSubmissionDetail() {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {getLabelForKey(key)}
                   </label>
+                  {CHURCH_FIELD_NAMES.has(key) ? (
+                    <ChurchDropdown
+                      churches={churches}
+                      selectedName={churches.find(c => c.id === editFieldValues[key])?.church_name || ""}
+                      isAddingNew={isAddingNewChurch}
+                      setIsAddingNew={setIsAddingNewChurch}
+                      onSelect={async (name) => {
+                        const { data } = await databaseAPI.list("church2", {
+                          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+                          orderBy: { column: "church_name", ascending: true },
+                        });
+                        if (data) {
+                          const sorted = data.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || ""));
+                          setChurches(sorted);
+                          const found = sorted.find(c => c.church_name === name);
+                          setEditFieldValues((prev) => ({ ...prev, [key]: found ? found.id : null }));
+                        }
+                      }}
+                    />
+                  ) : (
                   <input
                     type="text"
                     value={renderFieldValue(editFieldValues[key])}
@@ -433,6 +478,7 @@ export default function FormSubmissionDetail() {
                     disabled={editSaving}
                     className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60"
                   />
+                  )}
                 </div>
               ))}
             </div>

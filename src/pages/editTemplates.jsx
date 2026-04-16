@@ -42,23 +42,25 @@ export default function EditTemplates() {
   const mapSqlType = (sqlType) => SQL_TYPE_MAP[sqlType?.toLowerCase()] || "text";
 
   const TYPE_VARIANTS = {
-    text:     ["text", "textarea", "bubble-select", "multi-select"],
-    textarea: ["text", "textarea", "bubble-select", "multi-select"],
-    number:   ["number", "phone", "zip"],
-    date:     ["date"],
-    select:   ["select"],
+    text:           ["text", "textarea", "bubble-select", "multi-select"],
+    textarea:       ["text", "textarea", "bubble-select", "multi-select"],
+    number:         ["number", "phone", "zip"],
+    date:           ["date"],
+    select:         ["select"],
+    "church-select": ["church-select"],
   };
 
   const TYPE_LABEL = {
-    "text":          "Text",
-    "textarea":      "Text Area",
-    "bubble-select": "Bubble Select",
-    "multi-select":  "Multi Select",
-    "number":        "Number",
-    "phone":         "Phone Number",
-    "zip":           "Zip Code",
-    "date":          "Date",
-    "select":        "Select",
+    "text":           "Text",
+    "textarea":       "Text Area",
+    "bubble-select":  "Bubble Select",
+    "multi-select":   "Multi Select",
+    "number":         "Number",
+    "phone":          "Phone Number",
+    "zip":            "Zip Code",
+    "date":           "Date",
+    "select":         "Select",
+    "church-select":  "Church Dropdown",
   };
 
   const fetchTableColumns = async (tableName) => {
@@ -66,18 +68,21 @@ export default function EditTemplates() {
     if (tableColumnsCache[tableName]) return tableColumnsCache[tableName];
     const { data } = await databaseAPI.getTableColumns(tableName);
     if (!data) return [];
+    const CHURCH_FIELD_NAMES = new Set(["church_id", "church_affiliation_id"]);
     const cols = Object.entries(data).map(([name, colInfo]) => {
       const sqlType = colInfo?.data_type ?? colInfo;
       const nonNullable = colInfo?.nonNullable ?? false;
+      const isChurchField = CHURCH_FIELD_NAMES.has(name);
+      const resolvedType = isChurchField ? "church-select" : mapSqlType(sqlType);
       return {
         name,
-        type: mapSqlType(sqlType),
-        sqlBaseType: mapSqlType(sqlType),
+        type: resolvedType,
+        sqlBaseType: resolvedType,
         enabled: true,
         required: true,
         nonNullable,
         fromTable: true,
-        options: sqlType === "boolean" ? "true, false" : "",
+        options: !isChurchField && sqlType === "boolean" ? "true, false" : "",
       };
     });
     console.log("Fetched columns for table", tableName, cols);
@@ -132,15 +137,16 @@ export default function EditTemplates() {
   };
 
   const FIELD_TYPE_ICON = {
-    "text":          { symbol: "T",  title: "Text Box" },
-    "textarea":      { symbol: "¶",  title: "Text Area" },
-    "number":        { symbol: "#",  title: "Number" },
-    "phone":         { symbol: "☎",  title: "Phone Number" },
-    "zip":           { symbol: "✉",  title: "Zip Code" },
-    "date":          { symbol: "📅", title: "Date" },
-    "select":        { symbol: "▾",  title: "Select" },
-    "multi-select":  { symbol: "☰",  title: "Multi Select" },
-    "bubble-select": { symbol: "⬤",  title: "Bubble Select" },
+    "text":           { symbol: "T",  title: "Text Box" },
+    "textarea":       { symbol: "¶",  title: "Text Area" },
+    "number":         { symbol: "#",  title: "Number" },
+    "phone":          { symbol: "☎",  title: "Phone Number" },
+    "zip":            { symbol: "✉",  title: "Zip Code" },
+    "date":           { symbol: "📅", title: "Date" },
+    "select":         { symbol: "▾",  title: "Select" },
+    "multi-select":   { symbol: "☰",  title: "Multi Select" },
+    "bubble-select":  { symbol: "⬤",  title: "Bubble Select" },
+    "church-select":  { symbol: "⛪", title: "Church Dropdown" },
   };
 
   const renderFieldsSummary = (list, expandId) => {
@@ -350,16 +356,19 @@ export default function EditTemplates() {
     await loadTemplates();
   };
 
-  const handleDelete = async (templateId) => {
-    if (!window.confirm("Are you sure you want to delete this template?")) return;
-    setDeletingId(templateId);
-    const { error } = await databaseAPI.deleteTemplate(templateId);
+  const [pendingDeleteTemplate, setPendingDeleteTemplate] = useState(null);
+
+  const handleDeleteConfirm = async () => {
+    if (!pendingDeleteTemplate) return;
+    setDeletingId(pendingDeleteTemplate.id);
+    const { error } = await databaseAPI.deleteTemplate(pendingDeleteTemplate.id);
     if (error) {
       setErrorMessage("Failed to delete template.");
     } else {
-      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
+      setTemplates((prev) => prev.filter((t) => t.id !== pendingDeleteTemplate.id));
     }
     setDeletingId(null);
+    setPendingDeleteTemplate(null);
   };
 
   if (checkingAdmin) {
@@ -494,7 +503,7 @@ export default function EditTemplates() {
                         </button>
                         <button
                           title="Delete template"
-                          onClick={() => handleDelete(template.id)}
+                          onClick={() => setPendingDeleteTemplate(template)}
                           disabled={deletingId === template.id}
                           className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
                         >
@@ -704,6 +713,38 @@ export default function EditTemplates() {
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {pendingDeleteTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-3">Delete Template</h2>
+            <p className="text-gray-700 mb-2">
+              Are you sure you want to <span className="font-semibold text-red-600">permanently delete</span> the template{" "}
+              <span className="font-semibold">&ldquo;{pendingDeleteTemplate.event_name || "Unnamed"}&rdquo;</span> and all its submissions?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteTemplate(null)}
+                disabled={deletingId === pendingDeleteTemplate.id}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deletingId === pendingDeleteTemplate.id}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deletingId === pendingDeleteTemplate.id ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

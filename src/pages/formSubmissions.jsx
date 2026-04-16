@@ -228,9 +228,11 @@ export default function FormSubmissions() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
             <h2 className="text-lg font-semibold mb-3">Delete Template</h2>
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to delete the template &quot;{templateToDelete?.event_name}&quot; and all its submissions? This action cannot be undone.
+            <p className="text-gray-700 mb-2">
+              Are you sure you want to <span className="font-semibold text-red-600">permanently delete</span> the template{" "}
+              <span className="font-semibold">&ldquo;{templateToDelete?.event_name || "Unnamed"}&rdquo;</span> and all its submissions?
             </p>
+            <p className="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
