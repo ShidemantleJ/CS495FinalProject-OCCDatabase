@@ -23,6 +23,8 @@ export default function FormSubmissionDetail() {
   const [editError, setEditError] = useState("");
   const [pendingUndo, setPendingUndo] = useState(null);
   const [undoing, setUndoing] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [churches, setChurches] = useState([]);
   const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
 
@@ -199,6 +201,20 @@ export default function FormSubmissionDetail() {
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setErrorMessage("");
+    const { error } = await databaseAPI.delete("form_submissions", pendingDelete.id);
+    setDeleting(false);
+    setPendingDelete(null);
+    if (error) {
+      setErrorMessage(`Delete failed: ${error.message}`);
+    } else {
+      setSubmissions((prev) => prev.filter((s) => s.id !== pendingDelete.id));
+    }
+  };
+
   const handleUndoConfirm = async () => {
     if (!pendingUndo) return;
     setUndoing(true);
@@ -331,6 +347,14 @@ export default function FormSubmissionDetail() {
                               title="Transfer this submission"
                             >
                               ✓
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingDelete(submission)}
+                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              title="Delete this submission"
+                            >
+                              ✕
                             </button>
                           </div>
                         </td>
@@ -482,6 +506,36 @@ export default function FormSubmissionDetail() {
                 className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {transferring ? "Transferring..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-3">Delete Submission</h2>
+            <p className="text-gray-700 mb-2">
+              Are you sure you want to <span className="font-semibold text-red-600">permanently delete</span> this pending submission?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">Submission ID: {pendingDelete.id}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
