@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { FaTrash } from "react-icons/fa";
 import { databaseAPI } from "../api";
 import ChurchDropdown from "../components/ChurchDropdown";
 
@@ -23,7 +24,8 @@ export default function FormSubmissionDetail() {
   const [editError, setEditError] = useState("");
   const [pendingUndo, setPendingUndo] = useState(null);
   const [undoing, setUndoing] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [submissionToDelete, setSubmissionToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [churches, setChurches] = useState([]);
   const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
@@ -201,20 +203,6 @@ export default function FormSubmissionDetail() {
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!pendingDelete) return;
-    setDeleting(true);
-    setErrorMessage("");
-    const { error } = await databaseAPI.delete("form_submissions", pendingDelete.id);
-    setDeleting(false);
-    setPendingDelete(null);
-    if (error) {
-      setErrorMessage(`Delete failed: ${error.message}`);
-    } else {
-      setSubmissions((prev) => prev.filter((s) => s.id !== pendingDelete.id));
-    }
-  };
-
   const handleUndoConfirm = async () => {
     if (!pendingUndo) return;
     setUndoing(true);
@@ -233,6 +221,25 @@ export default function FormSubmissionDetail() {
         )
       );
     }
+  };
+
+  const handleDeleteSubmission = async () => {
+    if (!submissionToDelete) return;
+    setDeleting(true);
+    setErrorMessage("");
+    const { error } = await databaseAPI.delete("form_submissions", submissionToDelete.id);
+    setDeleting(false);
+    if (error) {
+      setErrorMessage(`Delete failed: ${error.message}`);
+    }
+    // Close modal and update state regardless of error, error message will show
+    setShowDeleteModal(false);
+    if (!error) {
+      setSubmissions((prev) =>
+        prev.filter((s) => s.id !== submissionToDelete.id)
+      );
+    }
+    setSubmissionToDelete(null);
   };
 
   if (checkingAdmin) {
@@ -350,11 +357,14 @@ export default function FormSubmissionDetail() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => setPendingDelete(submission)}
+                              onClick={() => {
+                                setShowDeleteModal(true);
+                                setSubmissionToDelete(submission);
+                              }}
                               className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                              title="Delete this submission"
+                              title="Delete submission"
                             >
-                              ✕
+                              <FaTrash size={12} />
                             </button>
                           </div>
                         </td>
@@ -395,14 +405,27 @@ export default function FormSubmissionDetail() {
                             {new Date(submission.transferred_at).toLocaleString()}
                           </td>
                           <td className="px-4 py-3 align-middle">
-                            <button
-                              type="button"
-                              onClick={() => setPendingUndo(submission)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                              title="Undo transfer (removes row from destination table)"
-                            >
-                              ↩
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setPendingUndo(submission)}
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                title="Undo transfer (removes row from destination table)"
+                              >
+                                ↩
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowDeleteModal(true);
+                                  setSubmissionToDelete(submission);
+                                }}
+                                className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                title="Delete submission"
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -512,36 +535,6 @@ export default function FormSubmissionDetail() {
         </div>
       )}
 
-      {pendingDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
-            <h2 className="text-lg font-semibold mb-3">Delete Submission</h2>
-            <p className="text-gray-700 mb-2">
-              Are you sure you want to <span className="font-semibold text-red-600">permanently delete</span> this pending submission?
-            </p>
-            <p className="text-sm text-gray-500 mb-6">Submission ID: {pendingDelete.id}</p>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setPendingDelete(null)}
-                disabled={deleting}
-                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                disabled={deleting}
-                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {pendingUndo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
@@ -567,6 +560,38 @@ export default function FormSubmissionDetail() {
                 className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {undoing ? "Undoing..." : "Undo Transfer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-3">Delete Submission</h2>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete submission ID {submissionToDelete?.id}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setSubmissionToDelete(null);
+                }}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSubmission}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
