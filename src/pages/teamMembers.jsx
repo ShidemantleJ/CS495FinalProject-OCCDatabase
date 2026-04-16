@@ -71,6 +71,10 @@ export default function TeamMembers() {
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
 
+    // Modal state for retire confirmation
+    const [showRetireModal, setShowRetireModal] = useState(false);
+    const [memberToRetire, setMemberToRetire] = useState(null);
+
     // Retirement hook
     const { initiateRetirement, RetirementModal, isProcessing: isRetiring } = useMemberRetirement();
     const [memberToProcess, setMemberToProcess] = useState(null);
@@ -112,11 +116,24 @@ export default function TeamMembers() {
     };
 
     const handleRetireClick = (member) => {
+        setMemberToRetire(member);
+        setShowRetireModal(true);
+    };
+
+    const handleRetireConfirm = () => {
+        const member = memberToRetire;
+        setShowRetireModal(false);
+        setMemberToRetire(null);
         setMemberToProcess(member);
         initiateRetirement(member, {
             onConfirm: () => retireMemberAction(member),
             onCancel: () => setMemberToProcess(null),
         });
+    };
+
+    const handleRetireCancel = () => {
+        setShowRetireModal(false);
+        setMemberToRetire(null);
     };
 
     // Fetch current logged-in user
@@ -564,6 +581,30 @@ export default function TeamMembers() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Retire Confirmation Modal */}
+            {showRetireModal && memberToRetire && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                        <h2 className="text-xl font-bold mb-4 text-orange-600">Retire Team Member</h2>
+                        <p className="mb-4">Are you sure you want to retire <span className="font-semibold">{memberToRetire.first_name} {memberToRetire.last_name}</span>? They will be moved to the Former Members section.</p>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                onClick={handleRetireCancel}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="px-4 py-2 rounded bg-orange-600 text-white hover:bg-orange-700"
+                                onClick={handleRetireConfirm}
+                            >
+                                Retire
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
