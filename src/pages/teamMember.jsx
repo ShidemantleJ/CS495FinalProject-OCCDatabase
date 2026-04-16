@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
+import { useMemberRetirement } from "../hooks/useMemberRetirement";
 
 function PrivateBucketImage({ filePath, className }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -32,6 +33,22 @@ function PrivateBucketImage({ filePath, className }) {
     return <img src={signedUrl} alt="Profile" className={className} />;
 }
 
+function DeleteConfirmationModal({ isOpen, onCancel, onConfirm, member, deleting }) {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                <h2 className="text-xl font-bold mb-4 text-red-600">Delete Team Member</h2>
+                <p className="mb-4">Are you sure you want to permanently delete <span className="font-semibold">{member.first_name} {member.last_name}</span>? This action cannot be undone.</p>
+                <div className="flex justify-end gap-2">
+                    <button className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400" onClick={onCancel} disabled={deleting}>Cancel</button>
+                    <button className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700" onClick={onConfirm} disabled={deleting}>{deleting ? "Deleting..." : "Delete"}</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function TeamMemberPage() {
     const { id } = useParams();
     const [member, setMember] = useState(null);
@@ -41,6 +58,14 @@ export default function TeamMemberPage() {
     const [loading, setLoading] = useState(true);
     const { user } = useUser();
     const [isAdmin, setIsAdmin] = useState(false);
+
+    // State for modals
+    const { initiateRetirement, RetirementModal, isProcessing: isRetiring } = useMemberRetirement();
+
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [memberToDelete, setMemberToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -144,11 +169,51 @@ export default function TeamMemberPage() {
         checkAdmin();
     }, [user]);
 
+    const retireMemberAction = async (memberToRetire) => {
+        const { error } = await databaseAPI.update("team_members", memberToRetire.id, { active: false });
+        if (error) {
+            alert("Failed to retire member: " + error.message);
+        } else {
+            setMember(prev => ({ ...prev, active: false }));
+        }
+    };
+
+    const handleRetireClick = () => {
+        if (!member) return;
+        initiateRetirement(member, {
+            onConfirm: () => retireMemberAction(member),
+        });
+    };
+
+    const handleDeleteMember = async () => {
+        if (!memberToDelete) return;
+        setDeleting(true);
+        try {
+            const { error: posError } = await databaseAPI.deleteAll("member_positions", { member_id: memberToDelete.id });
+            if (posError) throw new Error(posError.message || "Failed to delete member positions");
+            const { error } = await databaseAPI.delete("team_members", memberToDelete.id);
+            if (error) throw new Error(error.message || "Failed to delete member");
+            navigate("/team-members");
+        } catch (err) {
+            alert("Failed to delete member: " + (err.message || "Unknown error"));
+            setDeleting(false);
+        }
+    };
+
     if (loading) return <p className="text-center mt-10">Loading team member...</p>;
     if (!member) return <p className="text-center mt-10">Team member not found.</p>;
 
     return (
         <div className="max-w-4xl mx-auto mt-10">
+            <RetirementModal />
+            <DeleteConfirmationModal 
+                isOpen={showDeleteModal} 
+                onCancel={() => { setShowDeleteModal(false); setMemberToDelete(null); }} 
+                onConfirm={handleDeleteMember} 
+                member={memberToDelete} 
+                deleting={deleting} 
+            />
+
             <div className="flex gap-2 mb-4">
                 <button
                     className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
@@ -162,6 +227,24 @@ export default function TeamMemberPage() {
                         onClick={() => navigate(`/edit-member/${member.id}`)}
                     >
                         Edit Member
+                    </button>
+                )}
+                {isAdmin && member.active && (
+                    <button
+                        className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600"
+                        onClick={handleRetireClick}
+                        disabled={isRetiring}
+                    >
+                        {isRetiring ? "Retiring..." : "Retire Member"}
+                    </button>
+                )}
+                {isAdmin && !member.active && (
+                    <button
+                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                        onClick={() => { setShowDeleteModal(true); setMemberToDelete(member); }}
+                        disabled={deleting}
+                    >
+                        {deleting ? "Deleting..." : "Delete Member"}
                     </button>
                 )}
             </div>
