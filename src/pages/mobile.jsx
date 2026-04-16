@@ -72,21 +72,6 @@ export default function Mobile() {
     fetchCustomTemplates();
   }, [isVerified]);
 
-  //Prevent Back Navigation & URL changes
-  useEffect(() => {
-    sessionStorage.setItem("kioskMode", "true");
-
-    window.history.pushState(null, null, window.location.pathname);
-
-    const handleBackButton = () => {
-      window.history.pushState(null, null, window.location.pathname);
-    };
-    window.addEventListener("popstate", handleBackButton);
-    return () => {
-      window.removeEventListener("popstate", handleBackButton);
-    };
-  }, []);
-
   //Allow for the PWA to be downloaded from the mobile page only
   useEffect(() => {
     // Checks if the PWA is already downloaded
