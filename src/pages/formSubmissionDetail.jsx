@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { databaseAPI } from "../api";
+import ChurchDropdown from "../components/ChurchDropdown";
 
 export default function FormSubmissionDetail() {
   const navigate = useNavigate();
@@ -22,6 +23,12 @@ export default function FormSubmissionDetail() {
   const [editError, setEditError] = useState("");
   const [pendingUndo, setPendingUndo] = useState(null);
   const [undoing, setUndoing] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [churches, setChurches] = useState([]);
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
+
+  const CHURCH_FIELD_NAMES = new Set(["church_id", "church_affiliation_id"]);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,7 +60,7 @@ export default function FormSubmissionDetail() {
       setLoadingSubmissions(true);
       setErrorMessage("");
 
-      const [templateResult, submissionsResult] = await Promise.all([
+      const [templateResult, submissionsResult, churchesResult] = await Promise.all([
         databaseAPI.list("form_templates", {
           select: "id, event_name, fields",
           filters: [{ column: "id", op: "eq", value: templateId }],
@@ -68,7 +75,19 @@ export default function FormSubmissionDetail() {
           ],
           orderBy: { column: "id", ascending: false },
         }),
+        databaseAPI.list("church2", {
+          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+          orderBy: { column: "church_name", ascending: true },
+        }),
       ]);
+
+      if (churchesResult.data) {
+        setChurches(
+          churchesResult.data.sort((a, b) =>
+            (a.church_name || "").localeCompare(b.church_name || "")
+          )
+        );
+      }
 
       if (templateResult.data && templateResult.data.length > 0) {
         setTemplateName(templateResult.data[0].event_name || "Unnamed Template");
@@ -114,11 +133,19 @@ export default function FormSubmissionDetail() {
   const toggleExpanded = (id) =>
     setExpandedSubmissions((prev) => ({ ...prev, [id]: !prev[id] }));
 
+  const resolveDisplayValue = (key, value) => {
+    if (CHURCH_FIELD_NAMES.has(key)) {
+      const church = churches.find((c) => c.id === value);
+      return church ? church.church_name : renderFieldValue(value);
+    }
+    return renderFieldValue(value);
+  };
+
   const getSummary = (content) => {
     if (!content || typeof content !== "object") return "—";
     const pairs = Object.entries(content)
       .slice(0, 3)
-      .map(([k, v]) => `${getLabelForKey(k)}: ${renderFieldValue(v) || "—"}`);
+      .map(([k, v]) => `${getLabelForKey(k)}: ${resolveDisplayValue(k, v) || "—"}`);
     return pairs.join(" · ");
   };
 
@@ -171,6 +198,20 @@ export default function FormSubmissionDetail() {
             : s
         )
       );
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    setErrorMessage("");
+    const { error } = await databaseAPI.delete("form_submissions", pendingDelete.id);
+    setDeleting(false);
+    setPendingDelete(null);
+    if (error) {
+      setErrorMessage(`Delete failed: ${error.message}`);
+    } else {
+      setSubmissions((prev) => prev.filter((s) => s.id !== pendingDelete.id));
     }
   };
 
@@ -245,7 +286,7 @@ export default function FormSubmissionDetail() {
                       </label>
                       <input
                         readOnly
-                        value={renderFieldValue(value)}
+                        value={resolveDisplayValue(key, value)}
                         className="w-full border border-gray-200 rounded-md px-3 py-1.5 text-sm bg-gray-50 text-gray-800 cursor-default focus:outline-none"
                       />
                     </div>
@@ -306,6 +347,14 @@ export default function FormSubmissionDetail() {
                               title="Transfer this submission"
                             >
                               ✓
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPendingDelete(submission)}
+                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              title="Delete this submission"
+                            >
+                              ✕
                             </button>
                           </div>
                         </td>
@@ -377,6 +426,26 @@ export default function FormSubmissionDetail() {
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {getLabelForKey(key)}
                   </label>
+                  {CHURCH_FIELD_NAMES.has(key) ? (
+                    <ChurchDropdown
+                      churches={churches}
+                      selectedName={churches.find(c => c.id === editFieldValues[key])?.church_name || ""}
+                      isAddingNew={isAddingNewChurch}
+                      setIsAddingNew={setIsAddingNewChurch}
+                      onSelect={async (name) => {
+                        const { data } = await databaseAPI.list("church2", {
+                          select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+                          orderBy: { column: "church_name", ascending: true },
+                        });
+                        if (data) {
+                          const sorted = data.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || ""));
+                          setChurches(sorted);
+                          const found = sorted.find(c => c.church_name === name);
+                          setEditFieldValues((prev) => ({ ...prev, [key]: found ? found.id : null }));
+                        }
+                      }}
+                    />
+                  ) : (
                   <input
                     type="text"
                     value={renderFieldValue(editFieldValues[key])}
@@ -386,6 +455,7 @@ export default function FormSubmissionDetail() {
                     disabled={editSaving}
                     className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60"
                   />
+                  )}
                 </div>
               ))}
             </div>
@@ -436,6 +506,36 @@ export default function FormSubmissionDetail() {
                 className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
                 {transferring ? "Transferring..." : "Confirm"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-3">Delete Submission</h2>
+            <p className="text-gray-700 mb-2">
+              Are you sure you want to <span className="font-semibold text-red-600">permanently delete</span> this pending submission?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">Submission ID: {pendingDelete.id}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>

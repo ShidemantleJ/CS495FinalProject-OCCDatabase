@@ -42,23 +42,25 @@ export default function EditTemplates() {
   const mapSqlType = (sqlType) => SQL_TYPE_MAP[sqlType?.toLowerCase()] || "text";
 
   const TYPE_VARIANTS = {
-    text:     ["text", "textarea", "bubble-select", "multi-select"],
-    textarea: ["text", "textarea", "bubble-select", "multi-select"],
-    number:   ["number", "phone", "zip"],
-    date:     ["date"],
-    select:   ["select"],
+    text:           ["text", "textarea", "bubble-select", "multi-select"],
+    textarea:       ["text", "textarea", "bubble-select", "multi-select"],
+    number:         ["number", "phone", "zip"],
+    date:           ["date"],
+    select:         ["select"],
+    "church-select": ["church-select"],
   };
 
   const TYPE_LABEL = {
-    "text":          "Text",
-    "textarea":      "Text Area",
-    "bubble-select": "Bubble Select",
-    "multi-select":  "Multi Select",
-    "number":        "Number",
-    "phone":         "Phone Number",
-    "zip":           "Zip Code",
-    "date":          "Date",
-    "select":        "Select",
+    "text":           "Text",
+    "textarea":       "Text Area",
+    "bubble-select":  "Bubble Select",
+    "multi-select":   "Multi Select",
+    "number":         "Number",
+    "phone":          "Phone Number",
+    "zip":            "Zip Code",
+    "date":           "Date",
+    "select":         "Select",
+    "church-select":  "Church Dropdown",
   };
 
   const fetchTableColumns = async (tableName) => {
@@ -66,18 +68,21 @@ export default function EditTemplates() {
     if (tableColumnsCache[tableName]) return tableColumnsCache[tableName];
     const { data } = await databaseAPI.getTableColumns(tableName);
     if (!data) return [];
+    const CHURCH_FIELD_NAMES = new Set(["church_id", "church_affiliation_id"]);
     const cols = Object.entries(data).map(([name, colInfo]) => {
       const sqlType = colInfo?.data_type ?? colInfo;
       const nonNullable = colInfo?.nonNullable ?? false;
+      const isChurchField = CHURCH_FIELD_NAMES.has(name);
+      const resolvedType = isChurchField ? "church-select" : mapSqlType(sqlType);
       return {
         name,
-        type: mapSqlType(sqlType),
-        sqlBaseType: mapSqlType(sqlType),
+        type: resolvedType,
+        sqlBaseType: resolvedType,
         enabled: true,
         required: true,
         nonNullable,
         fromTable: true,
-        options: sqlType === "boolean" ? "true, false" : "",
+        options: !isChurchField && sqlType === "boolean" ? "true, false" : "",
       };
     });
     console.log("Fetched columns for table", tableName, cols);
@@ -132,15 +137,16 @@ export default function EditTemplates() {
   };
 
   const FIELD_TYPE_ICON = {
-    "text":          { symbol: "T",  title: "Text Box" },
-    "textarea":      { symbol: "¶",  title: "Text Area" },
-    "number":        { symbol: "#",  title: "Number" },
-    "phone":         { symbol: "☎",  title: "Phone Number" },
-    "zip":           { symbol: "✉",  title: "Zip Code" },
-    "date":          { symbol: "📅", title: "Date" },
-    "select":        { symbol: "▾",  title: "Select" },
-    "multi-select":  { symbol: "☰",  title: "Multi Select" },
-    "bubble-select": { symbol: "⬤",  title: "Bubble Select" },
+    "text":           { symbol: "T",  title: "Text Box" },
+    "textarea":       { symbol: "¶",  title: "Text Area" },
+    "number":         { symbol: "#",  title: "Number" },
+    "phone":          { symbol: "☎",  title: "Phone Number" },
+    "zip":            { symbol: "✉",  title: "Zip Code" },
+    "date":           { symbol: "📅", title: "Date" },
+    "select":         { symbol: "▾",  title: "Select" },
+    "multi-select":   { symbol: "☰",  title: "Multi Select" },
+    "bubble-select":  { symbol: "⬤",  title: "Bubble Select" },
+    "church-select":  { symbol: "⛪", title: "Church Dropdown" },
   };
 
   const renderFieldsSummary = (list, expandId) => {
