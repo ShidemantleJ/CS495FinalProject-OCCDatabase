@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
+import Select from 'react-select';
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
 
@@ -494,37 +495,39 @@ export default function Home() {
                         <div className="ml-auto flex gap-4 items-center">
                             <div>
                                 <label className="mr-2 font-medium">Year:</label>
-                                <select
-                                    value={filters.selectedYear}
-                                    onChange={(e) => {
-                                        const selectedYear = parseInt(e.target.value);
+                                <Select
+                                    value={{ value: filters.selectedYear, label: filters.selectedYear.toString() }}
+                                    onChange={(option) => {
+                                        const selectedYear = parseInt(option.value);
                                         const newFilters = { ...filters, selectedYear };
                                         setFilters(newFilters);
                                         getChurches(newFilters);
                                     }}
-                                    className="border p-2 rounded"
-                                >
-                                    {Array.from({ length: currentYear - 2022 }, (_, i) => 2023 + i).map(year => (
-                                        <option key={year} value={year}>{year}</option>
-                                    ))}
-                                </select>
+                                    options={Array.from({ length: currentYear - 2022 }, (_, i) => 2023 + i).map(year => ({ value: year, label: year.toString() }))}
+                                    className="w-32 inline-block align-middle"
+                                />
                             </div>
                             <div>
                                 <label className="mr-2 font-medium">Sort by:</label>
-                                <select
-                                    value={filters.sortBy || "name_asc"}
-                                    onChange={(e) => {
-                                        const sortBy = e.target.value;
+                                <Select
+                                    value={[
+                                        { value: "name_asc", label: "Name (A → Z)" },
+                                        { value: "name_desc", label: "Name (Z → A)" },
+                                        { value: "shoebox_desc", label: "Shoebox Count (High → Low)" }
+                                    ].find(opt => opt.value === (filters.sortBy || "name_asc"))}
+                                    onChange={(option) => {
+                                        const sortBy = option.value;
                                         const newFilters = { ...filters, sortBy };
                                         setFilters(newFilters);
                                         getChurches(newFilters);
                                     }}
-                                    className="border p-2 rounded"
-                                >
-                                    <option value="name_asc">Name (A → Z)</option>
-                                    <option value="name_desc">Name (Z → A)</option>
-                                    <option value="shoebox_desc">Shoebox Count (High → Low)</option>
-                                </select>
+                                    options={[
+                                        { value: "name_asc", label: "Name (A → Z)" },
+                                        { value: "name_desc", label: "Name (Z → A)" },
+                                        { value: "shoebox_desc", label: "Shoebox Count (High → Low)" }
+                                    ]}
+                                    className="w-64 inline-block align-middle"
+                                />
                             </div>
                         </div>
                     </div>

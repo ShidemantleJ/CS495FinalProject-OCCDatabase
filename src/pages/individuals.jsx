@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import ChurchDropdown from "../components/ChurchDropdown";
+import Select from 'react-select';
 
 export default function Individuals() {
     const {user} = useUser();
@@ -370,32 +371,43 @@ export default function Individuals() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Active to Emails</label>
-                        <select
-                            value={filters.activeToEmails === null ? "all" : filters.activeToEmails ? "true" : "false"}
-                            onChange={(e) => {
-                                const value = e.target.value === "all" ? null : e.target.value === "true";
+                        <Select
+                            value={[
+                                { value: "all", label: "All" },
+                                { value: "true", label: "Active" },
+                                { value: "false", label: "Inactive" }
+                            ].find(opt => opt.value === (filters.activeToEmails === null ? "all" : filters.activeToEmails ? "true" : "false"))}
+                            onChange={(option) => {
+                                const value = option.value === "all" ? null : option.value === "true";
                                 setFilters({ ...filters, activeToEmails: value });
                             }}
-                            className="w-full border rounded-md p-2"
-                        >
-                            <option value="all">All</option>
-                            <option value="true">Active</option>
-                            <option value="false">Inactive</option>
-                        </select>
+                            options={[
+                                { value: "all", label: "All" },
+                                { value: "true", label: "Active" },
+                                { value: "false", label: "Inactive" }
+                            ]}
+                            className="w-full"
+                        />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium mb-1">Sort By</label>
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            className="w-full border rounded-md p-2"
-                        >
-                            <option value="name_asc">Name (A → Z)</option>
-                            <option value="name_desc">Name (Z → A)</option>
-                            <option value="church_asc">Church (A → Z)</option>
-                            <option value="church_desc">Church (Z → A)</option>
-                        </select>
+                        <Select
+                            value={[
+                                { value: "name_asc", label: "Name (A → Z)" },
+                                { value: "name_desc", label: "Name (Z → A)" },
+                                { value: "church_asc", label: "Church (A → Z)" },
+                                { value: "church_desc", label: "Church (Z → A)" }
+                            ].find(opt => opt.value === sortBy)}
+                            onChange={(option) => setSortBy(option.value)}
+                            options={[
+                                { value: "name_asc", label: "Name (A → Z)" },
+                                { value: "name_desc", label: "Name (Z → A)" },
+                                { value: "church_asc", label: "Church (A → Z)" },
+                                { value: "church_desc", label: "Church (Z → A)" }
+                            ]}
+                            className="w-full"
+                        />
                     </div>
                 </div>
 
@@ -701,17 +713,23 @@ export default function Individuals() {
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>
-                                                                    <select
-                                                                        value={editingIndividual.role}
-                                                                        onChange={(e) => setEditingIndividual({ ...editingIndividual, role: e.target.value })}
-                                                                        disabled={savingIndividual}
-                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                                                    >
-                                                                        <option value="">-- Select a Role --</option>
-                                                                        <option value="Volunteer">Volunteer</option>
-                                                                        <option value="Organizer">Organizer</option>
-                                                                        <option value="Coordinator">Coordinator</option>
-                                                                    </select>
+                                                                    <Select
+                                                                        value={[
+                                                                            { value: "", label: "-- Select a Role --" },
+                                                                            { value: "Volunteer", label: "Volunteer" },
+                                                                            { value: "Organizer", label: "Organizer" },
+                                                                            { value: "Coordinator", label: "Coordinator" }
+                                                                        ].find(opt => opt.value === (editingIndividual.role || ""))}
+                                                                        onChange={(option) => setEditingIndividual({ ...editingIndividual, role: option ? option.value : "" })}
+                                                                        options={[
+                                                                            { value: "", label: "-- Select a Role --" },
+                                                                            { value: "Volunteer", label: "Volunteer" },
+                                                                            { value: "Organizer", label: "Organizer" },
+                                                                            { value: "Coordinator", label: "Coordinator" }
+                                                                        ]}
+                                                                        isDisabled={savingIndividual}
+                                                                        className="w-full text-sm"
+                                                                    />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Birth Date</label>
