@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { FaTrash } from "react-icons/fa";
+import { FaTrash, FaUserSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
+import { useMemberRetirement } from "../hooks/useMemberRetirement";
 
 function PrivateBucketImage({ filePath, className, showPlaceholder = false }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -69,6 +70,11 @@ export default function TeamMembers() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [memberToDelete, setMemberToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
+
+    // Retirement hook
+    const { initiateRetirement, RetirementModal, isProcessing: isRetiring } = useMemberRetirement();
+    const [memberToProcess, setMemberToProcess] = useState(null);
+
     // Delete member handler
     const handleDeleteMember = async () => {
         if (!memberToDelete) return;
@@ -93,6 +99,24 @@ export default function TeamMembers() {
             setShowDeleteModal(false);
             setMemberToDelete(null);
         }
+    };
+
+    const retireMemberAction = async (member) => {
+        const { error } = await databaseAPI.update("team_members", member.id, { active: false });
+        if (error) {
+            alert("Failed to retire member: " + error.message);
+        } else {
+            setMembers(prev => prev.map(m => m.id === member.id ? { ...m, active: false } : m));
+        }
+        setMemberToProcess(null);
+    };
+
+    const handleRetireClick = (member) => {
+        setMemberToProcess(member);
+        initiateRetirement(member, {
+            onConfirm: () => retireMemberAction(member),
+            onCancel: () => setMemberToProcess(null),
+        });
     };
 
     // Fetch current logged-in user
@@ -310,6 +334,7 @@ export default function TeamMembers() {
     return (
         <div className="max-w-6xl mx-auto mt-10 px-4">
             <h1 className="text-3xl font-bold mb-6">Team Members</h1>
+            <RetirementModal />
 
             {/* Search Filters */}
             <div className="bg-gray-100 p-4 rounded-lg mb-6">
@@ -406,14 +431,16 @@ export default function TeamMembers() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {activeMembers.map((member) => (
                             <div key={member.id} className="bg-white shadow-lg rounded-xl p-6 flex flex-col hover:shadow-xl transition-shadow relative">
-                                {/* Trashcan icon for admin */}
+                                {/* Retire button for admin */}
                                 {isAdmin && (
                                     <button
-                                        className="absolute top-3 right-3 text-red-500 hover:text-red-700"
-                                        title="Delete Member"
-                                        onClick={() => { setShowDeleteModal(true); setMemberToDelete(member); }}
+                                        className="absolute top-3 right-3 text-orange-600 hover:text-orange-800 flex items-center gap-1 text-sm font-semibold"
+                                        title="Retire Member"
+                                        onClick={() => handleRetireClick(member)}
+                                        disabled={isRetiring && memberToProcess?.id === member.id}
                                     >
-                                        <FaTrash size={20} />
+                                        <FaUserSlash />
+                                        <span>{isRetiring && memberToProcess?.id === member.id ? "Retiring..." : "Retire"}</span>
                                     </button>
                                 )}
                                 <div className="flex justify-center mb-4">
@@ -465,31 +492,6 @@ export default function TeamMembers() {
                                 </div>
                             </div>
                         ))}
-                                {/* Delete Confirmation Modal */}
-                                {showDeleteModal && memberToDelete && (
-                                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                                        <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
-                                            <h2 className="text-xl font-bold mb-4 text-red-600">Delete Team Member</h2>
-                                            <p className="mb-4">Are you sure you want to delete <span className="font-semibold">{memberToDelete.first_name} {memberToDelete.last_name}</span>? This action cannot be undone.</p>
-                                            <div className="flex justify-end gap-2">
-                                                <button
-                                                    className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-                                                    onClick={() => { setShowDeleteModal(false); setMemberToDelete(null); }}
-                                                    disabled={deleting}
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                                                    onClick={handleDeleteMember}
-                                                    disabled={deleting}
-                                                >
-                                                    {deleting ? "Deleting..." : "Delete"}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                     </div>
                 </div>
             )}
@@ -500,7 +502,17 @@ export default function TeamMembers() {
                     <h2 className="text-2xl font-bold mb-4 text-gray-600">Former Members</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {formerMembers.map((member) => (
-                            <div key={member.id} className="bg-gray-50 shadow-md rounded-xl p-6 flex flex-col opacity-75">
+                            <div key={member.id} className="bg-gray-50 shadow-md rounded-xl p-6 flex flex-col opacity-75 relative">
+                                {/* Trashcan icon for admin */}
+                                {isAdmin && (
+                                    <button
+                                        className="absolute top-3 right-3 text-red-500 hover:text-red-700"
+                                        title="Permanently Delete Member"
+                                        onClick={() => { setShowDeleteModal(true); setMemberToDelete(member); }}
+                                    >
+                                        <FaTrash size={20} />
+                                    </button>
+                                )}
                                 <div className="flex justify-center mb-4">
                                     <PrivateBucketImage
                                         filePath={member.photo_url}
@@ -552,6 +564,32 @@ export default function TeamMembers() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && memberToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+                        <h2 className="text-xl font-bold mb-4 text-red-600">Delete Team Member</h2>
+                        <p className="mb-4">Are you sure you want to permanently delete <span className="font-semibold">{memberToDelete.first_name} {memberToDelete.last_name}</span>? This action cannot be undone.</p>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                onClick={() => { setShowDeleteModal(false); setMemberToDelete(null); }}
+                                disabled={deleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                                onClick={handleDeleteMember}
+                                disabled={deleting}
+                            >
+                                {deleting ? "Deleting..." : "Delete"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
