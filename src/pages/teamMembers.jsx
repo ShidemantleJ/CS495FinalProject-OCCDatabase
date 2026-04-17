@@ -63,6 +63,7 @@ export default function TeamMembers() {
         name: "",
         churchName: "",
         county: "",
+        position: "",
     });
     const navigate = useNavigate();
 
@@ -159,7 +160,7 @@ export default function TeamMembers() {
     useEffect(() => {
         const fetchMembers = async () => {
             const { data: membersData, error } = await databaseAPI.list("team_members", {
-                select: "*, member_positions(position, end_date)",
+                select: "*, member_positions(position, start_date, end_date)",
             });
 
             if (error) {
@@ -180,14 +181,19 @@ export default function TeamMembers() {
                 });
             }
 
+            const today = new Date().toISOString().split("T")[0];
             const membersWithChurchData = membersData.map((m) => {
                 const churchData = churchMap[m.church_affiliation_id] || null;
                 
-                // Filter to only active positions (no end_date)
+                // Filter to only active positions
                 let positionsText = "N/A";
                 if (Array.isArray(m.member_positions) && m.member_positions.length > 0) {
                     const activePositions = m.member_positions
-                        .filter(p => !p.end_date) // Only positions without end_date
+                        .filter(p => {
+                            const started = !p.start_date || p.start_date <= today;
+                            const notEnded = !p.end_date || p.end_date >= today;
+                            return started && notEnded;
+                        })
                         .map((p) => p.position)
                         .filter(Boolean);
                     if (activePositions.length > 0) {
@@ -255,6 +261,14 @@ export default function TeamMembers() {
             const searchTerm = searchFilters.county.toLowerCase();
             filtered = filtered.filter(member => 
                 member.home_county && member.home_county.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        // Filter by position
+        if (searchFilters.position) {
+            const searchTerm = searchFilters.position.toLowerCase();
+            filtered = filtered.filter(member => 
+                member.position !== "N/A" && member.position.toLowerCase().includes(searchTerm)
             );
         }
 
@@ -356,7 +370,7 @@ export default function TeamMembers() {
             {/* Search Filters */}
             <div className="bg-gray-100 p-4 rounded-lg mb-6">
                 <h2 className="text-lg font-semibold mb-4">Search & Filter</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Name</label>
                         <input
@@ -387,9 +401,19 @@ export default function TeamMembers() {
                             className="w-full border rounded-md p-2"
                         />
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Position</label>
+                        <input
+                            type="text"
+                            placeholder="Search by position..."
+                            value={searchFilters.position}
+                            onChange={(e) => setSearchFilters({ ...searchFilters, position: e.target.value })}
+                            className="w-full border rounded-md p-2"
+                        />
+                    </div>
                 </div>
                 <button
-                    onClick={() => setSearchFilters({ name: "", churchName: "", county: "" })}
+                    onClick={() => setSearchFilters({ name: "", churchName: "", county: "", position: "" })}
                     className="mt-4 bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
                 >
                     Clear Filters
