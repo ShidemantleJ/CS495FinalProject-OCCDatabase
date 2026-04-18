@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This project is deployed to **Vercel**. Production deployments are created automatically whenever changes are merged into the `main` branch.
+This project is deployed to **Vercel**. Instructions for auto deployment in your own repo can be found here: https://vercel.com/docs/git/vercel-for-github
 
 ## Production Environment
 
@@ -20,6 +20,7 @@ REACT_APP_SUPABASE_URL=
 REACT_APP_SUPABASE_ANON_KEY=
 REACT_APP_DATA_PROVIDER=supabase
 ```
+The supabase API keys are found in "Project Settings" under API Keys.
 
 These variables are consumed by the React frontend at build time. If either Supabase variable is missing, the application will fail during startup.
 
