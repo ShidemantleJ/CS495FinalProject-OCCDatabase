@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import { useMemberRetirement } from "../hooks/useMemberRetirement";
+import Select from 'react-select';
 
 function PrivateBucketImage({ filePath, className, showPlaceholder = false }) {
     const [signedUrl, setSignedUrl] = useState(null);
@@ -362,6 +363,20 @@ export default function TeamMembers() {
         });
     const formerMembers = filteredMembers.filter((m) => m.active === false || m.active === "false");
 
+    // Dynamically generate unique positions for the dropdown
+    const uniquePositions = Array.from(
+        new Set(
+            members.flatMap((m) =>
+                m.position && m.position !== "N/A" ? m.position.split(", ") : []
+            )
+        )
+    ).sort();
+
+    const positionOptions = [
+        { value: "", label: "All Positions" },
+        ...uniquePositions.map((pos) => ({ value: pos, label: pos })),
+    ];
+
     return (
         <div className="max-w-6xl mx-auto mt-10 px-4">
             <h1 className="text-3xl font-bold mb-6">Team Members</h1>
@@ -403,12 +418,12 @@ export default function TeamMembers() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Position</label>
-                        <input
-                            type="text"
-                            placeholder="Search by position..."
-                            value={searchFilters.position}
-                            onChange={(e) => setSearchFilters({ ...searchFilters, position: e.target.value })}
-                            className="w-full border rounded-md p-2"
+                        <Select
+                            value={positionOptions.find(opt => opt.value === searchFilters.position) || positionOptions[0]}
+                            onChange={(option) => setSearchFilters({ ...searchFilters, position: option ? option.value : "" })}
+                            options={positionOptions}
+                            className="w-full"
+                            placeholder="Select position..."
                         />
                     </div>
                 </div>
