@@ -486,16 +486,16 @@ export default function ChurchPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800 mb-2">Physical Address</h2>
                   <div className="space-y-1 text-gray-700">
-                    <p>{church["church_physical_address"] || "n/a"}</p>
+                    <p>{church["church_physical_address"] || "N/A"}</p>
                     <p>
                       {[
                         church["church_physical_city"] && church["church_physical_state"] 
                           ? `${church["church_physical_city"]}, ${church["church_physical_state"]}`
                           : [church["church_physical_city"], church["church_physical_state"]].filter(Boolean).join(", "),
                         church["church_physical_zip"]
-                      ].filter(Boolean).join(" ") || "n/a"}
+                      ].filter(Boolean).join(" ") || "N/A"}
                     </p>
-                    <p>{church["church_physical_county"] ? `${church["church_physical_county"]} County` : "n/a"}</p>
+                    <p>{church["church_physical_county"] ? `${church["church_physical_county"]} County` : "N/A"}</p>
                   </div>
                 </div>
 
@@ -503,14 +503,14 @@ export default function ChurchPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800 mb-2">Mailing Address</h2>
                   <div className="space-y-1 text-gray-700">
-                    <p>{church["church_mailing_address"] || "n/a"}</p>
+                    <p>{church["church_mailing_address"] || "N/A"}</p>
                     <p>
                       {[
                         church["church_mailing_city"] && church["church_mailing_state"] 
                           ? `${church["church_mailing_city"]}, ${church["church_mailing_state"]}`
                           : [church["church_mailing_city"], church["church_mailing_state"]].filter(Boolean).join(", "),
                         church["church_mailing_zip"]
-                      ].filter(Boolean).join(" ") || "n/a"}
+                      ].filter(Boolean).join(" ")}
                     </p>
                   </div>
                 </div>
