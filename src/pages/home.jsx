@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
+import Select from 'react-select';
 
 const COUNTY_OPTIONS = ["Pickens", "Fayette", "Lamar", "Tuscaloosa"];
 
@@ -183,7 +184,6 @@ export default function Home() {
         churchName: "",
         zipcode: "",
         shoeboxMin: "",
-        flaggedOnly: false,
         sortBy: "name_asc", // Default to alphabetical
         selectedCounties: [],
         selectedYear: currentYear,
@@ -311,9 +311,6 @@ export default function Home() {
             });
             
             filteredData = [...churchesWithData];
-            if (isAdmin && filterValues.flaggedOnly) {
-                filteredData = filteredData.filter((church) => church.missingRequiredFields.length > 0);
-            }
 
             // Sort by church name alphabetically by default
             let sortedData = [...filteredData];
@@ -451,23 +448,7 @@ export default function Home() {
                         onKeyDown={handleFilterInputKeyDown}
                         className="border p-2 rounded w-full md:w-1/3"
                     />
-                    {isAdmin && (
-                        <label className="flex items-center gap-2 rounded border bg-white px-3 py-2 text-sm text-gray-700">
-                            <input
-                                type="checkbox"
-                                checked={filters.flaggedOnly}
-                                onChange={
-                                    (e) => {
-                                        const newFilters = { ...filters, flaggedOnly: e.target.checked };
-                                        setFilters(newFilters);
-                                        getChurches(newFilters);
-                                    }
-                                }
-                                className="h-4 w-4"
-                            />
-                            Only Flagged Churches
-                        </label>
-                    )}
+
                 </div>
 
                 <div className="mt-4 flex flex-col">
@@ -482,7 +463,7 @@ export default function Home() {
                         <button
                             className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
                             onClick={() => {
-                                const clearedFilters = { churchName: "", zipcode: "", shoeboxMin: "", flaggedOnly: false, sortBy: "", selectedCounties: [], selectedYear: currentYear };
+                                const clearedFilters = { churchName: "", zipcode: "", shoeboxMin: "", sortBy: "", selectedCounties: [], selectedYear: currentYear };
                                 setFilters(clearedFilters);
                                 getChurches(clearedFilters);
                             }}
@@ -494,37 +475,39 @@ export default function Home() {
                         <div className="ml-auto flex gap-4 items-center">
                             <div>
                                 <label className="mr-2 font-medium">Year:</label>
-                                <select
-                                    value={filters.selectedYear}
-                                    onChange={(e) => {
-                                        const selectedYear = parseInt(e.target.value);
+                                <Select
+                                    value={{ value: filters.selectedYear, label: filters.selectedYear.toString() }}
+                                    onChange={(option) => {
+                                        const selectedYear = parseInt(option.value);
                                         const newFilters = { ...filters, selectedYear };
                                         setFilters(newFilters);
                                         getChurches(newFilters);
                                     }}
-                                    className="border p-2 rounded"
-                                >
-                                    {Array.from({ length: currentYear - 2022 }, (_, i) => 2023 + i).map(year => (
-                                        <option key={year} value={year}>{year}</option>
-                                    ))}
-                                </select>
+                                    options={Array.from({ length: currentYear - 2022 }, (_, i) => 2023 + i).map(year => ({ value: year, label: year.toString() }))}
+                                    className="w-32 inline-block align-middle"
+                                />
                             </div>
                             <div>
                                 <label className="mr-2 font-medium">Sort by:</label>
-                                <select
-                                    value={filters.sortBy || "name_asc"}
-                                    onChange={(e) => {
-                                        const sortBy = e.target.value;
+                                <Select
+                                    value={[
+                                        { value: "name_asc", label: "Name (A → Z)" },
+                                        { value: "name_desc", label: "Name (Z → A)" },
+                                        { value: "shoebox_desc", label: "Shoebox Count (High → Low)" }
+                                    ].find(opt => opt.value === (filters.sortBy || "name_asc"))}
+                                    onChange={(option) => {
+                                        const sortBy = option.value;
                                         const newFilters = { ...filters, sortBy };
                                         setFilters(newFilters);
                                         getChurches(newFilters);
                                     }}
-                                    className="border p-2 rounded"
-                                >
-                                    <option value="name_asc">Name (A → Z)</option>
-                                    <option value="name_desc">Name (Z → A)</option>
-                                    <option value="shoebox_desc">Shoebox Count (High → Low)</option>
-                                </select>
+                                    options={[
+                                        { value: "name_asc", label: "Name (A → Z)" },
+                                        { value: "name_desc", label: "Name (Z → A)" },
+                                        { value: "shoebox_desc", label: "Shoebox Count (High → Low)" }
+                                    ]}
+                                    className="w-64 inline-block align-middle"
+                                />
                             </div>
                         </div>
                     </div>

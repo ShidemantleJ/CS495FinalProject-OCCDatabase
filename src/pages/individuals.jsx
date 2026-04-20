@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import ChurchDropdown from "../components/ChurchDropdown";
+import Select from 'react-select';
 
 export default function Individuals() {
     const {user} = useUser();
@@ -248,8 +249,6 @@ export default function Individuals() {
     };
 
     const handleRowClick = (individual) => {
-        if (!isAdmin) return;
-        
         if (expandedRow === individual.id) {
             setExpandedRow(null);
             setEditingIndividual(null);
@@ -370,32 +369,43 @@ export default function Individuals() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Active to Emails</label>
-                        <select
-                            value={filters.activeToEmails === null ? "all" : filters.activeToEmails ? "true" : "false"}
-                            onChange={(e) => {
-                                const value = e.target.value === "all" ? null : e.target.value === "true";
+                        <Select
+                            value={[
+                                { value: "all", label: "All" },
+                                { value: "true", label: "Active" },
+                                { value: "false", label: "Inactive" }
+                            ].find(opt => opt.value === (filters.activeToEmails === null ? "all" : filters.activeToEmails ? "true" : "false"))}
+                            onChange={(option) => {
+                                const value = option.value === "all" ? null : option.value === "true";
                                 setFilters({ ...filters, activeToEmails: value });
                             }}
-                            className="w-full border rounded-md p-2"
-                        >
-                            <option value="all">All</option>
-                            <option value="true">Active</option>
-                            <option value="false">Inactive</option>
-                        </select>
+                            options={[
+                                { value: "all", label: "All" },
+                                { value: "true", label: "Active" },
+                                { value: "false", label: "Inactive" }
+                            ]}
+                            className="w-full"
+                        />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium mb-1">Sort By</label>
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            className="w-full border rounded-md p-2"
-                        >
-                            <option value="name_asc">Name (A → Z)</option>
-                            <option value="name_desc">Name (Z → A)</option>
-                            <option value="church_asc">Church (A → Z)</option>
-                            <option value="church_desc">Church (Z → A)</option>
-                        </select>
+                        <Select
+                            value={[
+                                { value: "name_asc", label: "Name (A → Z)" },
+                                { value: "name_desc", label: "Name (Z → A)" },
+                                { value: "church_asc", label: "Church (A → Z)" },
+                                { value: "church_desc", label: "Church (Z → A)" }
+                            ].find(opt => opt.value === sortBy)}
+                            onChange={(option) => setSortBy(option.value)}
+                            options={[
+                                { value: "name_asc", label: "Name (A → Z)" },
+                                { value: "name_desc", label: "Name (Z → A)" },
+                                { value: "church_asc", label: "Church (A → Z)" },
+                                { value: "church_desc", label: "Church (Z → A)" }
+                            ]}
+                            className="w-full"
+                        />
                     </div>
                 </div>
 
@@ -531,24 +541,22 @@ export default function Individuals() {
                                     <>
                                         <tr 
                                             key={ind.id} 
-                                            className={`hover:bg-gray-50 ${isAdmin ? "cursor-pointer" : ""} ${expandedRow === ind.id ? "bg-blue-50" : ""}`}
+                                            className={`hover:bg-gray-50 cursor-pointer ${expandedRow === ind.id ? "bg-blue-50" : ""}`}
                                             onClick={() => handleRowClick(ind)}
                                         >
                                             {/* Pencil Icon For Editing Inividuals */}
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                 <div className="flex items-center">
                                                     {ind.first_name} {ind.last_name}
-                                                    {isAdmin && (
-                                                        <span className="ml-2">
-                                                            {expandedRow === ind.id ? (
-                                                                <span className="text-blue-600 text-xs">(Click to collapse)</span>
-                                                            ) : (
-                                                                <span className="text-gray-400 hover:text-blue-500 transition-colors" title="Edit Individual">
-                                                                    ✎
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                    )}
+                                                    <span className="ml-2">
+                                                        {expandedRow === ind.id ? (
+                                                            <span className="text-blue-600 text-xs">(Click to collapse)</span>
+                                                        ) : (
+                                                            <span className="text-gray-400 hover:text-blue-500 transition-colors" title={isAdmin ? "Edit Individual" : "View Individual"}>
+                                                                {isAdmin ? "✎" : "▼"}
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </div>
                                             </td>
 
@@ -557,31 +565,51 @@ export default function Individuals() {
                                                 {ind.email || "N/A"}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {ind.church_id ? (churches.find(c => c.id === ind.church_id)?.church_name || "N/A").replace(/_/g, " ") : "N/A"}
+                                            {ind.church_id ? (() => {
+                                                const ch = churches.find(c => c.id === ind.church_id);
+                                                if (!ch) return "N/A";
+                                                const location = [ch.church_physical_city, ch.church_physical_state].filter(Boolean).join(", ");
+                                                return (
+                                                    <>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); navigate(`/church/${ch.id}`); }}
+                                                            className="text-blue-600 hover:underline text-left"
+                                                        >
+                                                            {ch.church_name.replace(/_/g, " ")}
+                                                        </button>
+                                                        {location && <div className="text-xs text-gray-400">{location}</div>}
+                                                    </>
+                                                );
+                                            })() : "N/A"}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm" onClick={(e) => e.stopPropagation()}>
-                                                <label className={`flex items-center ${isAdmin ? "cursor-pointer" : "cursor-not-allowed"}`}>
-                                                    <div className="relative">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={ind.active_to_emails || false}
-                                                            onChange={() => toggleActiveStatus(ind)}
-                                                            disabled={!isAdmin}
-                                                            className="sr-only"
-                                                        />
-                                                        <div className={`block w-14 h-8 rounded-full transition-colors ${
-                                                            ind.active_to_emails ? "bg-green-500" : "bg-gray-300"
-                                                        } ${!isAdmin ? "opacity-60" : ""}`}></div>
-                                                        <div className={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${
-                                                            ind.active_to_emails ? "transform translate-x-6" : ""
-                                                        }`}></div>
-                                                    </div>
-                                                    <span className={`ml-3 text-xs font-medium ${
-                                                        ind.active_to_emails ? "text-green-700" : "text-gray-600"
-                                                    }`}>
+                                                {isAdmin ? (
+                                                    <label className="flex items-center cursor-pointer">
+                                                        <div className="relative">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={ind.active_to_emails || false}
+                                                                onChange={() => toggleActiveStatus(ind)}
+                                                                className="sr-only"
+                                                            />
+                                                            <div className={`block w-14 h-8 rounded-full transition-colors ${
+                                                                ind.active_to_emails ? "bg-green-500" : "bg-gray-300"
+                                                            }`}></div>
+                                                            <div className={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${
+                                                                ind.active_to_emails ? "transform translate-x-6" : ""
+                                                            }`}></div>
+                                                        </div>
+                                                        <span className={`ml-3 text-xs font-medium ${
+                                                            ind.active_to_emails ? "text-green-700" : "text-gray-600"
+                                                        }`}>
+                                                            {ind.active_to_emails ? "Active" : "Inactive"}
+                                                        </span>
+                                                    </label>
+                                                ) : (
+                                                    <span className={`text-xs font-medium ${ind.active_to_emails ? "text-green-700" : "text-gray-600"}`}>
                                                         {ind.active_to_emails ? "Active" : "Inactive"}
                                                     </span>
-                                                </label>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-500">
                                                 <div className="flex flex-wrap gap-1">
@@ -648,11 +676,11 @@ export default function Individuals() {
                                                                             </div>
                                                                         </div>
                                                                     )}
-                                        {expandedRow === ind.id && isAdmin && editingIndividual && (
+                                        {expandedRow === ind.id && editingIndividual && (
                                             <tr key={`${ind.id}-expand`}>
                                                 <td colSpan="5" className="px-6 py-4 bg-gray-50">
                                                     <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
-                                                        <h3 className="font-semibold text-lg mb-3">Edit Individual Information</h3>
+                                                        <h3 className="font-semibold text-lg mb-3">{isAdmin ? "Edit Individual Information" : "Individual Information"}</h3>
                                                         
                                                         {/* Editing Individuals */}
                                                         <div>
@@ -663,7 +691,7 @@ export default function Individuals() {
                                                                         type="text"
                                                                         value={editingIndividual.first_name}
                                                                         onChange={(e) => setEditingIndividual({...editingIndividual, first_name: e.target.value})}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     />
                                                                 </div>
@@ -673,7 +701,7 @@ export default function Individuals() {
                                                                         type="text"
                                                                         value={editingIndividual.last_name}
                                                                         onChange={(e) => setEditingIndividual({...editingIndividual, last_name: e.target.value})}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     />
                                                                 </div>
@@ -683,13 +711,13 @@ export default function Individuals() {
                                                                         type="email"
                                                                         value={editingIndividual.email}
                                                                         onChange={(e) => setEditingIndividual({...editingIndividual, email: e.target.value})}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Church Name</label>
-                                                                    <div className={savingIndividual ? "opacity-50 pointer-events-none" : ""}>
+                                                                    <div className={(savingIndividual || !isAdmin) ? "opacity-50 pointer-events-none" : ""}>
                                                                         <ChurchDropdown
                                                                             churches={churches}
                                                                             selectedName={churches.find(c => c.id === editingIndividual.church_id)?.church_name || ""}
@@ -701,17 +729,23 @@ export default function Individuals() {
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Role</label>
-                                                                    <select
-                                                                        value={editingIndividual.role}
-                                                                        onChange={(e) => setEditingIndividual({ ...editingIndividual, role: e.target.value })}
-                                                                        disabled={savingIndividual}
-                                                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                                                    >
-                                                                        <option value="">-- Select a Role --</option>
-                                                                        <option value="Volunteer">Volunteer</option>
-                                                                        <option value="Organizer">Organizer</option>
-                                                                        <option value="Coordinator">Coordinator</option>
-                                                                    </select>
+                                                                    <Select
+                                                                        value={[
+                                                                            { value: "", label: "-- Select a Role --" },
+                                                                            { value: "Volunteer", label: "Volunteer" },
+                                                                            { value: "Organizer", label: "Organizer" },
+                                                                            { value: "Coordinator", label: "Coordinator" }
+                                                                        ].find(opt => opt.value === (editingIndividual.role || ""))}
+                                                                        onChange={(option) => setEditingIndividual({ ...editingIndividual, role: option ? option.value : "" })}
+                                                                        options={[
+                                                                            { value: "", label: "-- Select a Role --" },
+                                                                            { value: "Volunteer", label: "Volunteer" },
+                                                                            { value: "Organizer", label: "Organizer" },
+                                                                            { value: "Coordinator", label: "Coordinator" }
+                                                                        ]}
+                                                                        isDisabled={savingIndividual || !isAdmin}
+                                                                        className="w-full text-sm"
+                                                                    />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Birth Date</label>
@@ -719,7 +753,7 @@ export default function Individuals() {
                                                                         type="date"
                                                                         value={editingIndividual.birth_date}
                                                                         onChange={(e) => setEditingIndividual({...editingIndividual, birth_date: e.target.value})}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                                                     />
                                                                 </div>
@@ -733,7 +767,7 @@ export default function Individuals() {
                                                                         type="checkbox"
                                                                         checked={editingIndividual.craft_ideas}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, craft_ideas: e.target.checked })}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="rounded"
                                                                     />
                                                                     <span className="text-sm">Craft Ideas</span>
@@ -743,7 +777,7 @@ export default function Individuals() {
                                                                         type="checkbox"
                                                                         checked={editingIndividual.packing_party_ideas}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, packing_party_ideas: e.target.checked })}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="rounded"
                                                                     />
                                                                     <span className="text-sm">Packing Party Ideas</span>
@@ -753,7 +787,7 @@ export default function Individuals() {
                                                                         type="checkbox"
                                                                         checked={editingIndividual.fundraising_ideas}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, fundraising_ideas: e.target.checked })}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="rounded"
                                                                     />
                                                                     <span className="text-sm">Fundraising Ideas</span>
@@ -763,7 +797,7 @@ export default function Individuals() {
                                                                         type="checkbox"
                                                                         checked={editingIndividual.getting_more_people_involved}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, getting_more_people_involved: e.target.checked })}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="rounded"
                                                                     />
                                                                     <span className="text-sm">Getting More People Involved</span>
@@ -773,7 +807,7 @@ export default function Individuals() {
                                                                         type="checkbox"
                                                                         checked={editingIndividual.presentation_at_church_group}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, presentation_at_church_group: e.target.checked })}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="rounded"
                                                                     />
                                                                     <span className="text-sm">Presentation at Church/Group</span>
@@ -783,7 +817,7 @@ export default function Individuals() {
                                                                         type="checkbox"
                                                                         checked={editingIndividual.resources}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, resources: e.target.checked })}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="rounded"
                                                                     />
                                                                     <span className="text-sm">Resources</span>
@@ -793,7 +827,7 @@ export default function Individuals() {
                                                                         type="checkbox"
                                                                         checked={editingIndividual.other}
                                                                         onChange={(e) => setEditingIndividual({ ...editingIndividual, other: e.target.checked, other_description: e.target.checked ? editingIndividual.other_description : "" })}
-                                                                        disabled={savingIndividual}
+                                                                        disabled={savingIndividual || !isAdmin}
                                                                         className="rounded"
                                                                     />
                                                                     <span className="text-sm">Other</span>
@@ -814,7 +848,7 @@ export default function Individuals() {
                                                                         setEditingIndividual({ ...editingIndividual, other_description: value });
                                                                     }}
                                                                     maxLength={500}
-                                                                    disabled={savingIndividual}
+                                                                    disabled={savingIndividual || !isAdmin}
                                                                     className="w-full border rounded-md p-2 min-h-[80px]"
                                                                     placeholder="Describe what other resources are needed..."
                                                                 />
@@ -836,7 +870,7 @@ export default function Individuals() {
                                                                     setEditingIndividual({ ...editingIndividual, notes: value });
                                                                 }}
                                                                 maxLength={1000}
-                                                                disabled={savingIndividual}
+                                                                disabled={savingIndividual || !isAdmin}
                                                                 className="w-full border rounded-md p-2 min-h-[100px]"
                                                                 placeholder="Add notes about this individual..."
                                                             />
@@ -847,6 +881,7 @@ export default function Individuals() {
 
                                                         {/* Save/Cancel Buttons */}
                                                         <div className="flex gap-2">
+                                                            {isAdmin && (
                                                             <button
                                                                 onClick={() => handleSaveIndividual(ind.id)}
                                                                 disabled={savingIndividual}
@@ -854,6 +889,7 @@ export default function Individuals() {
                                                             >
                                                                 {savingIndividual ? "Saving..." : "Save Changes"}
                                                             </button>
+                                                            )}
                                                             <button
                                                                 onClick={handleCancelEdit}
                                                                 disabled={savingIndividual}

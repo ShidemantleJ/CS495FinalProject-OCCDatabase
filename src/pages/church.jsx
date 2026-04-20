@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { databaseAPI } from "../api";
 import { useUser } from "../contexts/UserContext";
 import { getMissingChurchRequiredFields } from "../utils/churchCompleteness";
+import Select from 'react-select';
 
 export default function ChurchPage() {
   const {user} = useUser();
@@ -485,20 +486,16 @@ export default function ChurchPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800 mb-2">Physical Address</h2>
                   <div className="space-y-1 text-gray-700">
-                    {church["church_physical_address"] && (
-                      <p>{church["church_physical_address"]}</p>
-                    )}
+                    <p>{church["church_physical_address"] || "N/A"}</p>
                     <p>
                       {[
                         church["church_physical_city"] && church["church_physical_state"] 
                           ? `${church["church_physical_city"]}, ${church["church_physical_state"]}`
                           : [church["church_physical_city"], church["church_physical_state"]].filter(Boolean).join(", "),
                         church["church_physical_zip"]
-                      ].filter(Boolean).join(" ")}
+                      ].filter(Boolean).join(" ") || "N/A"}
                     </p>
-                    {church["church_physical_county"] && (
-                      <p>{church["church_physical_county"]} County</p>
-                    )}
+                    <p>{church["church_physical_county"] ? `${church["church_physical_county"]} County` : "N/A"}</p>
                   </div>
                 </div>
 
@@ -506,25 +503,15 @@ export default function ChurchPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800 mb-2">Mailing Address</h2>
                   <div className="space-y-1 text-gray-700">
-                    {church["church_mailing_address"] || church["church_mailing_city"] || church["church_mailing_state"] || church["church_mailing_zip"] ? (
-                      <>
-                        {church["church_mailing_address"] && (
-                          <p>{church["church_mailing_address"]}</p>
-                        )}
-                        {(church["church_mailing_city"] || church["church_mailing_state"] || church["church_mailing_zip"]) && (
-                          <p>
-                            {[
-                              church["church_mailing_city"] && church["church_mailing_state"] 
-                                ? `${church["church_mailing_city"]}, ${church["church_mailing_state"]}`
-                                : [church["church_mailing_city"], church["church_mailing_state"]].filter(Boolean).join(", "),
-                              church["church_mailing_zip"]
-                            ].filter(Boolean).join(" ")}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-gray-400 italic">Not provided</p>
-                    )}
+                    <p>{church["church_mailing_address"] || "N/A"}</p>
+                    <p>
+                      {[
+                        church["church_mailing_city"] && church["church_mailing_state"] 
+                          ? `${church["church_mailing_city"]}, ${church["church_mailing_state"]}`
+                          : [church["church_mailing_city"], church["church_mailing_state"]].filter(Boolean).join(", "),
+                        church["church_mailing_zip"]
+                      ].filter(Boolean).join(" ")}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -535,15 +522,17 @@ export default function ChurchPage() {
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 mb-2">Church Point of Contact (POC)</h2>
                 <div className="space-y-1 text-gray-700">
-                  {(church["church_POC_first_name"] || church["church_POC_last_name"]) && (
-                    <p>{`${church["church_POC_first_name"] || ""} ${church["church_POC_last_name"] || ""}`.trim()}</p>
-                  )}
-                  {church["church_POC_phone"] && (
-                    <p>Phone: {church["church_POC_phone"]}</p>
-                  )}
-                  {church["church_POC_email"] && (
-                    <p>Email: {church["church_POC_email"]}</p>
-                  )}
+                  {(church["church_POC_first_name"] || church["church_POC_last_name"])
+                    ? <p>Name: {`${church["church_POC_first_name"] || ""} ${church["church_POC_last_name"] || ""}`.trim()}</p>
+                    : <p>Name: N/A</p>
+                  }
+                  {church["church_POC_phone"]
+                    ? <p>Phone: {church["church_POC_phone"]}</p>
+                    : <p>Phone: N/A</p>}
+                  {church["church_POC_email"]
+                    ? <p>Email: {church["church_POC_email"]}</p>
+                    : <p>Email: N/A</p>
+                  }
                 </div>
               </div>
             )}
@@ -555,15 +544,6 @@ export default function ChurchPage() {
                 <div className="bg-gray-50 p-3 rounded border text-gray-700 whitespace-pre-wrap">
                   {church.notes}
                 </div>
-              </div>
-            )}
-
-            {/* Created Date */}
-            {church.created_at && (
-              <div className="mb-4">
-                <p className="text-sm text-gray-500">
-                  <strong>Created:</strong> {new Date(church.created_at).toLocaleDateString()}
-                </p>
               </div>
             )}
           </div>
@@ -615,19 +595,13 @@ export default function ChurchPage() {
             <span><strong>Church Relations Team Member:</strong></span>
             {isEditingRelationsMember && isAdmin ? (
               <div className="flex items-center gap-2">
-                <select
-                  value={selectedRelationsMember}
-                  onChange={(e) => setSelectedRelationsMember(e.target.value)}
-                  className="border rounded-md p-1"
-                  disabled={savingRelationsMember}
-                >
-                  <option value="">None</option>
-                  {teamMembers.filter(m => m.active).map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.first_name} {member.last_name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={[{ value: "", label: "None" }, ...teamMembers.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))].find(opt => opt.value === selectedRelationsMember) || { value: "", label: "None" }}
+                  onChange={(option) => setSelectedRelationsMember(option ? option.value : "")}
+                  options={[{ value: "", label: "None" }, ...teamMembers.map(m => ({ value: m.id, label: `${m.first_name} ${m.last_name}` }))]}
+                  isDisabled={savingRelationsMember}
+                  className="min-w-[200px]"
+                />
                 <button
                   onClick={handleSaveRelationsMember}
                   disabled={savingRelationsMember}

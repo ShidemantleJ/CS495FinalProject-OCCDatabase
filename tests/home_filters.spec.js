@@ -120,9 +120,10 @@ test.describe("Home Page Filters & Sorting", () => {
 
   test("Search by church name", async ({ page }) => {
     if (testChurches.length === 0) test.skip();
-    await page
-      .getByPlaceholder("Search by church name")
-      .fill("FilterTest Beta");
+    const searchInput = page.getByPlaceholder("Search by church name").or(page.getByText("Search by church name").first());
+    await searchInput.click();
+    await page.keyboard.type("FilterTest Beta");
+    await page.keyboard.press("Tab");
     await page.getByRole("button", { name: "Apply Filters" }).click();
     await expect(
       page.getByRole("heading", { name: testChurches[1].church_name }),
@@ -167,11 +168,10 @@ test.describe("Home Page Filters & Sorting", () => {
 
     // Select previous year. Finding the select by the option value it contains or context.
     // The year select contains the current year.
-    const yearSelect = page
-      .locator("select")
-      .filter({ hasText: String(currentYear) })
-      .first();
-    await yearSelect.selectOption(String(prevYear));
+    const yearControl = page.getByText("Year:").locator("..").locator('div[class*="-control"]');
+    await yearControl.click();
+    await page.keyboard.type(String(prevYear));
+    await page.keyboard.press("Enter");
 
     // Verify shoebox counts update. Alpha prevYear: 50
     const alphaCard = page
@@ -188,10 +188,10 @@ test.describe("Home Page Filters & Sorting", () => {
     await page.getByRole("button", { name: "Apply Filters" }).click();
 
     // Select Sort by Shoebox Desc
-    const sortSelect = page
-      .locator("select")
-      .filter({ hasText: "Name (A → Z)" });
-    await sortSelect.selectOption("shoebox_desc");
+    const sortControl = page.getByText("Sort by:").locator("..").locator('div[class*="-control"]');
+    await sortControl.click();
+    await page.keyboard.type("Shoebox Count (High");
+    await page.keyboard.press("Enter");
 
     // Expected Order: Beta (200), Alpha (100), Gamma (50)
     // Filter to only cards from this test run using the unique timestamp

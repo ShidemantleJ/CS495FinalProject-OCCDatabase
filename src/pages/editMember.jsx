@@ -6,6 +6,8 @@ import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
 import ChurchDropdown from '../components/ChurchDropdown';
+import { useMemberRetirement } from "../hooks/useMemberRetirement";
+import Select from 'react-select';
 
 // Helper component for private bucket images
 function PrivateBucketImage({ filePath, className }) {
@@ -104,6 +106,9 @@ export default function EditMember() {
     const [expiredPositions, setExpiredPositions] = useState([]);
     const [expiredLoading, setExpiredLoading] = useState(false);
 
+    const [originalActive, setOriginalActive] = useState(false);
+    const { initiateRetirement, RetirementModal, isProcessing: isRetiring } = useMemberRetirement();
+
     // Check if current user is admin
     useEffect(() => {
         const checkAdmin = async () => {
@@ -193,6 +198,7 @@ export default function EditMember() {
             if (error) setError(error.message);
             else {
                 setForm(data);
+                setOriginalActive(data.active === true || data.active === "true");
                 // Find matching church if affiliation exists
                 if (data.church_affiliation_id) {
                     setSelectedChurchId(data.church_affiliation_id);
@@ -203,9 +209,24 @@ export default function EditMember() {
         loadMember();
     }, [id]);
 
-    const handleChange = (e) => {
+    const handleChange = async (e) => {
         const { name, value, type, checked } = e.target;
-        setForm({ ...form, [name]: type === "checkbox" ? checked : value });
+        
+        if (name === "active" && type === "checkbox" && !checked && originalActive === true) {
+            // Member is being deactivated.
+            setForm(prev => ({ ...prev, active: false })); // Optimistic update
+
+            initiateRetirement(form, {
+                onConfirm: completeSubmit,
+                onCancel: () => {
+                    // If user cancels reassignment, re-check the box.
+                    setForm(prev => ({ ...prev, active: true }));
+                },
+                actionLabel: "Save"
+            });
+        } else {
+            setForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+        }
     };
 
     const handlePhotoUpload = async (e) => {
@@ -257,30 +278,19 @@ export default function EditMember() {
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError("");
-
-        if (!form.first_name?.trim() || !form.last_name?.trim()) {
-            setError("First name and last name are required.");
-            setLoading(false);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            return;
-        }
-
+    const completeSubmit = async () => {
         // Prepare form data, converting empty strings to null for optional fields
-        const formData = { ...form };
-        if (formData.shirt_size === "") {
-            formData.shirt_size = null;
+        const submitData = { ...form };
+        if (submitData.shirt_size === "") {
+            submitData.shirt_size = null;
         }
-        if (formData.date_of_birth === "") {
-            formData.date_of_birth = null;
+        if (submitData.date_of_birth === "") {
+            submitData.date_of_birth = null;
         }
 
         // Update team member basic info
         const { error: memberError } = await databaseAPI.update("team_members", id, {
-            ...formData,
+        ...submitData,
             updated_at: new Date().toISOString(),
         });
 
@@ -359,6 +369,23 @@ export default function EditMember() {
         setLoading(false);
     };
 
+    const handleSubmit = async (e) => {
+        e?.preventDefault();
+        setLoading(true);
+        setError("");
+
+        // If user is deactivating, the hook will handle it via the checkbox onChange.
+        // If they haven't touched the checkbox, or are activating, we can just submit.
+        if (form.active === false && originalActive === true) {
+            // Deactivation process was already started by `handleChange`.
+            // If the modal is open, the user should use its confirm button.
+            // If they click the main save button, we can trigger the process again.
+            initiateRetirement(form, { onConfirm: completeSubmit });
+        } else {
+            await completeSubmit();
+        }
+    };
+
     const handlePositionToggle = (positionCode) => {
         setSelectedPositions(prev => {
             if (prev.includes(positionCode)) {
@@ -387,6 +414,8 @@ export default function EditMember() {
     if (loading || !form) return <p className="text-center mt-10">Loading...</p>;
 
     return (
+        <>
+            <RetirementModal />
         <div className="max-w-2xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-4 md:p-6">
             <h1 className="text-2xl font-bold mb-6">Edit Member</h1>
 
@@ -455,29 +484,22 @@ export default function EditMember() {
                                     name="active"
                                     checked={form.active}
                                     onChange={handleChange}
+                                    disabled={isRetiring}
                                 />
-                                Active Member
+                                Active Member {isRetiring && '(Checking...)'}
                             </label>
                         ) : field === "shirt_size" ? (
                             <div key={field} className="col-span-1">
                                 <label className="block text-sm font-medium mb-1 capitalize">
                                     {field.replaceAll("_", " ")}
                                 </label>
-                                <select
+                                <Select
                                     name={field}
-                                    value={form[field] ?? ""}
-                                    onChange={handleChange}
-                                    className="w-full border rounded-md px-3 py-2"
-                                >
-                                    <option value="">Select size (optional)</option>
-                                    <option value="XS">XS</option>
-                                    <option value="S">S</option>
-                                    <option value="M">M</option>
-                                    <option value="L">L</option>
-                                    <option value="XL">XL</option>
-                                    <option value="2XL">2XL</option>
-                                    <option value="3XL">3XL</option>
-                                </select>
+                                    value={[{ value: "", label: "Select size (optional)" }, { value: "XS", label: "XS" }, { value: "S", label: "S" }, { value: "M", label: "M" }, { value: "L", label: "L" }, { value: "XL", label: "XL" }, { value: "2XL", label: "2XL" }, { value: "3XL", label: "3XL" }].find(opt => opt.value === (form[field] || "")) || { value: "", label: "Select size (optional)" }}
+                                    onChange={(option, meta) => handleChange({ target: { name: meta.name, value: option ? option.value : "" } })}
+                                    options={[{ value: "", label: "Select size (optional)" }, { value: "XS", label: "XS" }, { value: "S", label: "S" }, { value: "M", label: "M" }, { value: "L", label: "L" }, { value: "XL", label: "XL" }, { value: "2XL", label: "2XL" }, { value: "3XL", label: "3XL" }]}
+                                    className="w-full"
+                                />
                             </div>
                         ) : (
                             <div key={field} className="col-span-1">
@@ -591,5 +613,6 @@ export default function EditMember() {
                 </div>
             </form>
         </div>
+        </>
     );
 }

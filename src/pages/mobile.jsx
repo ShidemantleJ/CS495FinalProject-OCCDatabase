@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 // import { supabase } from "../supabaseClient";
 import { databaseAPI } from "../api";
 // import { useNavigate } from "react-router-dom";
+import Select from 'react-select';
+import ChurchDropdown from '../components/ChurchDropdown';
 
 export default function Mobile() {
   const [isVerified, setIsVerified] = useState(false); // false = Admin Login, true = Registration Form
@@ -12,6 +14,8 @@ export default function Mobile() {
   const [customTemplates, setCustomTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [customFormData, setCustomFormData] = useState({});
+  const [churches, setChurches] = useState([]);
+  const [isAddingNewChurch, setIsAddingNewChurch] = useState(false);
   const [formData, setFormData] = useState({ //All the types of data that can be entered in the various forms
     // Header Info
     locationCode: "",
@@ -55,6 +59,18 @@ export default function Mobile() {
   // Fetch active custom templates once verified
   useEffect(() => {
     if (!isVerified) return;
+
+    const fetchChurches = async () => {
+      const { data, error } = await databaseAPI.list("church2", {
+        select: "id, church_name, church_physical_city, church_physical_state, church_physical_county",
+        orderBy: { column: "church_name", ascending: true },
+      });
+      if (!error && data) {
+        setChurches(data.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || "")));
+      }
+    };
+    fetchChurches();
+
     const fetchCustomTemplates = async () => {
       const { data, error } = await databaseAPI.getTemplates();
       if (error || !data) return;
@@ -70,21 +86,6 @@ export default function Mobile() {
     };
     fetchCustomTemplates();
   }, [isVerified]);
-
-  //Prevent Back Navigation & URL changes
-  useEffect(() => {
-    sessionStorage.setItem("kioskMode", "true");
-
-    window.history.pushState(null, null, window.location.pathname);
-
-    const handleBackButton = () => {
-      window.history.pushState(null, null, window.location.pathname);
-    };
-    window.addEventListener("popstate", handleBackButton);
-    return () => {
-      window.removeEventListener("popstate", handleBackButton);
-    };
-  }, []);
 
   //Allow for the PWA to be downloaded from the mobile page only
   useEffect(() => {
@@ -265,69 +266,83 @@ export default function Mobile() {
             <p className="text-xl text-slate-500 font-medium">Select a form to begin registration</p>
           </div>
           
-          <div className="grid grid-cols-1 gap-8 w-full">
-            {/* Individual Drop-Off */}
-            <button 
-              onClick={() => setView("individual")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#2563EB]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">Individual Shoebox Drop-Off</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-blue-600">→</span>
-            </button>
+          <div className="flex flex-col gap-12 w-full">
 
-            {/* Church/Group Drop-Off */}
-            <button 
-              onClick={() => setView("church")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#10B981]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">Church/Group Shoebox Drop-Off</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-emerald-600">→</span>
-            </button>
-
-            {/* NCW Short-Term */}
-            <button 
-              onClick={() => setView("ncw")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#6366F1]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">NCW Short-Term Volunteer</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
-            </button>
-
-            {/* PLW Short-Term */}
-            <button 
-              onClick={() => setView("plw")} 
-              className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-            >
-              <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#F43F5E]" />
-              <div className="flex flex-col text-left">
-                <span className="text-3xl font-black text-slate-900 tracking-tight">PLW Registration</span>
-              </div>
-              <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
-            </button>
-
-            {/* Custom Templates */}
-            {customTemplates.map((template) => (
-              <button
-                key={template.id}
-                onClick={() => handleSelectCustomTemplate(template)}
-                className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
-              >
-                <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
-                <div className="flex flex-col text-left">
-                  <span className="text-3xl font-black text-slate-900 tracking-tight">{template.event_name}</span>
+            {/* Current Events Section */}
+            {customTemplates.length > 0 && (
+              <div className="flex flex-col gap-6">
+                <h2 className="text-2xl font-black text-slate-700 uppercase tracking-widest border-b-2 border-violet-200 pb-3">Current Events</h2>
+                <div className="grid grid-cols-1 gap-6">
+                  {customTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => handleSelectCustomTemplate(template)}
+                      className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                    >
+                      <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#8B5CF6]" />
+                      <div className="flex flex-col text-left">
+                        <span className="text-3xl font-black text-slate-900 tracking-tight">{template.event_name}</span>
+                      </div>
+                      <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
+                    </button>
+                  ))}
                 </div>
-                <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-violet-600">→</span>
-              </button>
-            ))}
+              </div>
+            )}
+
+            {/* Legacy Forms Section */}
+            <div className="flex flex-col gap-6">
+              <h2 className="text-2xl font-black text-slate-700 uppercase tracking-widest border-b-2 border-slate-200 pb-3">Legacy Forms</h2>
+              <div className="grid grid-cols-1 gap-6">
+                {/* Individual Drop-Off */}
+                <button 
+                  onClick={() => setView("individual")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#2563EB]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">Individual Shoebox Drop-Off</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-blue-600">→</span>
+                </button>
+
+                {/* Church/Group Drop-Off */}
+                <button 
+                  onClick={() => setView("church")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#10B981]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">Church/Group Shoebox Drop-Off</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-emerald-600">→</span>
+                </button>
+
+                {/* NCW Short-Term */}
+                <button 
+                  onClick={() => setView("ncw")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#6366F1]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">NCW Short-Term Volunteer</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-indigo-600">→</span>
+                </button>
+
+                {/* PLW Short-Term */}
+                <button 
+                  onClick={() => setView("plw")} 
+                  className="group relative h-32 bg-white border border-slate-100 rounded-[2rem] shadow-xl shadow-slate-200/50 flex items-center px-10 active:scale-[0.98] transition-all overflow-hidden"
+                >
+                  <div className="absolute left-0 top-0 bottom-0 w-3 bg-[#F43F5E]" />
+                  <div className="flex flex-col text-left">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">PLW Registration</span>
+                  </div>
+                  <span className="ml-auto text-4xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 text-rose-600">→</span>
+                </button>
+              </div>
+            </div>
 
             {/* Exit Button To Leave The Selection Screen & To Return To The Admin Login */}
             <button
@@ -398,6 +413,34 @@ export default function Mobile() {
               {(Array.isArray(selectedTemplate.fields) ? selectedTemplate.fields : []).map((field, idx) => {
                 const label = field.form_name || field.name;
                 const value = customFormData[field.name];
+
+                if (field.name === "church_id" || field.name === "church_affiliation_id") {
+                  const selectedChurch = churches.find(c => c.id === value);
+                  return (
+                    <div key={idx} className="space-y-2">
+                      <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
+                        {label}{field.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <ChurchDropdown
+                        churches={churches}
+                        selectedName={selectedChurch?.church_name || ""}
+                        isAddingNew={isAddingNewChurch}
+                        setIsAddingNew={setIsAddingNewChurch}
+                        onSelect={async (name) => {
+                          const { data } = await databaseAPI.list("church2", {
+                            select: "id, church_name",
+                            orderBy: { column: "church_name", ascending: true },
+                          });
+                          if (data) {
+                            setChurches(data.sort((a, b) => (a.church_name || "").localeCompare(b.church_name || "")));
+                            const found = data.find(c => c.church_name === name);
+                            setCustomFormData((prev) => ({ ...prev, [field.name]: found ? found.id : null }));
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                }
 
                 if (field.type === "text") {
                   return (
@@ -517,17 +560,13 @@ export default function Mobile() {
                       <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest ml-1">
                         {label}{field.required && <span className="text-red-500">*</span>}
                       </label>
-                      <select
-                        className="w-full p-5 text-xl bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all"
-                        value={value || ""}
-                        onChange={(e) => setCustomFormData((prev) => ({ ...prev, [field.name]: e.target.value }))}
-                        required={field.required}
-                      >
-                        <option value="">Select...</option>
-                        {options.map((opt, oi) => (
-                          <option key={oi} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                          <Select
+                            className="w-full text-xl"
+                            value={[{ value: "", label: "Select..." }, ...options.map(opt => ({ value: opt, label: opt }))].find(opt => opt.value === (value || "")) || { value: "", label: "Select..." }}
+                            onChange={(option) => setCustomFormData((prev) => ({ ...prev, [field.name]: option ? option.value : "" }))}
+                            options={[{ value: "", label: "Select..." }, ...options.map(opt => ({ value: opt, label: opt }))]}
+                            required={field.required}
+                          />
                     </div>
                   );
                 }
@@ -1255,6 +1294,3 @@ export default function Mobile() {
     </div>
   );
 }
-
-
-

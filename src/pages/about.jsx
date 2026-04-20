@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function About() {
     const sections = [
         {
@@ -99,6 +101,25 @@ export default function About() {
                 <div className="bg-white p-8 rounded-2xl shadow-sm">
                     <h2 className="text-xl font-semibold mb-3">{sections[3].title}</h2>
                     <p className="text-gray-700 leading-relaxed">{sections[3].description}</p>
+                </div>
+            </div>
+
+            <div className="mt-12 mb-8">
+                <h2 className="text-3xl font-bold text-gray-800 mb-6">Mobile App Installation Guide</h2>
+                
+                <div className="bg-white rounded-2xl shadow-sm p-8 mb-6 border border-gray-100">
+                    <h3 className="text-xl font-semibold text-gray-800 mb-4">How to install the Progressive Web App (PWA)</h3>
+                    <p className="text-gray-700 mb-4">
+                        This site's mobile app allows OCC event attendees to electronically submit forms, providing OCC staff with information about their church's OCC ministry. This includes contact information, requests for resources, shoebox counts, and more.
+                    </p>
+                    <p className="text-gray-700 mb-4 font-semibold">To install the app on an iPad, follow these instructions:</p>
+                    <ol className="list-decimal pl-6 space-y-3 mb-6 text-gray-700 font-medium">
+                        <li>Visit <a href="https://occ-database.vercel.app" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">https://occ-database.vercel.app</a> using Safari on your iPad.</li>
+                        <li>Log in to the site using your admin credentials</li>
+                        <li>Look at the bottom of the mobile browser and select the <strong>Share</strong> button located below the URL.</li>
+                        <li>Press the "Add to Home Screen" button.</li>
+                    </ol>
+                    <p className="text-gray-700 mb-4 font-semibold">After this, you will see the "OCC Portal" app on your homepage. You can access the mobile interface by tapping the OCC icon.</p>
                 </div>
             </div>
         </div>

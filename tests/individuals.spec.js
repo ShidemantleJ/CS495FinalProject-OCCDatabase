@@ -84,7 +84,10 @@ test.describe.serial("Individuals Management", () => {
     await page.getByPlaceholder("Search church or church city...").fill(churchName);
     await page.getByText(churchName, { exact: true }).click();
 
-    await page.getByPlaceholder("Role").fill("Volunteer");
+    const roleSearch = page.getByPlaceholder("Role").or(page.getByText("Role").first());
+    await roleSearch.click();
+    await page.keyboard.type("Volunteer");
+    await page.keyboard.press("Tab");
 
     // Check "Craft Ideas" resource
     await page.getByLabel("Craft Ideas").check();
@@ -99,30 +102,33 @@ test.describe.serial("Individuals Management", () => {
   test("Search and Filter Individuals", async ({ page }) => {
     await page.goto("/individuals");
 
+    // Wait for the data to load to prevent race conditions with filters
+    await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible();
+
     // 1. Search by Church Name
-    await page.getByPlaceholder("Search by church...").fill(churchName);
+    const searchChurch = page.getByPlaceholder("Search by church...").or(page.getByText("Search by church...").first());
+    await searchChurch.fill(churchName);
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible();
 
     // Negative search
-    await page
-      .getByPlaceholder("Search by church...")
-      .fill("NonExistentChurch");
+    await searchChurch.fill("NonExistentChurch");
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeHidden();
-    await page.getByPlaceholder("Search by church...").fill(""); // Clear
+    
+    // Clear
+    await searchChurch.fill("");
 
     // 2. Filter by Active to Emails
     // Select "Active" (assuming "All" is default, we explicitly select Active)
-    await page
-      .locator("select")
-      .filter({ hasText: "All" })
-      .selectOption("true");
+    const activeControl = page.getByText("Active to Emails").locator("..").locator('div[class*="-control"]');
+    await activeControl.click();
+    await page.keyboard.type("Active");
+    await page.keyboard.press("Enter");
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible();
 
     // Select "Inactive" (should hide our user since default is active)
-    await page
-      .locator("select")
-      .filter({ hasText: "All" })
-      .selectOption("false");
+    await activeControl.click();
+    await page.keyboard.type("Inactive");
+    await page.keyboard.press("Enter");
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeHidden();
 
     // Reset
@@ -142,18 +148,21 @@ test.describe.serial("Individuals Management", () => {
   test("Sort Individuals", async ({ page }) => {
     await page.goto("/individuals");
     // Verify the sort dropdown is functional
-    const sortSelect = page
-      .locator("select")
-      .filter({ hasText: "Name (A → Z)" });
-    await expect(sortSelect).toBeVisible();
+    const sortControl = page.getByText("Sort By").locator("..").locator('div[class*="-control"]');
+    await expect(sortControl).toBeVisible();
 
-    await sortSelect.selectOption("name_desc");
+    await sortControl.click();
+    await page.keyboard.type("Name (Z");
+    await page.keyboard.press("Enter");
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible();
   });
 
   test("Edit Individual", async ({ page }) => {
     await page.goto("/individuals");
-    await page.getByPlaceholder("Search by church...").fill(churchName);
+    const searchChurch = page.getByPlaceholder("Search by church...").or(page.getByText("Search by church...").first());
+    await searchChurch.click();
+    await page.keyboard.type(churchName);
+    await page.keyboard.press("Tab");
 
     // Click the row to expand
     const row = page.getByRole("row").filter({ hasText: email });
@@ -193,14 +202,20 @@ test.describe.serial("Individuals Management", () => {
       await context.grantPermissions(["clipboard-write"]);
     }
     await page.goto("/individuals");
-    await page.getByPlaceholder("Search by church...").fill(churchName);
+    const searchChurch = page.getByPlaceholder("Search by church...").or(page.getByText("Search by church...").first());
+    await searchChurch.click();
+    await page.keyboard.type(churchName);
+    await page.keyboard.press("Tab");
     await page.getByRole("button", { name: /copy all emails/i }).click();
     await expect(page.getByText("Copied!")).toBeVisible();
   });
 
   test("Delete Individual", async ({ page }) => {
     await page.goto("/individuals");
-    await page.getByPlaceholder("Search by church...").fill(churchName);
+    const searchChurch = page.getByPlaceholder("Search by church...").or(page.getByText("Search by church...").first());
+    await searchChurch.click();
+    await page.keyboard.type(churchName);
+    await page.keyboard.press("Tab");
     const row = page
       .getByRole("row")
       .filter({ hasText: `${firstName} ${lastName}` });
