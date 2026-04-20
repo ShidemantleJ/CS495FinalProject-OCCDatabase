@@ -6,6 +6,7 @@ import { supabase } from "../supabaseClient";
 import {useUser} from "../contexts/UserContext";
 import { processImage } from "../utils/imageProcessing";
 import ChurchDropdown from '../components/ChurchDropdown';
+import { useMemberRetirement } from "../hooks/useMemberRetirement";
 import Select from 'react-select';
 
 // Helper component for private bucket images
@@ -38,62 +39,6 @@ function PrivateBucketImage({ filePath, className }) {
     }
 
     return <img src={signedUrl} alt="Profile" className={className} />;
-}
-
-// Helper component for reassigning churches when member is deactivated
-function ReassignChurchesModal({ isOpen, churches, activeMembers, reassignments, onChange, onConfirm, onCancel, currentYear }) {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col mx-4">
-                <div className="px-6 py-4 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">Reassign Churches</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                        This member is the Church Relations Point of Contact for the following churches in {currentYear}. 
-                        Since they are being marked as inactive, please reassign these churches.
-                    </p>
-                </div>
-                <div className="px-6 py-4 overflow-y-auto flex-1">
-                    <div className="space-y-4">
-                        {churches.map((attr) => (
-                            <div key={attr.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 border rounded-lg">
-                                <div className="font-medium text-gray-800 mb-2 sm:mb-0">
-                                    {attr.church2?.church_name?.replace(/_/g, " ")}
-                                </div>
-                                <select
-                                    value={reassignments[attr.id] || ""}
-                                    onChange={(e) => onChange(attr.id, e.target.value)}
-                                    className="border rounded-md px-3 py-1.5 text-sm bg-white min-w-[200px]"
-                                >
-                                    <option value="">-- Unassigned (None) --</option>
-                                    {activeMembers.map(m => (
-                                        <option key={m.id} value={m.id}>
-                                            {m.first_name} {m.last_name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-lg">
-                    <button
-                        onClick={onCancel}
-                        className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors font-medium"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={onConfirm}
-                        className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors font-medium"
-                    >
-                        Confirm & Save Member
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
 }
 
 export default function EditMember() {
@@ -162,10 +107,7 @@ export default function EditMember() {
     const [expiredLoading, setExpiredLoading] = useState(false);
 
     const [originalActive, setOriginalActive] = useState(false);
-    const [showReassignModal, setShowReassignModal] = useState(false);
-    const [relationsChurches, setRelationsChurches] = useState([]);
-    const [activeTeamMembers, setActiveTeamMembers] = useState([]);
-    const [reassignments, setReassignments] = useState({});
+    const { initiateRetirement, RetirementModal, isProcessing: isRetiring } = useMemberRetirement();
 
     // Check if current user is admin
     useEffect(() => {
@@ -271,47 +213,20 @@ export default function EditMember() {
         const { name, value, type, checked } = e.target;
         
         if (name === "active" && type === "checkbox" && !checked && originalActive === true) {
-            setLoading(true);
-            const currentYear = new Date().getFullYear();
-            const { data: attrs, error: attrsError } = await databaseAPI.list("church_annual_attributes", {
-                select: `
-                    id,
-                    church_id,
-                    year,
-                    shoebox_count,
-                    church2 (id, church_name)
-                `,
-                filters: [
-                    { column: "relations_member", op: "eq", value: id },
-                    { column: "year", op: "eq", value: currentYear }
-                ]
+            // Member is being deactivated.
+            setForm(prev => ({ ...prev, active: false })); // Optimistic update
+
+            initiateRetirement(form, {
+                onConfirm: completeSubmit,
+                onCancel: () => {
+                    // If user cancels reassignment, re-check the box.
+                    setForm(prev => ({ ...prev, active: true }));
+                },
+                actionLabel: "Save"
             });
-
-            if (!attrsError && attrs && attrs.length > 0) {
-                const { data: members, error: membersError } = await databaseAPI.list("team_members", {
-                    select: "id, first_name, last_name",
-                    filters: [{ column: "active", op: "eq", value: true }],
-                    orderBy: { column: "last_name", ascending: true }
-                });
-                
-                if (!membersError && members) {
-                    setActiveTeamMembers(members.filter(m => m.id !== id));
-                }
-                
-                setRelationsChurches(attrs);
-                
-                const initialReassignments = {};
-                attrs.forEach(attr => {
-                    initialReassignments[attr.id] = "";
-                });
-                setReassignments(initialReassignments);
-                
-                setShowReassignModal(true);
-            }
-            setLoading(false);
+        } else {
+            setForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
         }
-
-        setForm(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
     };
 
     const handlePhotoUpload = async (e) => {
@@ -458,39 +373,17 @@ export default function EditMember() {
         e?.preventDefault();
         setLoading(true);
         setError("");
-        await completeSubmit();
-    };
 
-    const handleConfirmReassign = async () => {
-        setLoading(true);
-        
-        const updates = relationsChurches.map(attr => ({
-            id: attr.id,
-            church_id: attr.church_id,
-            year: attr.year,
-            shoebox_count: attr.shoebox_count,
-            relations_member: reassignments[attr.id] || null
-        }));
-
-        if (updates.length > 0) {
-            await databaseAPI.upsert("church_annual_attributes", updates);
+        // If user is deactivating, the hook will handle it via the checkbox onChange.
+        // If they haven't touched the checkbox, or are activating, we can just submit.
+        if (form.active === false && originalActive === true) {
+            // Deactivation process was already started by `handleChange`.
+            // If the modal is open, the user should use its confirm button.
+            // If they click the main save button, we can trigger the process again.
+            initiateRetirement(form, { onConfirm: completeSubmit });
+        } else {
+            await completeSubmit();
         }
-        
-        setShowReassignModal(false);
-        await completeSubmit();
-    };
-
-    const handleCancelReassign = () => {
-        setShowReassignModal(false);
-        setLoading(false);
-        setForm(prev => ({ ...prev, active: true }));
-    };
-
-    const handleReassignmentChange = (attrId, newMemberId) => {
-        setReassignments(prev => ({
-            ...prev,
-            [attrId]: newMemberId
-        }));
     };
 
     const handlePositionToggle = (positionCode) => {
@@ -522,16 +415,7 @@ export default function EditMember() {
 
     return (
         <>
-            <ReassignChurchesModal
-                isOpen={showReassignModal}
-                churches={relationsChurches}
-                activeMembers={activeTeamMembers}
-                reassignments={reassignments}
-                onChange={handleReassignmentChange}
-                onConfirm={handleConfirmReassign}
-                onCancel={handleCancelReassign}
-                currentYear={new Date().getFullYear()}
-            />
+            <RetirementModal />
         <div className="max-w-2xl mx-auto mt-10 bg-white shadow-lg rounded-lg p-4 md:p-6">
             <h1 className="text-2xl font-bold mb-6">Edit Member</h1>
 
@@ -600,8 +484,9 @@ export default function EditMember() {
                                     name="active"
                                     checked={form.active}
                                     onChange={handleChange}
+                                    disabled={isRetiring}
                                 />
-                                Active Member
+                                Active Member {isRetiring && '(Checking...)'}
                             </label>
                         ) : field === "shirt_size" ? (
                             <div key={field} className="col-span-1">

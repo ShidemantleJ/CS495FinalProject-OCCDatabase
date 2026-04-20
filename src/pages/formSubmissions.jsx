@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaTrash } from "react-icons/fa";
 import { databaseAPI } from "../api";
 
 const CARD_COLORS = [
@@ -19,6 +20,9 @@ export default function FormSubmissions() {
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -85,6 +89,34 @@ export default function FormSubmissions() {
     loadTemplates();
   }, [checkingAdmin, isAdmin]);
 
+  const handleDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+    setDeleting(true);
+    setErrorMessage("");
+
+    // 1. Delete all submissions for this template
+    const { error: submissionsError } = await databaseAPI.deleteAll("form_submissions", { form_template_id: templateToDelete.id });
+    if (submissionsError) {
+        setErrorMessage("Failed to delete submissions for this template. " + submissionsError.message);
+        setDeleting(false);
+        setShowDeleteModal(false);
+        setTemplateToDelete(null);
+        return;
+    }
+
+    // 2. Delete the template
+    const { error: templateError } = await databaseAPI.delete("form_templates", templateToDelete.id);
+    setDeleting(false);
+    setShowDeleteModal(false);
+
+    if (templateError) {
+        setErrorMessage("Failed to delete the template. " + templateError.message);
+    } else {
+        setTemplates(prev => prev.filter(t => t.id !== templateToDelete.id));
+    }
+    setTemplateToDelete(null);
+  };
+
   if (checkingAdmin) {
     return <p className="text-center mt-10">Loading...</p>;
   }
@@ -142,11 +174,10 @@ export default function FormSubmissions() {
               }
             }
             return (
-              <button
+              <div
                 key={template.id}
-                type="button"
                 onClick={() => navigate(`/form-submissions/${template.id}`)}
-                className="group relative h-28 bg-white border border-slate-100 rounded-2xl shadow-lg shadow-slate-200/50 flex items-center px-8 hover:shadow-xl active:scale-[0.98] transition-all overflow-hidden text-left"
+                className="group relative cursor-pointer h-28 bg-white border border-slate-100 rounded-2xl shadow-lg shadow-slate-200/50 flex items-center px-8 hover:shadow-xl active:scale-[0.98] transition-all overflow-hidden text-left"
               >
                 <div
                   className="absolute left-0 top-0 bottom-0 w-3 rounded-l-2xl"
@@ -175,9 +206,55 @@ export default function FormSubmissions() {
                 <span className={`ml-auto text-3xl group-hover:translate-x-2 transition-transform opacity-20 group-hover:opacity-100 ${color.arrow}`}>
                   →
                 </span>
-              </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteModal(true);
+                    setTemplateToDelete(template);
+                  }}
+                  className="absolute top-3 right-3 p-2 text-gray-400 hover:text-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  title="Delete Template"
+                >
+                  <FaTrash size={14} />
+                </button>
+              </div>
             );
           })}
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
+            <h2 className="text-lg font-semibold mb-3">Delete Template</h2>
+            <p className="text-gray-700 mb-2">
+              Are you sure you want to <span className="font-semibold text-red-600">permanently delete</span> the template{" "}
+              <span className="font-semibold">&ldquo;{templateToDelete?.event_name || "Unnamed"}&rdquo;</span> and all its submissions?
+            </p>
+            <p className="text-sm text-gray-500 mb-6">This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setTemplateToDelete(null);
+                }}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteTemplate}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -213,23 +213,4 @@ test.describe.serial("Team Members Management", () => {
     await expect(page.getByText(`Phone: ${newPhone}`)).toBeVisible();
   });
 
-  test("Delete Member", async ({ page }) => {
-    await page.goto("/team-members");
-    const nameSearch = page.getByPlaceholder("Search by name...").or(page.getByText("Search by name...").first());
-    await nameSearch.click();
-    await page.keyboard.type(firstName);
-    await page.keyboard.press("Tab");
-
-    // Find the member card and click the delete button (trash icon)
-    const memberCard = page
-      .locator("div.bg-white.shadow-lg.rounded-xl")
-      .filter({ hasText: `${firstName} ${lastName}` });
-    await memberCard.getByTitle("Delete Member").click();
-
-    // Confirm deletion in the modal
-    await page.getByRole("button", { name: "Delete", exact: true }).click();
-
-    // Verify the member is gone
-    await expect(memberCard).toBeHidden();
-  });
 });

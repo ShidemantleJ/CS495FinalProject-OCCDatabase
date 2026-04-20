@@ -102,24 +102,20 @@ test.describe.serial("Individuals Management", () => {
   test("Search and Filter Individuals", async ({ page }) => {
     await page.goto("/individuals");
 
+    // Wait for the data to load to prevent race conditions with filters
+    await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible();
+
     // 1. Search by Church Name
     const searchChurch = page.getByPlaceholder("Search by church...").or(page.getByText("Search by church...").first());
-    await searchChurch.click();
-    await page.keyboard.type(churchName);
-    await page.keyboard.press("Tab");
+    await searchChurch.fill(churchName);
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible();
 
     // Negative search
-    await searchChurch.click();
-    await page.keyboard.press("Control+A");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.type("NonExistentChurch");
-    await page.keyboard.press("Tab");
+    await searchChurch.fill("NonExistentChurch");
     await expect(page.getByText(`${firstName} ${lastName}`)).toBeHidden();
-    await searchChurch.click();
-    await page.keyboard.press("Control+A");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Tab"); // Clear
+    
+    // Clear
+    await searchChurch.fill("");
 
     // 2. Filter by Active to Emails
     // Select "Active" (assuming "All" is default, we explicitly select Active)
