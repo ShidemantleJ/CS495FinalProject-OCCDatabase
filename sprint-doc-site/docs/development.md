@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide assumes you have already completed the steps in the [Installation Guide](deployment.md) and have the application running locally.
+This guide assumes you have already completed the steps in the [Deployment Guide](deployment.md) and have the application running locally.
 
 ---
 
@@ -92,6 +92,19 @@ The project backlog and bug tracker live on **Jira**:
 
 > **Jira Board:** [OCC Database Backlog](https://cs495seniordesign.atlassian.net/jira/software/projects/SCRUM/boards/1/backlog)
 
+### Unfinished Tasks
+
+| Ticket | Description |
+|---|---|
+| SCRUM-13 | Self-host Supabase and webserver on AWS |
+| SCRUM-14 | Plot all churches in database with OSM/Google Maps |
+| SCRUM-15 | Select churches with Google Maps/OSM instead of manual entry |
+| SCRUM-35 | Investigate PostGIS for location services |
+| SCRUM-54 | Create dropoff location table for storing location codes |
+| SCRUM-63 | Create page to add/remove dropoff locations from the table |
+| SCRUM-87 | UI update on 'my profile' page |
+| SCRUM-111 | Replace text box for 'How can we support your OCC ministry' in mobile interface with the 'resources requested' field |
+
 ### Known Major Issues
 
 <!-- Add or remove items from this list as the project evolves -->
@@ -149,7 +162,7 @@ Two workflows run automatically on pushes and pull requests:
 
 ### Running Tests Locally
 
-For detailed instructions on running tests locally, see the [Testing Guide](testing.md).
+For detailed instructions on running tests locally, see the [Testing](testing.md) guide.
 
 ### Test File Locations
 
