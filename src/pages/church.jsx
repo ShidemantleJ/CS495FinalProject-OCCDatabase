@@ -518,7 +518,6 @@ export default function ChurchPage() {
             </div>
 
             {/* Church Point of Contact (POC) */}
-            {(church["church_POC_first_name"] || church["church_POC_last_name"] || church["church_POC_phone"] || church["church_POC_email"]) && (
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-gray-800 mb-2">Church Point of Contact (POC)</h2>
                 <div className="space-y-1 text-gray-700">
@@ -535,7 +534,6 @@ export default function ChurchPage() {
                   }
                 </div>
               </div>
-            )}
 
             {/* Notes */}
             {church.notes && (
