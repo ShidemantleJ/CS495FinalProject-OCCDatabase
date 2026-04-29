@@ -1,3 +1,5 @@
+# Authored by John Shidemantle
+
 # Testing
 
 <hr/>

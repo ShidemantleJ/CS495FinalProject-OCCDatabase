@@ -1,3 +1,5 @@
+# Authored by Will Morrow
+
 # Deployment Guide
 
 This project is deployed to **Vercel**. Instructions for auto deployment in your own repo can be found here: https://vercel.com/docs/git/vercel-for-github

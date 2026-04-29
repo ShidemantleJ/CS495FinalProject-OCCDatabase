@@ -1,3 +1,5 @@
+# Authored by Thomas Gray
+
 # User Guide
 Welcome to the official documentation for the OCC Database System. This guide is designed to help administrators and team members navigate the web interface, and mobile application with ease.
 

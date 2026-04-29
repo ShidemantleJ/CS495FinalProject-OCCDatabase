@@ -182,7 +182,6 @@ export default function TeamMembers() {
                 });
             }
 
-            const today = new Date().toISOString().split("T")[0];
             const membersWithChurchData = membersData.map((m) => {
                 const churchData = churchMap[m.church_affiliation_id] || null;
                 
@@ -190,11 +189,7 @@ export default function TeamMembers() {
                 let positionsText = "N/A";
                 if (Array.isArray(m.member_positions) && m.member_positions.length > 0) {
                     const activePositions = m.member_positions
-                        .filter(p => {
-                            const started = !p.start_date || p.start_date <= today;
-                            const notEnded = !p.end_date || p.end_date >= today;
-                            return started && notEnded;
-                        })
+                        .filter(p => !p.end_date)
                         .map((p) => p.position)
                         .filter(Boolean);
                     if (activePositions.length > 0) {
@@ -267,9 +262,9 @@ export default function TeamMembers() {
 
         // Filter by position
         if (searchFilters.position) {
-            const searchTerm = searchFilters.position.toLowerCase();
+            const searchTerm = searchFilters.position;
             filtered = filtered.filter(member => 
-                member.position !== "N/A" && member.position.toLowerCase().includes(searchTerm)
+                member.position !== "N/A" && member.position.split(", ").includes(searchTerm)
             );
         }
 

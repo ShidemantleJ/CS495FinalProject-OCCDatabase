@@ -1,3 +1,5 @@
+# Authored by Bradley Hicks
+
 # Development Guide
 
 This guide assumes you have already completed the steps in the [Deployment Guide](deployment.md) and have the application running locally.

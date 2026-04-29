@@ -52,6 +52,7 @@ test.describe("Profile & Team Management", () => {
     await supabase.from("member_positions").insert({
       member_id: adminId,
       position: "Church Relations Coordinator",
+      start_date: new Date().toISOString().split('T')[0],
     });
 
     // 3. Create a Subordinate Team Member
@@ -75,6 +76,7 @@ test.describe("Profile & Team Management", () => {
       await supabase.from("member_positions").insert({
         member_id: subordinateId,
         position: "Church Relations Team Member",
+        start_date: new Date().toISOString().split('T')[0],
       });
     }
 
